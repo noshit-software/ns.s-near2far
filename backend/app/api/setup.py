@@ -33,7 +33,6 @@ class CreateHousehold(BaseModel):
 class CreateMember(BaseModel):
     household_id: str
     display_name: str
-    trust_tier: str = "ambient"
 
 
 class VerifyPassword(BaseModel):
@@ -50,7 +49,7 @@ async def get_household(request: Request) -> dict:
             return {"success": True, "data": None}
 
         members = await conn.fetch(
-            "SELECT id, display_name, trust_tier FROM substrate.members WHERE household_id = $1",
+            "SELECT id, display_name FROM substrate.members WHERE household_id = $1",
             household["id"],
         )
 
@@ -125,11 +124,10 @@ async def create_member(body: CreateMember, request: Request) -> dict:
             raise HTTPException(status_code=404, detail="Household not found")
 
         row = await conn.fetchrow(
-            "INSERT INTO substrate.members (household_id, display_name, trust_tier) VALUES ($1, $2, $3) "
-            "RETURNING id, display_name, trust_tier",
+            "INSERT INTO substrate.members (household_id, display_name) VALUES ($1, $2) "
+            "RETURNING id, display_name",
             body.household_id,
             body.display_name,
-            body.trust_tier,
         )
 
     data = {**dict(row), "id": str(row["id"])}

@@ -1,6 +1,6 @@
 -- near2far schema
 --
--- substrate: persistent reference data (households, members, trust groups). Survives db:reset.
+-- substrate: persistent reference data (households, members). Survives db:reset.
 -- runtime: ephemeral working state (positions, live sessions, alert queues). Dropped/recreated by db:reset.
 
 CREATE SCHEMA IF NOT EXISTS substrate;
@@ -18,7 +18,6 @@ CREATE TABLE IF NOT EXISTS substrate.members (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   household_id UUID NOT NULL REFERENCES substrate.households(id),
   display_name TEXT NOT NULL,
-  trust_tier TEXT NOT NULL DEFAULT 'ambient' CHECK (trust_tier IN ('intimate', 'named', 'ambient')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

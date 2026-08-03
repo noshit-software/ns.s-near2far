@@ -4,18 +4,9 @@ import { apiGet, apiPost, getAdminPassword, setAdminPassword } from "../lib/api"
 import { FamilyMap } from "./FamilyMap"
 import { LocationPicker } from "./LocationPicker"
 
-type TrustTier = "intimate" | "named" | "ambient"
-
-const TRUST_TIER_INFO: Record<TrustTier, string> = {
-  intimate: "Exact location, always visible — for people who live with you.",
-  named: "General area only, no exact position — for close family elsewhere.",
-  ambient: "Broadest, most private — the default for everyone else.",
-}
-
 type Member = {
   id: string
   display_name: string
-  trust_tier: TrustTier
 }
 
 type Household = {
@@ -39,7 +30,6 @@ export function SetupWizard() {
   const [loginPassword, setLoginPassword] = useState("")
 
   const [memberName, setMemberName] = useState("")
-  const [memberTier, setMemberTier] = useState<TrustTier>("ambient")
 
   useEffect(() => {
     apiGet<Household | null>("/setup/household")
@@ -97,7 +87,6 @@ export function SetupWizard() {
       const created = await apiPost<Member>("/setup/members", {
         household_id: household.id,
         display_name: memberName,
-        trust_tier: memberTier,
       })
       setHousehold({ ...household, members: [...household.members, created] })
       setMemberName("")
@@ -209,27 +198,20 @@ export function SetupWizard() {
       <h3>Members</h3>
       <ul>
         {household.members.map((m) => (
-          <li key={m.id}>
-            {m.display_name} — {m.trust_tier}
-          </li>
+          <li key={m.id}>{m.display_name}</li>
         ))}
       </ul>
 
-      <label>
-        Add member
-        <input value={memberName} onChange={(e) => setMemberName(e.target.value)} />
-      </label>
       <div className="member-form-row">
-        <select value={memberTier} onChange={(e) => setMemberTier(e.target.value as TrustTier)}>
-          <option value="intimate">intimate</option>
-          <option value="named">named</option>
-          <option value="ambient">ambient</option>
-        </select>
+        <input
+          value={memberName}
+          onChange={(e) => setMemberName(e.target.value)}
+          placeholder="Member name"
+        />
         <button onClick={submitMember} disabled={!memberName}>
           Add member
         </button>
       </div>
-      <p className="hint">{TRUST_TIER_INFO[memberTier]}</p>
       {error && <p className="error">{error}</p>}
     </div>
   )

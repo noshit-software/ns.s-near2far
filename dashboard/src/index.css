@@ -184,6 +184,7 @@ h3 {
   align-items: stretch;
 }
 
+.member-form-row input,
 .member-form-row select {
   flex: 1;
 }
