@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 
 import { apiGet, apiPost, getAdminPassword, setAdminPassword } from "../lib/api"
+import { FamilyMap } from "./FamilyMap"
 import { LocationPicker } from "./LocationPicker"
 
 type TrustTier = "intimate" | "named" | "ambient"
@@ -27,6 +28,7 @@ type Household = {
 export function SetupWizard() {
   const [household, setHousehold] = useState<Household | null | undefined>(undefined)
   const [unlocked, setUnlocked] = useState(() => Boolean(getAdminPassword()))
+  const [showSettings, setShowSettings] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [name, setName] = useState("")
@@ -164,9 +166,36 @@ export function SetupWizard() {
     )
   }
 
+  if (!showSettings) {
+    return (
+      <div>
+        <div className="dashboard-header">
+          <h2>{household.name}</h2>
+          <button
+            type="button"
+            className="settings-toggle"
+            onClick={() => setShowSettings(true)}
+          >
+            Settings
+          </button>
+        </div>
+        <FamilyMap />
+      </div>
+    )
+  }
+
   return (
     <div className="setup-wizard">
-      <h2>{household.name}</h2>
+      <div className="dashboard-header">
+        <h2>{household.name} — Settings</h2>
+        <button
+          type="button"
+          className="settings-toggle"
+          onClick={() => setShowSettings(false)}
+        >
+          Back to map
+        </button>
+      </div>
 
       <h3>Home</h3>
       <LocationPicker

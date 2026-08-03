@@ -29,7 +29,29 @@ function FitToRadius({ center, radiusM }: { center: LatLng; radiusM: number }) {
   return null
 }
 
-function AddressSearch({ onPick }: { onPick: (pos: LatLng) => void }) {
+// Fits both the current pin and the search suggestion in view together, so
+// it's never ambiguous how far the suggestion is from what's actually saved.
+function FitSearchResult({ home, target }: { home: LatLng; target: LatLng | null }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!target) return
+    const bounds = L.latLngBounds([
+      [home.lat, home.lng],
+      [target.lat, target.lng],
+    ])
+    map.fitBounds(bounds, { padding: [48, 48] })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [home.lat, home.lng, target?.lat, target?.lng])
+  return null
+}
+
+function AddressSearch({
+  onNavigate,
+  biasCenter,
+}: {
+  onNavigate: (pos: LatLng) => void
+  biasCenter: LatLng
+}) {
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<SearchResult[]>([])
   const [searching, setSearching] = useState(false)
@@ -40,8 +62,20 @@ function AddressSearch({ onPick }: { onPick: (pos: LatLng) => void }) {
     setSearching(true)
     setError(null)
     try {
+      // Soft-bias (not restrict) results toward the current map area so an
+      // ambiguous street name doesn't resolve to a same-named street across
+      // the country.
+      const margin = 0.5
+      const viewbox = [
+        biasCenter.lng - margin,
+        biasCenter.lat + margin,
+        biasCenter.lng + margin,
+        biasCenter.lat - margin,
+      ].join(",")
+
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${encodeURIComponent(query)}`,
+        `https://nominatim.openstreetmap.org/search?format=json&limit=5&addressdetails=1` +
+          `&viewbox=${viewbox}&bounded=0&q=${encodeURIComponent(query)}`,
       )
       if (!res.ok) throw new Error("Search failed")
       const data: SearchResult[] = await res.json()
@@ -55,7 +89,7 @@ function AddressSearch({ onPick }: { onPick: (pos: LatLng) => void }) {
   }
 
   function pick(r: SearchResult) {
-    onPick({ lat: Number(r.lat), lng: Number(r.lon) })
+    onNavigate({ lat: Number(r.lat), lng: Number(r.lon) })
     setResults([])
     setQuery(r.display_name)
   }
@@ -90,6 +124,10 @@ function AddressSearch({ onPick }: { onPick: (pos: LatLng) => void }) {
           ))}
         </ul>
       )}
+      <p className="hint">
+        Search only jumps the map to that area — geocoding isn't precise enough to trust for your
+        exact house. Click the map to place the pin.
+      </p>
     </div>
   )
 }
@@ -112,6 +150,7 @@ export function LocationPicker({
   const [locating, setLocating] = useState(!hadInitialValue.current)
   const [locateError, setLocateError] = useState<string | null>(null)
   const [editing, setEditing] = useState(!lockedByDefault)
+  const [flyTarget, setFlyTarget] = useState<LatLng | null>(null)
 
   useEffect(() => {
     if (hadInitialValue.current) return
@@ -151,6 +190,7 @@ export function LocationPicker({
 
   function handleMove(pos: LatLng) {
     if (!editing) return
+    setFlyTarget(null)
     onChange(pos)
   }
 
@@ -165,9 +205,17 @@ export function LocationPicker({
         >
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <ClickToMove onMove={handleMove} />
-          <FitToRadius center={marker} radiusM={radiusM} />
+          {!flyTarget && <FitToRadius center={marker} radiusM={radiusM} />}
+          <FitSearchResult home={marker} target={flyTarget} />
           <CircleMarker center={marker} radius={6} />
           <Circle center={marker} radius={radiusM} />
+          {flyTarget && (
+            <CircleMarker
+              center={flyTarget}
+              radius={9}
+              pathOptions={{ color: "#ff9800", fillColor: "#ff9800", fillOpacity: 0.9 }}
+            />
+          )}
         </MapContainer>
         {lockedByDefault && (
           <button
@@ -179,10 +227,9 @@ export function LocationPicker({
           </button>
         )}
       </div>
-      {editing && <AddressSearch onPick={onChange} />}
+      {editing && <AddressSearch onNavigate={setFlyTarget} biasCenter={marker} />}
       <p className="hint">
         {marker.lat.toFixed(5)}, {marker.lng.toFixed(5)} · ±{radiusM}m
-        {editing ? " — search, or click the map, to move the pin" : ""}
       </p>
       {locateError && <p className="hint">{locateError}</p>}
       <p className="map-attribution">

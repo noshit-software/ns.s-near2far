@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react"
 
-import { FamilyMap } from "./components/FamilyMap"
 import { SetupWizard } from "./components/SetupWizard"
 import { apiGet } from "./lib/api"
 import { useEventStream } from "./lib/ws"
@@ -22,7 +21,6 @@ export function App() {
         <span className={`status-dot${healthy ? " ok" : ""}`} />
         backend: {healthy === null ? "checking..." : healthy ? "ok" : "down"}
       </p>
-      <FamilyMap />
       <SetupWizard />
       <pre>{lastEvent ? JSON.stringify(lastEvent, null, 2) : "no events yet"}</pre>
     </div>
