@@ -17,8 +17,8 @@ cp .env.example .env   # fill in values
 docker compose up --build
 ```
 
-- Dashboard: http://localhost:5101
-- API: http://localhost:5100/health
+- Dashboard: http://localhost:5100
+- API: http://localhost:5101/health
 
 First build compiles Apache AGE from source (needs flex/bison, included in the db Dockerfile) — takes ~3 min.
 
