@@ -22,6 +22,12 @@ docker compose up --build
 
 First build compiles Apache AGE from source (needs flex/bison, included in the db Dockerfile) — takes ~3 min.
 
+## Auth
+
+There's no global API key. Setup creates the household with an admin password, which the dashboard
+stores locally and sends as a `Bearer` token. Endpoints besides `/health` and `/api/setup/household`
+(GET) and `/api/setup/verify` require it once a household exists.
+
 ## Spec
 
 Full product spec lives in the Knightsrook MCP knowledge base (`project:near2far:spec`, `project:near2far:funding`). See also [docs/architecture/overview.md](docs/architecture/overview.md) for the service-level architecture.

@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS substrate.households (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   home_geofence JSONB,
+  admin_password_hash TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Request
 
-from app.middleware.auth import require_api_key
+from app.middleware.auth import require_admin_auth
 
-router = APIRouter(dependencies=[Depends(require_api_key)])
+router = APIRouter(dependencies=[Depends(require_admin_auth)])
 
 
 @router.get("/api/topics")

@@ -1,14 +1,17 @@
 from fastapi import HTTPException, Request
 
-from app.config import settings
+from app.auth import verify_password
 
 
-async def require_api_key(request: Request) -> None:
-    if not settings.api_key:
+async def require_admin_auth(request: Request) -> None:
+    async with request.app.state.db_pool.acquire() as conn:
+        household = await conn.fetchrow(
+            "SELECT admin_password_hash FROM substrate.households LIMIT 1"
+        )
+
+    if household is None:
         return
 
     header_key = request.headers.get("authorization", "").removeprefix("Bearer ").strip()
-    query_key = request.query_params.get("api_key", "")
-
-    if settings.api_key not in (header_key, query_key):
-        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+    if not header_key or not verify_password(header_key, household["admin_password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid or missing admin password")

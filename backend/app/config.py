@@ -9,7 +9,6 @@ class Settings(BaseSettings):
     postgres_user: str
     postgres_pass: str
     postgres_db: str
-    api_key: str = ""
 
 
 settings = Settings()
