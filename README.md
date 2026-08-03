@@ -8,9 +8,10 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
 
 - **backend/** — FastAPI, event bus, WebSocket stream to dashboard, setup API (household + members)
 - **dashboard/** — React+Vite PWA. Once a household exists, the map is the default view, with a
-  "Settings" button that opens household/member management (home geofence via a Leaflet picker with
-  Nominatim address search, member list, trust tiers). Place alerts and the live family map itself
-  (positions, redaction) are still placeholders.
+  "Settings" button that opens household/member management (home geofence via a Leaflet map you
+  click to place a pin, member list, trust tiers). No address search — Nominatim's free geocoder
+  wasn't reliable enough at house-level precision to be worth the confusion. Place alerts and the
+  live family map itself (positions, redaction) are still placeholders.
 - **db/** — Postgres 16 + pgvector + Apache AGE
 
 ## Quickstart
