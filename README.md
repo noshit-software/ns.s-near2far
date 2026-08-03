@@ -32,6 +32,30 @@ docker compose up --build
 
 First build compiles Apache AGE from source (needs flex/bison, included in the db Dockerfile) — takes ~3 min.
 
+## VPS deploy (near2far.family)
+
+Backend + dashboard run natively via pm2/nginx (not Docker), matching the other noshit.software
+services on this box. Only Postgres stays containerized (Apache AGE needs a from-source build).
+
+```bash
+# on the VPS, in the repo folder (ns.s-bear2far)
+cp .env.example .env                    # fill in postgres creds
+docker compose up -d --build db         # db only, port published to 127.0.0.1
+
+cd dashboard && npm install && npm run build && cd ..   # produces dashboard/dist
+
+cp backend/.env.example backend/.env    # same postgres creds as root .env
+pm2 start ecosystem.config.js
+pm2 save
+
+sudo cp deploy/nginx/near2far.family.conf /etc/nginx/sites-available/near2far.conf
+sudo ln -s /etc/nginx/sites-available/near2far.conf /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Cloudflare terminates TLS (DNS already proxied to this box); nginx serves plain HTTP on 80 and
+proxies `/api` + `/ws` to the backend on `127.0.0.1:5101`.
+
 ## Auth
 
 There's no global API key. Setup creates the household with an admin password, which the dashboard
