@@ -174,6 +174,7 @@ export function SetupWizard() {
         radiusM={household.home_geofence.radius_m}
         onChange={updateGeofence}
         height={200}
+        lockedByDefault
       />
 
       <h3>Members</h3>

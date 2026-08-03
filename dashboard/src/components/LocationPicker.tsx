@@ -32,16 +32,19 @@ export function LocationPicker({
   radiusM,
   onChange,
   height = 300,
+  lockedByDefault = false,
 }: {
   value: LatLng | null
   radiusM: number
   onChange: (pos: LatLng) => void
   height?: number
+  lockedByDefault?: boolean
 }) {
   const hadInitialValue = useRef(value !== null)
   const [center, setCenter] = useState<LatLng | null>(value)
   const [locating, setLocating] = useState(!hadInitialValue.current)
   const [locateError, setLocateError] = useState<string | null>(null)
+  const [editing, setEditing] = useState(!lockedByDefault)
 
   useEffect(() => {
     if (hadInitialValue.current) return
@@ -79,21 +82,37 @@ export function LocationPicker({
 
   const marker = value ?? center
 
+  function handleMove(pos: LatLng) {
+    if (!editing) return
+    onChange(pos)
+  }
+
   return (
     <div className="location-picker">
-      <MapContainer center={marker} zoom={16} style={{ height, width: "100%" }}>
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        <ClickToMove onMove={onChange} />
-        <FitToRadius center={marker} radiusM={radiusM} />
-        <CircleMarker center={marker} radius={6} />
-        <Circle center={marker} radius={radiusM} />
-      </MapContainer>
+      <div className="location-map-wrap">
+        <MapContainer center={marker} zoom={16} style={{ height, width: "100%" }}>
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <ClickToMove onMove={handleMove} />
+          <FitToRadius center={marker} radiusM={radiusM} />
+          <CircleMarker center={marker} radius={6} />
+          <Circle center={marker} radius={radiusM} />
+        </MapContainer>
+        {lockedByDefault && (
+          <button
+            type="button"
+            className="location-edit-toggle"
+            onClick={() => setEditing((e) => !e)}
+          >
+            {editing ? "Done" : "Edit"}
+          </button>
+        )}
+      </div>
       <p className="hint">
-        {marker.lat.toFixed(5)}, {marker.lng.toFixed(5)} · ±{radiusM}m — click the map to move the
-        pin
+        {marker.lat.toFixed(5)}, {marker.lng.toFixed(5)} · ±{radiusM}m
+        {editing ? " — click the map to move the pin" : ""}
       </p>
       {locateError && <p className="hint">{locateError}</p>}
     </div>
