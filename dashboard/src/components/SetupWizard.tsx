@@ -26,7 +26,7 @@ export function SetupWizard() {
   const [name, setName] = useState("")
   const [adminPassword, setAdminPasswordInput] = useState("")
   const [homeLocation, setHomeLocation] = useState<{ lat: number; lng: number } | null>(null)
-  const [radiusM, setRadiusM] = useState("150")
+  const [radiusM, setRadiusM] = useState("75")
 
   const [loginPassword, setLoginPassword] = useState("")
 
