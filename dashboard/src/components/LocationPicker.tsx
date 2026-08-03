@@ -2,15 +2,7 @@ import "leaflet/dist/leaflet.css"
 
 import L from "leaflet"
 import { useEffect, useRef, useState } from "react"
-import {
-  AttributionControl,
-  Circle,
-  CircleMarker,
-  MapContainer,
-  TileLayer,
-  useMap,
-  useMapEvents,
-} from "react-leaflet"
+import { Circle, CircleMarker, MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet"
 
 type LatLng = { lat: number; lng: number }
 
@@ -171,11 +163,7 @@ export function LocationPicker({
           attributionControl={false}
           style={{ height, width: "100%" }}
         >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <AttributionControl position="bottomright" prefix={false} />
+          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <ClickToMove onMove={handleMove} />
           <FitToRadius center={marker} radiusM={radiusM} />
           <CircleMarker center={marker} radius={6} />
@@ -197,6 +185,13 @@ export function LocationPicker({
         {editing ? " — search, or click the map, to move the pin" : ""}
       </p>
       {locateError && <p className="hint">{locateError}</p>}
+      <p className="map-attribution">
+        Map data &copy;{" "}
+        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
+          OpenStreetMap
+        </a>{" "}
+        contributors
+      </p>
     </div>
   )
 }

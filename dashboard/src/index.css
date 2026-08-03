@@ -262,6 +262,16 @@ h3 {
   margin: 0.5rem 0 0;
 }
 
+.map-attribution {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  margin: 0.35rem 0 0;
+}
+
+.map-attribution a {
+  color: var(--text-dim);
+}
+
 pre {
   background: var(--surface);
   border: 1px solid var(--border);
