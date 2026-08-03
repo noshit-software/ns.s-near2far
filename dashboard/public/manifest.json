@@ -1,0 +1,10 @@
+{
+  "name": "near2far",
+  "short_name": "near2far",
+  "description": "Your family's awareness of each other, and of the world around them.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0f14",
+  "theme_color": "#0b0f14",
+  "icons": []
+}
