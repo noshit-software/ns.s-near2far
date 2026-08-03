@@ -20,7 +20,7 @@ docker compose up --build
 - Dashboard: http://localhost:5101
 - API: http://localhost:5100/health
 
-First build compiles Apache AGE from source — takes ~3 min.
+First build compiles Apache AGE from source (needs flex/bison, included in the db Dockerfile) — takes ~3 min.
 
 ## Spec
 
