@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import health, topics
+from app.api import health, setup, topics
 from app.dashboard_stream import router as dashboard_stream_router
 from app.db import create_pool
 from app.logging import configure_logging
@@ -29,4 +29,5 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(topics.router)
+app.include_router(setup.router)
 app.include_router(dashboard_stream_router)
