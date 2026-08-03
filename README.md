@@ -6,13 +6,18 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
 
 ## Stack
 
-- **backend/** — FastAPI, event bus, WebSocket stream to dashboard, setup API (household + members)
-- **dashboard/** — React+Vite PWA. Once a household exists, the map is the default view, with a
-  "Settings" button that opens household/member management (home geofence via a Leaflet map you
-  click to place a pin, member list). No address search — Nominatim's free geocoder wasn't reliable
-  enough at house-level precision to be worth the confusion. No trust tiers — every member sees
-  every other member's exact location; that's the whole point for a family-safety use case. Place
-  alerts and the live family map itself (positions) are still placeholders.
+- **backend/** — FastAPI, event bus, WebSocket stream to dashboard, setup API (household + members),
+  positions API (`POST /api/positions` to report, `GET /api/positions/latest` for current per-member
+  position)
+- **dashboard/** — React+Vite PWA. Once a household exists, the live family map is the default view:
+  pick which member you are ("Reporting as"), and the browser's own geolocation reports your position
+  every ~15s; every member's latest position renders on a shared map, live-updated over the existing
+  WebSocket event stream. Real phone GPS via Traccar is a planned follow-up (needs either a same-LAN
+  test or deploying to the VPS so the Traccar Client app has a reachable server). A "Settings" button
+  opens household/member management (home geofence via a Leaflet map you click to place a pin, member
+  list). No address search — Nominatim's free geocoder wasn't reliable enough at house-level precision
+  to be worth the confusion. No trust tiers — every member sees every other member's exact location;
+  that's the whole point for a family-safety use case. Place alerts are still a placeholder.
 - **db/** — Postgres 16 + pgvector + Apache AGE
 
 ## Quickstart

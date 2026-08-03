@@ -168,7 +168,7 @@ export function SetupWizard() {
             Settings
           </button>
         </div>
-        <FamilyMap />
+        <FamilyMap household={household} />
       </div>
     )
   }
