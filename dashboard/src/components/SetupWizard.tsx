@@ -5,6 +5,12 @@ import { LocationPicker } from "./LocationPicker"
 
 type TrustTier = "intimate" | "named" | "ambient"
 
+const TRUST_TIER_INFO: Record<TrustTier, string> = {
+  intimate: "Exact location, always visible — for people who live with you.",
+  named: "General area only, no exact position — for close family elsewhere.",
+  ambient: "Broadest, most private — the default for everyone else.",
+}
+
 type Member = {
   id: string
   display_name: string
@@ -63,6 +69,20 @@ export function SetupWizard() {
       if (!ok) throw new Error("Incorrect password")
       setAdminPassword(loginPassword)
       setUnlocked(true)
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
+  async function updateGeofence(pos: { lat: number; lng: number }) {
+    if (!household) return
+    setError(null)
+    try {
+      const updated = await apiPost<Household>("/setup/household/geofence", {
+        ...pos,
+        radius_m: household.home_geofence.radius_m,
+      })
+      setHousehold({ ...household, home_geofence: updated.home_geofence })
     } catch (e) {
       setError((e as Error).message)
     }
@@ -147,10 +167,14 @@ export function SetupWizard() {
   return (
     <div className="setup-wizard">
       <h2>{household.name}</h2>
-      <p>
-        Home: {household.home_geofence.lat}, {household.home_geofence.lng} (±
-        {household.home_geofence.radius_m}m)
-      </p>
+
+      <h3>Home</h3>
+      <LocationPicker
+        value={household.home_geofence}
+        radiusM={household.home_geofence.radius_m}
+        onChange={updateGeofence}
+        height={200}
+      />
 
       <h3>Members</h3>
       <ul>
@@ -165,14 +189,17 @@ export function SetupWizard() {
         Add member
         <input value={memberName} onChange={(e) => setMemberName(e.target.value)} />
       </label>
-      <select value={memberTier} onChange={(e) => setMemberTier(e.target.value as TrustTier)}>
-        <option value="intimate">intimate</option>
-        <option value="named">named</option>
-        <option value="ambient">ambient</option>
-      </select>
-      <button onClick={submitMember} disabled={!memberName}>
-        Add member
-      </button>
+      <div className="member-form-row">
+        <select value={memberTier} onChange={(e) => setMemberTier(e.target.value as TrustTier)}>
+          <option value="intimate">intimate</option>
+          <option value="named">named</option>
+          <option value="ambient">ambient</option>
+        </select>
+        <button onClick={submitMember} disabled={!memberName}>
+          Add member
+        </button>
+      </div>
+      <p className="hint">{TRUST_TIER_INFO[memberTier]}</p>
       {error && <p className="error">{error}</p>}
     </div>
   )

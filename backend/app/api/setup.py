@@ -83,6 +83,24 @@ async def create_household(body: CreateHousehold, request: Request) -> dict:
     return {"success": True, "data": data}
 
 
+@router.post("/api/setup/household/geofence", dependencies=[Depends(require_admin_auth)])
+async def update_geofence(body: HomeGeofence, request: Request) -> dict:
+    async with request.app.state.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "UPDATE substrate.households SET home_geofence = $1::jsonb "
+            "WHERE id = (SELECT id FROM substrate.households ORDER BY created_at LIMIT 1) "
+            "RETURNING id, name, home_geofence",
+            body.model_dump_json(),
+        )
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Household not found")
+
+    data = _household_dict(row)
+    await publish("household.updated", data)
+    return {"success": True, "data": data}
+
+
 @router.post("/api/setup/verify")
 async def verify_admin_password(body: VerifyPassword, request: Request) -> dict:
     async with request.app.state.db_pool.acquire() as conn:

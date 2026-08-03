@@ -1,7 +1,7 @@
 import "leaflet/dist/leaflet.css"
 
 import L from "leaflet"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Circle, CircleMarker, MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet"
 
 type LatLng = { lat: number; lng: number }
@@ -31,16 +31,21 @@ export function LocationPicker({
   value,
   radiusM,
   onChange,
+  height = 300,
 }: {
   value: LatLng | null
   radiusM: number
   onChange: (pos: LatLng) => void
+  height?: number
 }) {
-  const [center, setCenter] = useState<LatLng | null>(null)
-  const [locating, setLocating] = useState(true)
+  const hadInitialValue = useRef(value !== null)
+  const [center, setCenter] = useState<LatLng | null>(value)
+  const [locating, setLocating] = useState(!hadInitialValue.current)
   const [locateError, setLocateError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (hadInitialValue.current) return
+
     if (!("geolocation" in navigator)) {
       setCenter(FALLBACK_CENTER)
       setLocateError("This browser doesn't support geolocation — click the map to set your pin.")
@@ -76,7 +81,7 @@ export function LocationPicker({
 
   return (
     <div className="location-picker">
-      <MapContainer center={marker} zoom={16} style={{ height: 300, width: "100%" }}>
+      <MapContainer center={marker} zoom={16} style={{ height, width: "100%" }}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -86,8 +91,11 @@ export function LocationPicker({
         <CircleMarker center={marker} radius={6} />
         <Circle center={marker} radius={radiusM} />
       </MapContainer>
+      <p className="hint">
+        {marker.lat.toFixed(5)}, {marker.lng.toFixed(5)} · ±{radiusM}m — click the map to move the
+        pin
+      </p>
       {locateError && <p className="hint">{locateError}</p>}
-      <p className="hint">Click the map to move the pin — the shaded circle is your home geofence.</p>
     </div>
   )
 }

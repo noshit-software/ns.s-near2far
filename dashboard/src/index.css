@@ -149,8 +149,24 @@ h3 {
   font-size: 0.9rem;
 }
 
-.setup-wizard select {
-  margin-bottom: 1rem;
+.member-form-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: stretch;
+}
+
+.member-form-row select {
+  flex: 1;
+}
+
+.member-form-row button {
+  flex-shrink: 0;
+}
+
+.setup-wizard .hint {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin: 0.4rem 0 1rem;
 }
 
 .error {
