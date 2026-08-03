@@ -25,9 +25,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASS}
       POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      # localhost-only, so a host-run backend (pm2, no docker) can reach it.
-      - "127.0.0.1:${POSTGRES_PORT}:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d
