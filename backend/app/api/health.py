@@ -7,6 +7,7 @@ _started_at = time.monotonic()
 
 
 @router.get("/health")
+@router.get("/api/health")
 async def health(request: Request) -> dict:
     db_ok = True
     try:
