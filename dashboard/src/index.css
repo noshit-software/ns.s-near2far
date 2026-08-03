@@ -1,0 +1,184 @@
+:root {
+  color-scheme: light dark;
+  --bg: #0f1115;
+  --surface: #171a21;
+  --surface-2: #1f2330;
+  --border: #2a2f3d;
+  --text: #e8eaed;
+  --text-dim: #9aa0ac;
+  --accent: #5b8cff;
+  --accent-hover: #7aa0ff;
+  --danger: #ff6b6b;
+  --radius: 10px;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f4f5f7;
+    --surface: #ffffff;
+    --surface-2: #f0f1f4;
+    --border: #dfe2e8;
+    --text: #1a1d23;
+    --text-dim: #666d7a;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+#root {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+}
+
+h1 {
+  font-size: 1.5rem;
+  margin: 0 0 1.5rem;
+}
+
+h2 {
+  font-size: 1.2rem;
+  margin: 0 0 1rem;
+}
+
+h3 {
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  margin: 1.5rem 0 0.5rem;
+}
+
+.status-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+  margin-bottom: 1.5rem;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+.status-dot.ok {
+  background: #4caf7d;
+}
+
+.setup-wizard,
+.family-map {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.setup-wizard label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin-bottom: 1rem;
+}
+
+.setup-wizard input,
+.setup-wizard select {
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.setup-wizard input:focus,
+.setup-wizard select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.setup-wizard button {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.6rem 1.1rem;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+}
+
+.setup-wizard button:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.setup-wizard button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.setup-wizard ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.setup-wizard li {
+  padding: 0.5rem 0.7rem;
+  background: var(--surface-2);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.setup-wizard select {
+  margin-bottom: 1rem;
+}
+
+.error {
+  color: var(--danger);
+  font-size: 0.85rem;
+  margin: 0.5rem 0 0;
+}
+
+.location-picker {
+  margin-bottom: 1rem;
+}
+
+.location-picker .leaflet-container {
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.location-picker .hint {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  margin: 0.5rem 0 0;
+}
+
+pre {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  font-size: 0.8rem;
+  overflow-x: auto;
+}

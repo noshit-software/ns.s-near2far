@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 
 import { apiGet, apiPost, getAdminPassword, setAdminPassword } from "../lib/api"
+import { LocationPicker } from "./LocationPicker"
 
 type TrustTier = "intimate" | "named" | "ambient"
 
@@ -24,8 +25,7 @@ export function SetupWizard() {
 
   const [name, setName] = useState("")
   const [adminPassword, setAdminPasswordInput] = useState("")
-  const [lat, setLat] = useState("")
-  const [lng, setLng] = useState("")
+  const [homeLocation, setHomeLocation] = useState<{ lat: number; lng: number } | null>(null)
   const [radiusM, setRadiusM] = useState("150")
 
   const [loginPassword, setLoginPassword] = useState("")
@@ -40,12 +40,13 @@ export function SetupWizard() {
   }, [])
 
   async function submitHousehold() {
+    if (!homeLocation) return
     setError(null)
     try {
       const created = await apiPost<Household>("/setup/household", {
         name,
         admin_password: adminPassword,
-        home_geofence: { lat: Number(lat), lng: Number(lng), radius_m: Number(radiusM) },
+        home_geofence: { ...homeLocation, radius_m: Number(radiusM) },
       })
       setAdminPassword(adminPassword)
       setUnlocked(true)
@@ -103,19 +104,19 @@ export function SetupWizard() {
             onChange={(e) => setAdminPasswordInput(e.target.value)}
           />
         </label>
-        <label>
-          Home latitude
-          <input value={lat} onChange={(e) => setLat(e.target.value)} />
-        </label>
-        <label>
-          Home longitude
-          <input value={lng} onChange={(e) => setLng(e.target.value)} />
-        </label>
+        <LocationPicker
+          value={homeLocation}
+          radiusM={Number(radiusM) || 0}
+          onChange={setHomeLocation}
+        />
         <label>
           Geofence radius (m)
           <input value={radiusM} onChange={(e) => setRadiusM(e.target.value)} />
         </label>
-        <button onClick={submitHousehold} disabled={!name || !adminPassword || !lat || !lng}>
+        <button
+          onClick={submitHousehold}
+          disabled={!name || !adminPassword || !homeLocation}
+        >
           Create household
         </button>
         {error && <p className="error">{error}</p>}

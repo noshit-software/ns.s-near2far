@@ -18,7 +18,10 @@ export function App() {
   return (
     <div>
       <h1>near2far</h1>
-      <p>backend: {healthy === null ? "checking..." : healthy ? "ok" : "down"}</p>
+      <p className="status-line">
+        <span className={`status-dot${healthy ? " ok" : ""}`} />
+        backend: {healthy === null ? "checking..." : healthy ? "ok" : "down"}
+      </p>
       <FamilyMap />
       <SetupWizard />
       <pre>{lastEvent ? JSON.stringify(lastEvent, null, 2) : "no events yet"}</pre>
