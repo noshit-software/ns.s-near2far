@@ -43,7 +43,9 @@ services:
       FORWARD_URL: ${TRACCAR_FORWARD_URL}
       FORWARD_TYPE: json
     ports:
-      - "8082:8082"     # web UI + REST API, for creating devices
+      # web UI + REST API — localhost-only; reached publicly via an nginx
+      # reverse proxy (see README) instead of exposing this port directly.
+      - "127.0.0.1:8082:8082"
       - "5055:5055/udp" # OsmAnd protocol, used by the Traccar Client phone app
       - "5055:5055/tcp"
     volumes:

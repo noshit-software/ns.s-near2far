@@ -21,8 +21,10 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   alerts are still a placeholder.
 - **db/** — Postgres 16 + pgvector + Apache AGE
 - **traccar** — official `traccar/traccar` image, own embedded database (unrelated to the Postgres
-  above). Web UI + REST API on :8082, OsmAnd protocol (used by the Traccar Client phone app) on :5055.
-  Configured to forward every position to the backend via `TRACCAR_FORWARD_URL`.
+  above). Web UI + REST API on :8082 (localhost-only — reach it via an nginx-proxied subdomain, e.g.
+  `traccar.near2far.family`, not directly), OsmAnd protocol (used by the Traccar Client phone app) on
+  :5055 (exposed publicly — phones need to reach it directly). Configured to forward every position to
+  the backend via `TRACCAR_FORWARD_URL`.
 
 ## Quickstart
 
@@ -38,11 +40,18 @@ First build compiles Apache AGE from source (needs flex/bison, included in the d
 
 ## Traccar (real phone GPS)
 
-1. Open the Traccar web UI at `http://<server>:8082` (first visit lets you create the admin account).
+The web UI (:8082) is bound to `127.0.0.1` in `docker-compose.yml`, not exposed publicly — reach it
+through an nginx-proxied subdomain instead (e.g. `traccar.near2far.family`, same pattern as
+`near2far.family` itself: an nginx site block proxying to `127.0.0.1:8082`, plus a Cloudflare DNS
+record for that subdomain).
+
+1. Open the Traccar web UI at `https://traccar.near2far.family` (first visit lets you create the admin
+   account).
 2. For each family member, create a device (Settings → Devices → Add) with any identifier you want
    (e.g. `alex-phone`).
 3. Install the **Traccar Client** app on that member's phone, set the identifier to match, and set the
-   server URL to `http://<server>:5055`.
+   server URL to `http://<server>:5055` (this port stays exposed directly — phones talk to it, not
+   through nginx/Cloudflare).
 4. In near2far's dashboard Settings, paste that same identifier into the member's "Traccar device ID"
    field and Save.
 
