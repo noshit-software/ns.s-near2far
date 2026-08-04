@@ -90,7 +90,7 @@ async def traccar_forward(body: TraccarForward, request: Request) -> dict:
     react to an error here and would otherwise retry forever."""
     async with request.app.state.db_pool.acquire() as conn:
         member_id = await conn.fetchval(
-            "SELECT id FROM substrate.members WHERE traccar_unique_id = $1", body.device.uniqueId
+            "SELECT id FROM substrate.members WHERE device_id = $1", body.device.uniqueId
         )
         if member_id is None:
             log.info("traccar_forward_unmapped_device", unique_id=body.device.uniqueId)

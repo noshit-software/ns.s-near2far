@@ -18,9 +18,10 @@ CREATE TABLE IF NOT EXISTS substrate.members (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   household_id UUID NOT NULL REFERENCES substrate.households(id),
   display_name TEXT NOT NULL,
-  -- The `uniqueId` you set on the device in Traccar's own admin UI (localhost:8082).
-  -- Traccar forwards positions here (see /api/traccar/forward), keyed by this value.
-  traccar_unique_id TEXT UNIQUE,
+  -- Identifier tying this member to a position-reporting device — currently only
+  -- Traccar (matched against its device `uniqueId`, see /api/traccar/forward), but
+  -- source-agnostic so other adapters (e.g. Overland) can key off it too.
+  device_id TEXT UNIQUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

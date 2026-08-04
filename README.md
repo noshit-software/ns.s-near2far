@@ -9,7 +9,8 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
 - **backend/** — FastAPI, event bus, WebSocket stream to dashboard, setup API (household + members),
   positions API (`POST /api/positions` to report, `GET /api/positions/latest` for current per-member
   position), and `POST /api/traccar/forward` — receives Traccar's position-forwarding webhook and maps
-  it to a member via `traccar_unique_id`.
+  it to a member via the source-agnostic `device_id` column (not Traccar-specific — other position
+  sources, e.g. Overland, could key off the same field later).
 - **dashboard/** — React+Vite PWA. Once a household exists, the live family map is the default view:
   pick which member you are ("Reporting as"), and the browser's own geolocation reports your position
   every ~15s; every member's latest position renders on a shared map, live-updated over the existing
@@ -52,8 +53,8 @@ record for that subdomain).
 3. Install the **Traccar Client** app on that member's phone, set the identifier to match, and set the
    server URL to `http://<server>:5055` (this port stays exposed directly — phones talk to it, not
    through nginx/Cloudflare).
-4. In near2far's dashboard Settings, paste that same identifier into the member's "Traccar device ID"
-   field and Save.
+4. In near2far's dashboard Settings, paste that same identifier into the member's "Device ID" field
+   and Save.
 
 From then on, Traccar forwards every position update to the backend (`TRACCAR_FORWARD_URL`, see
 `.env.example`), which maps it to that member and pushes it to the family map over the same WebSocket
@@ -62,6 +63,26 @@ stream the browser-geolocation reporting uses — both sources land in the same 
 `TRACCAR_FORWARD_URL` differs by deployment:
 - Local all-in-one docker-compose dev: `http://backend:8000/api/traccar/forward`
 - VPS (backend runs via pm2, not in this compose file): `http://host.docker.internal:5101/api/traccar/forward`
+
+### VPS deploy gotchas (learned the hard way)
+
+- **`git pull` alone does nothing for the running backend.** `pm2` doesn't hot-reload — after
+  pulling backend changes, you must `pm2 restart near2far` or the old code keeps running silently
+  (symptom: a route that clearly exists in the code 404s with FastAPI's generic `{"detail":"Not
+  Found"}`, meaning the route was never actually registered in the running process).
+- **`git pull` also doesn't rebuild the dashboard.** It only updates source files; nginx serves the
+  compiled `dashboard/dist/`, which only regenerates via an explicit `npm run build`.
+- **`ufw` needs an explicit rule for every port containers need to reach on the host**, not just
+  public-facing ones. The backend (port 5101, host-run via pm2) needs to be reachable from Docker's
+  bridge networks for the traccar container's `TRACCAR_FORWARD_URL` to work —
+  `sudo ufw allow from 172.16.0.0/12 to any port 5101 proto tcp` (covers Docker's typical bridge
+  subnets without opening the port publicly).
+- **`db/init/*.sql` only runs once**, when a Postgres volume is first created. Schema changes added
+  after that need a manual `ALTER TABLE`/`docker compose down -v` — a plain `git pull` doesn't apply
+  them to an already-running database.
+- **A browser's "This page isn't working" screen isn't necessarily a connectivity failure** — check
+  for a specific HTTP status code in the error page (e.g. "HTTP ERROR 400") before assuming DNS/
+  firewall/network issues; that generic wrapper renders for any 4xx/5xx response with an empty body.
 
 ## Auth
 

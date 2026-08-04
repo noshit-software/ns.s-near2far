@@ -37,7 +37,7 @@ class CreateMember(BaseModel):
 
 
 class SetMemberDevice(BaseModel):
-    traccar_unique_id: str | None = None
+    device_id: str | None = None
 
 
 class VerifyPassword(BaseModel):
@@ -54,7 +54,7 @@ async def get_household(request: Request) -> dict:
             return {"success": True, "data": None}
 
         members = await conn.fetch(
-            "SELECT id, display_name, traccar_unique_id FROM substrate.members WHERE household_id = $1",
+            "SELECT id, display_name, device_id FROM substrate.members WHERE household_id = $1",
             household["id"],
         )
 
@@ -130,7 +130,7 @@ async def create_member(body: CreateMember, request: Request) -> dict:
 
         row = await conn.fetchrow(
             "INSERT INTO substrate.members (household_id, display_name) VALUES ($1, $2) "
-            "RETURNING id, display_name, traccar_unique_id",
+            "RETURNING id, display_name, device_id",
             body.household_id,
             body.display_name,
         )
@@ -145,14 +145,14 @@ async def set_member_device(member_id: str, body: SetMemberDevice, request: Requ
     async with request.app.state.db_pool.acquire() as conn:
         try:
             row = await conn.fetchrow(
-                "UPDATE substrate.members SET traccar_unique_id = $1 WHERE id = $2 "
-                "RETURNING id, display_name, traccar_unique_id",
-                body.traccar_unique_id,
+                "UPDATE substrate.members SET device_id = $1 WHERE id = $2 "
+                "RETURNING id, display_name, device_id",
+                body.device_id,
                 member_id,
             )
         except asyncpg.UniqueViolationError as e:
             raise HTTPException(
-                status_code=409, detail="That Traccar device is already assigned to another member"
+                status_code=409, detail="That device is already assigned to another member"
             ) from e
 
     if row is None:

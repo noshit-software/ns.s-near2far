@@ -7,7 +7,7 @@ import { LocationPicker } from "./LocationPicker"
 type Member = {
   id: string
   display_name: string
-  traccar_unique_id: string | null
+  device_id: string | null
 }
 
 type Household = {
@@ -87,7 +87,7 @@ export function SetupWizard() {
     setError(null)
     try {
       const updated = await apiPost<Member>(`/setup/members/${memberId}/device`, {
-        traccar_unique_id: deviceInputs[memberId]?.trim() || null,
+        device_id: deviceInputs[memberId]?.trim() || null,
       })
       setHousehold({
         ...household,
@@ -220,9 +220,9 @@ export function SetupWizard() {
             <span>{m.display_name}</span>
             <div className="member-device-row">
               <input
-                value={deviceInputs[m.id] ?? m.traccar_unique_id ?? ""}
+                value={deviceInputs[m.id] ?? m.device_id ?? ""}
                 onChange={(e) => setDeviceInputs({ ...deviceInputs, [m.id]: e.target.value })}
-                placeholder="Traccar device ID"
+                placeholder="Device ID"
               />
               <button onClick={() => saveMemberDevice(m.id)}>Save</button>
             </div>
@@ -230,11 +230,13 @@ export function SetupWizard() {
         ))}
       </ul>
       <p className="hint">
-        Create a device for each member in{" "}
+        For real phone GPS via{" "}
         <a href="http://localhost:8082" target="_blank" rel="noreferrer">
           Traccar
-        </a>{" "}
-        (identifier of your choosing), then paste that identifier here to link it.
+        </a>
+        : create a device there and give it any identifier you want — it's just a label, not a real
+        device number, e.g. <code>alex-phone</code> or <code>drakuls-galaxy-s25</code>. Paste that
+        exact same text into the field below to link it to this member.
       </p>
 
       <div className="member-form-row">
