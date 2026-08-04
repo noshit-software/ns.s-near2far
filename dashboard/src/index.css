@@ -88,26 +88,6 @@ h3 {
   background: var(--border);
 }
 
-.status-line {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.9rem;
-  color: var(--text-dim);
-  margin-bottom: 1.5rem;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--danger);
-}
-
-.status-dot.ok {
-  background: #4caf7d;
-}
-
 .setup-wizard,
 .family-map {
   background: var(--surface);
@@ -115,6 +95,29 @@ h3 {
   border-radius: var(--radius);
   padding: 1.25rem;
   margin-bottom: 1.25rem;
+}
+
+.member-snap-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.member-snap-button {
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.member-snap-button:hover {
+  background: var(--border);
 }
 
 .setup-wizard label,
@@ -162,10 +165,6 @@ h3 {
 .setup-wizard button:hover:not(:disabled),
 .family-map button:hover:not(:disabled) {
   background: var(--accent-hover);
-}
-
-.identity-picker {
-  max-width: 240px;
 }
 
 .setup-wizard button:disabled {

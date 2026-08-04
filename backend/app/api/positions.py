@@ -1,5 +1,5 @@
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 
 from app.events import publish
@@ -7,12 +7,6 @@ from app.middleware.auth import require_admin_auth
 
 router = APIRouter()
 log = structlog.get_logger(__name__)
-
-
-class ReportPosition(BaseModel):
-    member_id: str
-    lat: float
-    lng: float
 
 
 class TraccarDevice(BaseModel):
@@ -47,20 +41,6 @@ async def _record_position(conn, member_id: str, lat: float, lng: float) -> dict
     data = _position_dict(row)
     await publish("position.updated", data)
     return data
-
-
-@router.post("/api/positions", dependencies=[Depends(require_admin_auth)])
-async def report_position(body: ReportPosition, request: Request) -> dict:
-    async with request.app.state.db_pool.acquire() as conn:
-        member_exists = await conn.fetchval(
-            "SELECT id FROM substrate.members WHERE id = $1", body.member_id
-        )
-        if member_exists is None:
-            raise HTTPException(status_code=404, detail="Member not found")
-
-        data = await _record_position(conn, body.member_id, body.lat, body.lng)
-
-    return {"success": True, "data": data}
 
 
 @router.get("/api/positions/latest", dependencies=[Depends(require_admin_auth)])

@@ -1,21 +1,15 @@
 import "leaflet/dist/leaflet.css"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from "react-leaflet"
 
-import { apiGet, apiPost } from "../lib/api"
+import { apiGet } from "../lib/api"
 import { useEventStream } from "../lib/ws"
-
-const IDENTITY_KEY = "near2far_member_id"
-const REPORT_INTERVAL_MS = 15_000
-
-type Member = { id: string; display_name: string }
 
 type Household = {
   id: string
   name: string
   home_geofence: { lat: number; lng: number; radius_m: number }
-  members: Member[]
 }
 
 type Position = {
@@ -43,11 +37,18 @@ function FitToMarkers({ positions, home }: { positions: Position[]; home: { lat:
   return null
 }
 
+function SnapTo({ target }: { target: Position | null }) {
+  const map = useMap()
+  useEffect(() => {
+    if (target) map.flyTo([target.lat, target.lng], 16)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target?.member_id, target?.lat, target?.lng])
+  return null
+}
+
 export function FamilyMap({ household }: { household: Household }) {
   const [positions, setPositions] = useState<Record<string, Position>>({})
-  const [selfId, setSelfId] = useState<string>(() => localStorage.getItem(IDENTITY_KEY) ?? "")
-  const [geoError, setGeoError] = useState<string | null>(null)
-  const lastSentAt = useRef(0)
+  const [snapTarget, setSnapTarget] = useState<Position | null>(null)
   const lastEvent = useEventStream()
 
   useEffect(() => {
@@ -71,60 +72,10 @@ export function FamilyMap({ household }: { household: Household }) {
     }
   }, [lastEvent])
 
-  useEffect(() => {
-    if (!selfId) return
-    if (!("geolocation" in navigator)) {
-      setGeoError("This browser doesn't support geolocation.")
-      return
-    }
-
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        const now = Date.now()
-        if (now - lastSentAt.current < REPORT_INTERVAL_MS) return
-        lastSentAt.current = now
-        apiPost("/positions", {
-          member_id: selfId,
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        }).catch(() => {})
-      },
-      (err) => {
-        setGeoError(
-          err.code === err.PERMISSION_DENIED
-            ? "Location permission denied — can't report your position."
-            : "Couldn't get your location.",
-        )
-      },
-      { enableHighAccuracy: true },
-    )
-
-    return () => navigator.geolocation.clearWatch(watchId)
-  }, [selfId])
-
-  function selectSelf(id: string) {
-    setSelfId(id)
-    if (id) localStorage.setItem(IDENTITY_KEY, id)
-    else localStorage.removeItem(IDENTITY_KEY)
-  }
-
   const positionList = Object.values(positions)
 
   return (
     <div className="family-map">
-      <label className="identity-picker">
-        Reporting as
-        <select value={selfId} onChange={(e) => selectSelf(e.target.value)}>
-          <option value="">Not reporting</option>
-          {household.members.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.display_name}
-            </option>
-          ))}
-        </select>
-      </label>
-      {geoError && <p className="hint">{geoError}</p>}
-
       <MapContainer
         center={household.home_geofence}
         zoom={14}
@@ -133,6 +84,7 @@ export function FamilyMap({ household }: { household: Household }) {
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         <FitToMarkers positions={positionList} home={household.home_geofence} />
+        <SnapTo target={snapTarget} />
         {positionList.map((p) => (
           <CircleMarker key={p.member_id} center={{ lat: p.lat, lng: p.lng }} radius={8}>
             <Popup>
@@ -143,6 +95,20 @@ export function FamilyMap({ household }: { household: Household }) {
           </CircleMarker>
         ))}
       </MapContainer>
+      {positionList.length > 0 && (
+        <div className="member-snap-row">
+          {positionList.map((p) => (
+            <button
+              key={p.member_id}
+              type="button"
+              className="member-snap-button"
+              onClick={() => setSnapTarget(p)}
+            >
+              {p.display_name}
+            </button>
+          ))}
+        </div>
+      )}
       <p className="map-attribution">
         Map data &copy;{" "}
         <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">

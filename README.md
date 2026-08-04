@@ -7,19 +7,18 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
 ## Stack
 
 - **backend/** — FastAPI, event bus, WebSocket stream to dashboard, setup API (household + members),
-  positions API (`POST /api/positions` to report, `GET /api/positions/latest` for current per-member
-  position), and `POST /api/traccar/forward` — receives Traccar's position-forwarding webhook and maps
-  it to a member via the source-agnostic `device_id` column (not Traccar-specific — other position
-  sources, e.g. Overland, could key off the same field later).
+  `GET /api/positions/latest` for current per-member position, and `POST /api/traccar/forward` —
+  receives Traccar's position-forwarding webhook and maps it to a member via the source-agnostic
+  `device_id` column (not Traccar-specific — other position sources, e.g. Overland, could key off the
+  same field later).
 - **dashboard/** — React+Vite PWA. Once a household exists, the live family map is the default view:
-  pick which member you are ("Reporting as"), and the browser's own geolocation reports your position
-  every ~15s; every member's latest position renders on a shared map, live-updated over the existing
-  WebSocket event stream. Real phone GPS via Traccar is also wired up (see below). A "Settings" button
-  opens household/member management (home geofence via a Leaflet map you click to place a pin, member
-  list, per-member Traccar device linking). No address search — Nominatim's free geocoder wasn't
-  reliable enough at house-level precision to be worth the confusion. No trust tiers — every member
-  sees every other member's exact location; that's the whole point for a family-safety use case. Place
-  alerts are still a placeholder.
+  every member's latest reported position (currently via Traccar/real phone GPS) renders on a shared
+  map, live-updated over the existing WebSocket event stream, with a row of "snap to" buttons below
+  the map to quickly center on any member. A "Settings" button opens household/member management (home
+  geofence via a Leaflet map you click to place a pin, member list, per-member device linking). No
+  address search — Nominatim's free geocoder wasn't reliable enough at house-level precision to be
+  worth the confusion. No trust tiers — every member sees every other member's exact location; that's
+  the whole point for a family-safety use case. Place alerts are still a placeholder.
 - **db/** — Postgres 16 + pgvector + Apache AGE
 - **traccar** — official `traccar/traccar` image, own embedded database (unrelated to the Postgres
   above). Web UI + REST API on :8082 (localhost-only — reach it via an nginx-proxied subdomain, e.g.
