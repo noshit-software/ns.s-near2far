@@ -6,8 +6,6 @@ import { Circle, CircleMarker, MapContainer, TileLayer, useMap, useMapEvents } f
 
 type LatLng = { lat: number; lng: number }
 
-const FALLBACK_CENTER: LatLng = { lat: 39.8283, lng: -98.5795 } // geographic center of the US
-
 function ClickToMove({ onMove }: { onMove: (pos: LatLng) => void }) {
   useMapEvents({
     click(e) {
@@ -50,34 +48,65 @@ export function LocationPicker({
     if (hadInitialValue.current) return
 
     if (!("geolocation" in navigator)) {
-      setCenter(FALLBACK_CENTER)
-      setLocateError("This browser doesn't support geolocation — click the map to set your pin.")
+      setLocateError("This browser doesn't support geolocation. near2far requires it to work.")
       setLocating(false)
       return
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const here = { lat: pos.coords.latitude, lng: pos.coords.longitude }
-        setCenter(here)
-        setLocating(false)
-        onChange(here)
-      },
-      (err) => {
-        setCenter(FALLBACK_CENTER)
-        setLocateError(
-          err.code === err.PERMISSION_DENIED
-            ? "Location permission denied — click the map to set your pin."
-            : "Couldn't get your location — click the map to set your pin.",
-        )
-        setLocating(false)
-      },
-      { enableHighAccuracy: true, timeout: 8000 },
-    )
+    function locate() {
+      setLocating(true)
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const here = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+          setCenter(here)
+          setLocateError(null)
+          setLocating(false)
+          onChange(here)
+        },
+        (err) => {
+          setLocateError(
+            err.code === err.PERMISSION_DENIED
+              ? "Location permission is required — near2far can't work without it. Grant access in your browser's site settings."
+              : "Couldn't get your location. Retrying automatically once it's available.",
+          )
+          setLocating(false)
+        },
+        { enableHighAccuracy: true, timeout: 8000 },
+      )
+    }
+
+    locate()
+
+    // If permission was denied and the user later grants it via the browser's
+    // site settings (no page reload), retry automatically.
+    let status: PermissionStatus | null = null
+    if ("permissions" in navigator) {
+      navigator.permissions
+        .query({ name: "geolocation" as PermissionName })
+        .then((result) => {
+          status = result
+          status.onchange = () => {
+            if (status?.state === "granted") locate()
+          }
+        })
+        .catch(() => {})
+    }
+
+    return () => {
+      if (status) status.onchange = null
+    }
   }, [onChange])
 
-  if (locating || center === null) {
+  if (locating) {
     return <div className="location-picker">finding your location…</div>
+  }
+
+  if (center === null) {
+    return (
+      <div className="location-picker">
+        <p className="error">{locateError}</p>
+      </div>
+    )
   }
 
   const marker = value ?? center
@@ -116,7 +145,6 @@ export function LocationPicker({
         {marker.lat.toFixed(5)}, {marker.lng.toFixed(5)} · ±{radiusM}m
         {editing ? " — click the map to move the pin" : ""}
       </p>
-      {locateError && <p className="hint">{locateError}</p>}
       <p className="map-attribution">
         Map data &copy;{" "}
         <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
