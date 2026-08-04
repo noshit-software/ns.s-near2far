@@ -1,6 +1,7 @@
 import "leaflet/dist/leaflet.css"
 
-import { useEffect, useState } from "react"
+import type L from "leaflet"
+import { useEffect, useRef, useState } from "react"
 import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from "react-leaflet"
 
 import { apiGet } from "../lib/api"
@@ -37,19 +38,14 @@ function FitToMarkers({ positions, home }: { positions: Position[]; home: { lat:
   return null
 }
 
-function SnapTo({ target }: { target: Position | null }) {
-  const map = useMap()
-  useEffect(() => {
-    if (target) map.flyTo([target.lat, target.lng], 16)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [target?.member_id, target?.lat, target?.lng])
-  return null
-}
-
 export function FamilyMap({ household }: { household: Household }) {
   const [positions, setPositions] = useState<Record<string, Position>>({})
-  const [snapTarget, setSnapTarget] = useState<Position | null>(null)
+  const mapRef = useRef<L.Map | null>(null)
   const lastEvent = useEventStream()
+
+  function snapTo(p: Position) {
+    mapRef.current?.flyTo([p.lat, p.lng], 16)
+  }
 
   useEffect(() => {
     apiGet<Position[]>("/positions/latest")
@@ -77,6 +73,7 @@ export function FamilyMap({ household }: { household: Household }) {
   return (
     <div className="family-map">
       <MapContainer
+        ref={mapRef}
         center={household.home_geofence}
         zoom={14}
         attributionControl={false}
@@ -84,7 +81,6 @@ export function FamilyMap({ household }: { household: Household }) {
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         <FitToMarkers positions={positionList} home={household.home_geofence} />
-        <SnapTo target={snapTarget} />
         {positionList.map((p) => (
           <CircleMarker key={p.member_id} center={{ lat: p.lat, lng: p.lng }} radius={8}>
             <Popup>
@@ -102,7 +98,7 @@ export function FamilyMap({ household }: { household: Household }) {
               key={p.member_id}
               type="button"
               className="member-snap-button"
-              onClick={() => setSnapTarget(p)}
+              onClick={() => snapTo(p)}
             >
               {p.display_name}
             </button>
