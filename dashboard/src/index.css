@@ -189,6 +189,29 @@ h3 {
   font-size: 0.9rem;
 }
 
+.member-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.member-device-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.member-device-row input {
+  flex: 1;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.6rem;
+}
+
+.member-device-row button {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  padding: 0.4rem 0.8rem;
+}
+
 .member-form-row {
   display: flex;
   gap: 0.6rem;

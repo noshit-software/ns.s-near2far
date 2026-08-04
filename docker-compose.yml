@@ -36,8 +36,28 @@ services:
     networks: [app-net]
     restart: unless-stopped
 
+  traccar:
+    image: traccar/traccar:latest
+    environment:
+      CONFIG_USE_ENVIRONMENT_VARIABLES: "true"
+      FORWARD_URL: ${TRACCAR_FORWARD_URL}
+      FORWARD_TYPE: json
+    ports:
+      - "8082:8082"     # web UI + REST API, for creating devices
+      - "5055:5055/udp" # OsmAnd protocol, used by the Traccar Client phone app
+      - "5055:5055/tcp"
+    volumes:
+      - traccar_data:/opt/traccar/data
+    extra_hosts:
+      # Lets TRACCAR_FORWARD_URL target a host-run backend (pm2 on the VPS,
+      # not this compose file's `backend` service) via host.docker.internal.
+      - "host.docker.internal:host-gateway"
+    networks: [app-net]
+    restart: unless-stopped
+
 volumes:
   pg_data:
+  traccar_data:
 
 networks:
   app-net:

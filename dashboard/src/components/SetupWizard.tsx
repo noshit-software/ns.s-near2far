@@ -7,6 +7,7 @@ import { LocationPicker } from "./LocationPicker"
 type Member = {
   id: string
   display_name: string
+  traccar_unique_id: string | null
 }
 
 type Household = {
@@ -30,6 +31,7 @@ export function SetupWizard() {
   const [loginPassword, setLoginPassword] = useState("")
 
   const [memberName, setMemberName] = useState("")
+  const [deviceInputs, setDeviceInputs] = useState<Record<string, string>>({})
 
   useEffect(() => {
     apiGet<Household | null>("/setup/household")
@@ -75,6 +77,22 @@ export function SetupWizard() {
         radius_m: household.home_geofence.radius_m,
       })
       setHousehold({ ...household, home_geofence: updated.home_geofence })
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
+  async function saveMemberDevice(memberId: string) {
+    if (!household) return
+    setError(null)
+    try {
+      const updated = await apiPost<Member>(`/setup/members/${memberId}/device`, {
+        traccar_unique_id: deviceInputs[memberId]?.trim() || null,
+      })
+      setHousehold({
+        ...household,
+        members: household.members.map((m) => (m.id === memberId ? updated : m)),
+      })
     } catch (e) {
       setError((e as Error).message)
     }
@@ -198,9 +216,26 @@ export function SetupWizard() {
       <h3>Members</h3>
       <ul>
         {household.members.map((m) => (
-          <li key={m.id}>{m.display_name}</li>
+          <li key={m.id} className="member-row">
+            <span>{m.display_name}</span>
+            <div className="member-device-row">
+              <input
+                value={deviceInputs[m.id] ?? m.traccar_unique_id ?? ""}
+                onChange={(e) => setDeviceInputs({ ...deviceInputs, [m.id]: e.target.value })}
+                placeholder="Traccar device ID"
+              />
+              <button onClick={() => saveMemberDevice(m.id)}>Save</button>
+            </div>
+          </li>
         ))}
       </ul>
+      <p className="hint">
+        Create a device for each member in{" "}
+        <a href="http://localhost:8082" target="_blank" rel="noreferrer">
+          Traccar
+        </a>{" "}
+        (identifier of your choosing), then paste that identifier here to link it.
+      </p>
 
       <div className="member-form-row">
         <input

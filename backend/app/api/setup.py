@@ -1,5 +1,6 @@
 import json
 
+import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 
@@ -35,6 +36,10 @@ class CreateMember(BaseModel):
     display_name: str
 
 
+class SetMemberDevice(BaseModel):
+    traccar_unique_id: str | None = None
+
+
 class VerifyPassword(BaseModel):
     password: str
 
@@ -49,7 +54,7 @@ async def get_household(request: Request) -> dict:
             return {"success": True, "data": None}
 
         members = await conn.fetch(
-            "SELECT id, display_name FROM substrate.members WHERE household_id = $1",
+            "SELECT id, display_name, traccar_unique_id FROM substrate.members WHERE household_id = $1",
             household["id"],
         )
 
@@ -125,11 +130,34 @@ async def create_member(body: CreateMember, request: Request) -> dict:
 
         row = await conn.fetchrow(
             "INSERT INTO substrate.members (household_id, display_name) VALUES ($1, $2) "
-            "RETURNING id, display_name",
+            "RETURNING id, display_name, traccar_unique_id",
             body.household_id,
             body.display_name,
         )
 
     data = {**dict(row), "id": str(row["id"])}
     await publish("member.created", data)
+    return {"success": True, "data": data}
+
+
+@router.post("/api/setup/members/{member_id}/device", dependencies=[Depends(require_admin_auth)])
+async def set_member_device(member_id: str, body: SetMemberDevice, request: Request) -> dict:
+    async with request.app.state.db_pool.acquire() as conn:
+        try:
+            row = await conn.fetchrow(
+                "UPDATE substrate.members SET traccar_unique_id = $1 WHERE id = $2 "
+                "RETURNING id, display_name, traccar_unique_id",
+                body.traccar_unique_id,
+                member_id,
+            )
+        except asyncpg.UniqueViolationError as e:
+            raise HTTPException(
+                status_code=409, detail="That Traccar device is already assigned to another member"
+            ) from e
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    data = {**dict(row), "id": str(row["id"])}
+    await publish("member.updated", data)
     return {"success": True, "data": data}
