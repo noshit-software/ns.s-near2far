@@ -7,10 +7,10 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
 ## Stack
 
 - **backend/** — FastAPI, event bus, WebSocket stream to dashboard, setup API (household + members),
-  `GET /api/positions/latest` for current per-member position, and `POST /api/traccar/forward` —
-  receives Traccar's position-forwarding webhook and maps it to a member via the source-agnostic
-  `device_id` column (not Traccar-specific — other position sources, e.g. Overland, could key off the
-  same field later).
+  `GET /api/positions/latest` for current per-member position, `POST /api/traccar/forward` — receives
+  Traccar's position-forwarding webhook and maps it to a member via the source-agnostic `device_id`
+  column — and `POST /api/overland/forward`, the same mapping for the [Overland](https://overland.p3k.app/)
+  iOS app (Traccar Client is unreliable on iOS; Overland is the iPhone GPS source).
 - **dashboard/** — React+Vite PWA. Once a household exists, the live family map is the default view:
   every member's latest reported position (currently via Traccar/real phone GPS) renders on a shared
   map, live-updated over the existing WebSocket event stream, with a row of "snap to" buttons below
@@ -62,6 +62,22 @@ stream the browser-geolocation reporting uses — both sources land in the same 
 `TRACCAR_FORWARD_URL` differs by deployment:
 - Local all-in-one docker-compose dev: `http://backend:8000/api/traccar/forward`
 - VPS (backend runs via pm2, not in this compose file): `http://host.docker.internal:5101/api/traccar/forward`
+
+## Overland (iOS GPS — Traccar Client is unreliable on iPhone)
+
+[Overland](https://overland.p3k.app/) is a paid iOS app that posts location batches to a configured
+URL. Unlike Traccar's `:5055` port, this hits the backend directly and is exposed publicly, so the
+endpoint requires the household admin password as a bearer token (same `require_admin_auth`
+dependency the dashboard API uses).
+
+1. In near2far's dashboard Settings, set the member's "Device ID" field to whatever you'll enter as
+   Overland's Device ID (e.g. `alex-iphone`).
+2. In the Overland app, set:
+   - **Receiver Endpoint URL**: `https://near2far.family/api/overland/forward`
+   - **Access Token**: the household admin password
+   - **Device ID**: the same identifier you set in Settings
+3. Overland forwards location batches from then on; the backend maps each by `device_id` and pushes
+   it to the family map over the same WebSocket stream Traccar and browser-geolocation use.
 
 ### VPS deploy gotchas (learned the hard way)
 

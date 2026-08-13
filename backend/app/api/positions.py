@@ -23,6 +23,23 @@ class TraccarForward(BaseModel):
     position: TraccarPosition
 
 
+class OverlandGeometry(BaseModel):
+    coordinates: list[float]  # [lon, lat]
+
+
+class OverlandProperties(BaseModel):
+    device_id: str
+
+
+class OverlandLocation(BaseModel):
+    geometry: OverlandGeometry
+    properties: OverlandProperties
+
+
+class OverlandForward(BaseModel):
+    locations: list[OverlandLocation]
+
+
 def _position_dict(row) -> dict:
     data = dict(row)
     data["member_id"] = str(data["member_id"])
@@ -79,3 +96,25 @@ async def traccar_forward(body: TraccarForward, request: Request) -> dict:
         await _record_position(conn, str(member_id), body.position.latitude, body.position.longitude)
 
     return {"success": True, "data": None}
+
+
+@router.post("/api/overland/forward", dependencies=[Depends(require_admin_auth)])
+async def overland_forward(body: OverlandForward, request: Request) -> dict:
+    """Receives Overland's location batch (iOS GPS client — Traccar Client is unreliable on
+    iOS). Overland sends the household admin password as its configured access token
+    (Authorization: Bearer <password>). Silently no-ops for devices not yet assigned to a
+    member. Responds in the shape Overland expects so it doesn't keep retrying."""
+    async with request.app.state.db_pool.acquire() as conn:
+        for location in body.locations:
+            device_id = location.properties.device_id
+            member_id = await conn.fetchval(
+                "SELECT id FROM substrate.members WHERE device_id = $1", device_id
+            )
+            if member_id is None:
+                log.info("overland_forward_unmapped_device", device_id=device_id)
+                continue
+
+            lon, lat = location.geometry.coordinates[0], location.geometry.coordinates[1]
+            await _record_position(conn, str(member_id), lat, lon)
+
+    return {"result": "ok"}
