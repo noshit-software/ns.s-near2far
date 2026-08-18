@@ -39,7 +39,12 @@ services:
     restart: unless-stopped
 
   traccar:
-    image: traccar/traccar:latest
+    # Pinned rather than :latest — an unpinned tag means every `docker compose pull`/rebuild
+    # can silently change what's running, with no way to know what changed. This is the exact
+    # version already deployed as of 2026-08 (from the image's own
+    # org.opencontainers.image.version label) — pinning it is a no-op today, just removes the
+    # silent-drift risk going forward. Bump deliberately when there's a reason to.
+    image: traccar/traccar:6.14.5
     environment:
       CONFIG_USE_ENVIRONMENT_VARIABLES: "true"
       FORWARD_URL: ${TRACCAR_FORWARD_URL}

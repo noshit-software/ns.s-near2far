@@ -321,6 +321,12 @@ There's no global API key. Setup creates the household with an admin password, w
 stores locally and sends as a `Bearer` token. Endpoints besides `/health` and `/api/setup/household`
 (GET) and `/api/setup/verify` require it once a household exists.
 
+CORS defaults to allowing any origin (`*`) — auth here is a Bearer/Basic credential in a header,
+not a cookie, so this doesn't expose the classic CSRF path a wildcard usually implies, but it's
+still broader than a single-domain PWA needs. Set `CORS_ORIGINS` in `.env` (comma-separated) to
+restrict it in production; left unset so this doesn't silently change behavior for existing
+installs that haven't set it.
+
 ## Spec
 
 Full product spec lives in the Knightsrook MCP knowledge base (`project:near2far:spec`, `project:near2far:funding`). See also [docs/architecture/overview.md](docs/architecture/overview.md) for the service-level architecture.

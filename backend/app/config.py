@@ -16,5 +16,17 @@ class Settings(BaseSettings):
 
     upload_dir: str = "uploads"
 
+    # Comma-separated list of allowed origins for CORS, e.g. "https://near2far.family". Empty
+    # (the default) keeps the wildcard "*" this app has always used — auth here is a Bearer/
+    # Basic credential in a header, not a cookie, so wildcard CORS doesn't expose a classic
+    # CSRF path, but it's still broader than a single-domain PWA needs. Set this in production
+    # to restrict it; left unset so this doesn't change behavior for existing installs.
+    cors_origins: str = ""
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        origins = [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+        return origins or ["*"]
+
 
 settings = Settings()
