@@ -211,26 +211,25 @@ h3 {
   gap: 0.5rem;
 }
 
-.member-panel {
+.family-map .member-panel {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  flex: 1 1 220px;
-  min-width: 200px;
-  max-width: 320px;
+  flex: 1 1 calc(50% - 0.25rem);
   font: inherit;
+  font-weight: 400;
   text-align: left;
   padding: 0.5rem 0.8rem 0.5rem 0.5rem;
   border-radius: 12px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #2b2e33;
+  color: #f2f2f2;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
-.member-panel:hover {
-  background: var(--surface-2);
+.family-map .member-panel:hover {
+  background: #383b41;
 }
 
 .member-panel-avatar {
@@ -262,14 +261,14 @@ h3 {
   align-items: center;
   gap: 0.4rem;
   font-size: 0.75rem;
-  color: var(--text-dim);
+  color: #c8c8c8;
   font-weight: 400;
 }
 
 .member-panel-status::after {
   content: "·";
   margin-left: 0.4rem;
-  color: var(--text-dim);
+  color: #c8c8c8;
 }
 
 /* --- Map marker icons (leaflet divIcon content) --- */
