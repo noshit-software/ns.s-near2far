@@ -102,10 +102,17 @@ classified as driving vs walking by its average speed. On trip end, every browse
 alerts gets a push notification with distance/duration/avg speed. State is in-memory only — a
 backend restart mid-trip just costs one missed alert, not persisted history.
 
-1. On an existing install (VPS), the `db/init/*.sql` scripts only run once — the new
-   `substrate.push_subscriptions` table needs a manual migration:
+1. On an existing install (VPS), the `db/init/*.sql` scripts only run once — rerunning
    `docker compose exec db psql -U near2far -d near2far -f /docker-entrypoint-initdb.d/02-schema.sql`
-   is safe to rerun (every statement is `CREATE TABLE IF NOT EXISTS`).
+   is safe for *new tables* (`CREATE TABLE IF NOT EXISTS` — this is how `substrate.push_subscriptions`
+   gets created on an existing install) but does **nothing** for new columns on a table that already
+   exists, like `avatar_filename`/`avatar_seed` on `substrate.members` — `CREATE TABLE IF NOT EXISTS`
+   skips the whole statement if the table's already there. Those need an explicit `ALTER TABLE`:
+   ```sql
+   ALTER TABLE substrate.members ADD COLUMN IF NOT EXISTS avatar_filename TEXT;
+   ALTER TABLE substrate.members ADD COLUMN IF NOT EXISTS avatar_seed TEXT NOT NULL
+     DEFAULT substr(md5(random()::text || clock_timestamp()::text), 1, 10);
+   ```
 2. Generate a VAPID keypair (from `backend/`): `uv run --with pywebpush python -c "..."` (or any
    VAPID keygen tool) — you need the raw base64url public/private key bytes, not PEM. Paste them into
    `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` in `.env`.
