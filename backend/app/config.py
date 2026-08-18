@@ -14,5 +14,7 @@ class Settings(BaseSettings):
     vapid_private_key: str = ""
     vapid_claims_sub: str = "mailto:admin@near2far.family"
 
+    upload_dir: str = "uploads"
+
 
 settings = Settings()

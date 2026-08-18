@@ -1,14 +1,24 @@
 import json
+from pathlib import Path
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 
 from app.auth import hash_password, verify_password
+from app.config import settings
 from app.events import publish
 from app.middleware.auth import require_admin_auth
 
 router = APIRouter()
+
+AVATAR_DIR = Path(settings.upload_dir) / "avatars"
+AVATAR_CONTENT_TYPES = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+}
+MAX_AVATAR_BYTES = 5 * 1024 * 1024
 
 
 def _household_dict(row) -> dict:
@@ -40,6 +50,10 @@ class SetMemberDevice(BaseModel):
     device_id: str | None = None
 
 
+class SetMemberAvatarSeed(BaseModel):
+    avatar_seed: str
+
+
 class VerifyPassword(BaseModel):
     password: str
 
@@ -54,7 +68,8 @@ async def get_household(request: Request) -> dict:
             return {"success": True, "data": None}
 
         members = await conn.fetch(
-            "SELECT id, display_name, device_id FROM substrate.members WHERE household_id = $1",
+            "SELECT id, display_name, device_id, avatar_filename, avatar_seed FROM substrate.members "
+            "WHERE household_id = $1",
             household["id"],
         )
 
@@ -130,7 +145,7 @@ async def create_member(body: CreateMember, request: Request) -> dict:
 
         row = await conn.fetchrow(
             "INSERT INTO substrate.members (household_id, display_name) VALUES ($1, $2) "
-            "RETURNING id, display_name, device_id",
+            "RETURNING id, display_name, device_id, avatar_filename, avatar_seed",
             body.household_id,
             body.display_name,
         )
@@ -146,7 +161,7 @@ async def set_member_device(member_id: str, body: SetMemberDevice, request: Requ
         try:
             row = await conn.fetchrow(
                 "UPDATE substrate.members SET device_id = $1 WHERE id = $2 "
-                "RETURNING id, display_name, device_id",
+                "RETURNING id, display_name, device_id, avatar_filename, avatar_seed",
                 body.device_id,
                 member_id,
             )
@@ -157,6 +172,57 @@ async def set_member_device(member_id: str, body: SetMemberDevice, request: Requ
 
     if row is None:
         raise HTTPException(status_code=404, detail="Member not found")
+
+    data = {**dict(row), "id": str(row["id"])}
+    await publish("member.updated", data)
+    return {"success": True, "data": data}
+
+
+@router.post("/api/setup/members/{member_id}/avatar-seed", dependencies=[Depends(require_admin_auth)])
+async def set_member_avatar_seed(member_id: str, body: SetMemberAvatarSeed, request: Request) -> dict:
+    """Picks a new generated placeholder avatar (see dashboard's @dicebear picker). Ignored
+    once a member has a real uploaded photo — avatar_filename always wins on the map."""
+    async with request.app.state.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "UPDATE substrate.members SET avatar_seed = $1 WHERE id = $2 "
+            "RETURNING id, display_name, device_id, avatar_filename, avatar_seed",
+            body.avatar_seed,
+            member_id,
+        )
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    data = {**dict(row), "id": str(row["id"])}
+    await publish("member.updated", data)
+    return {"success": True, "data": data}
+
+
+@router.post("/api/setup/members/{member_id}/avatar", dependencies=[Depends(require_admin_auth)])
+async def upload_member_avatar(member_id: str, file: UploadFile, request: Request) -> dict:
+    ext = AVATAR_CONTENT_TYPES.get(file.content_type or "")
+    if ext is None:
+        raise HTTPException(status_code=400, detail="Photo must be JPEG, PNG, or WebP")
+
+    body = await file.read(MAX_AVATAR_BYTES + 1)
+    if len(body) > MAX_AVATAR_BYTES:
+        raise HTTPException(status_code=400, detail="Photo must be under 5MB")
+
+    async with request.app.state.db_pool.acquire() as conn:
+        exists = await conn.fetchval("SELECT id FROM substrate.members WHERE id = $1", member_id)
+        if exists is None:
+            raise HTTPException(status_code=404, detail="Member not found")
+
+        filename = f"{member_id}.{ext}"
+        AVATAR_DIR.mkdir(parents=True, exist_ok=True)
+        (AVATAR_DIR / filename).write_bytes(body)
+
+        row = await conn.fetchrow(
+            "UPDATE substrate.members SET avatar_filename = $1 WHERE id = $2 "
+            "RETURNING id, display_name, device_id, avatar_filename, avatar_seed",
+            filename,
+            member_id,
+        )
 
     data = {**dict(row), "id": str(row["id"])}
     await publish("member.updated", data)

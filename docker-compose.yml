@@ -4,6 +4,8 @@ services:
     ports:
       - "${BACKEND_PORT}:8000"
     env_file: .env
+    volumes:
+      - backend_uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -60,6 +62,7 @@ services:
 volumes:
   pg_data:
   traccar_data:
+  backend_uploads:
 
 networks:
   app-net:

@@ -10,3 +10,4 @@ uv.lock
 pg_data/
 *.log
 .DS_Store
+backend/uploads/

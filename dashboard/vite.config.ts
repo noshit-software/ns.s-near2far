@@ -7,6 +7,7 @@ export default defineConfig({
     proxy: {
       "/api": "http://backend:8000",
       "/ws": { target: "ws://backend:8000", ws: true },
+      "/uploads": "http://backend:8000",
     },
   },
 })

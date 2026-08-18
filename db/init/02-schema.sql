@@ -22,6 +22,13 @@ CREATE TABLE IF NOT EXISTS substrate.members (
   -- Traccar (matched against its device `uniqueId`, see /api/traccar/forward), but
   -- source-agnostic so other adapters (e.g. Overland) can key off it too.
   device_id TEXT UNIQUE,
+  -- Filename under the backend's uploads/avatars/ dir (served at /uploads/avatars/<value>),
+  -- not a full URL, so it stays valid across domain/deploy changes. NULL until the member
+  -- uploads a real photo — until then, the map falls back to a generated avatar_seed icon.
+  avatar_filename TEXT,
+  -- Seed for a locally-generated placeholder avatar (dashboard renders it via @dicebear, no
+  -- network calls). Randomly assigned at creation; the member can reroll it in Settings.
+  avatar_seed TEXT NOT NULL DEFAULT substr(md5(random()::text || clock_timestamp()::text), 1, 10),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

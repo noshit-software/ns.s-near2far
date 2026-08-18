@@ -41,15 +41,29 @@ class OverlandForward(BaseModel):
     locations: list[OverlandLocation]
 
 
-def _position_dict(row) -> dict:
-    data = dict(row)
-    data["member_id"] = str(data["member_id"])
-    data["recorded_at"] = data["recorded_at"].isoformat()
-    return data
+def _position_dict(
+    member_id: str, display_name: str, avatar_filename: str | None, avatar_seed: str, row
+) -> dict:
+    return {
+        "member_id": member_id,
+        "display_name": display_name,
+        "avatar_filename": avatar_filename,
+        "avatar_seed": avatar_seed,
+        "lat": row["lat"],
+        "lng": row["lng"],
+        "recorded_at": row["recorded_at"].isoformat(),
+    }
 
 
 async def _record_position(
-    conn, member_id: str, household_id: str, display_name: str, lat: float, lng: float
+    conn,
+    member_id: str,
+    household_id: str,
+    display_name: str,
+    avatar_filename: str | None,
+    avatar_seed: str,
+    lat: float,
+    lng: float,
 ) -> dict:
     row = await conn.fetchrow(
         "INSERT INTO runtime.positions (member_id, lat, lng) VALUES ($1, $2, $3) "
@@ -58,7 +72,7 @@ async def _record_position(
         lat,
         lng,
     )
-    data = _position_dict(row)
+    data = _position_dict(member_id, display_name, avatar_filename, avatar_seed, row)
     await publish("position.updated", data)
     await _on_position(conn, member_id, display_name, household_id, lat, lng, row["recorded_at"])
     return data
@@ -70,7 +84,7 @@ async def latest_positions(request: Request) -> dict:
         rows = await conn.fetch(
             """
             SELECT DISTINCT ON (p.member_id)
-                p.member_id, m.display_name, p.lat, p.lng, p.recorded_at
+                p.member_id, m.display_name, m.avatar_filename, m.avatar_seed, p.lat, p.lng, p.recorded_at
             FROM runtime.positions p
             JOIN substrate.members m ON m.id = p.member_id
             ORDER BY p.member_id, p.recorded_at DESC
@@ -91,7 +105,8 @@ async def traccar_forward(body: TraccarForward, request: Request) -> dict:
     react to an error here and would otherwise retry forever."""
     async with request.app.state.db_pool.acquire() as conn:
         member = await conn.fetchrow(
-            "SELECT id, household_id, display_name FROM substrate.members WHERE device_id = $1",
+            "SELECT id, household_id, display_name, avatar_filename, avatar_seed FROM substrate.members "
+            "WHERE device_id = $1",
             body.device.uniqueId,
         )
         if member is None:
@@ -103,6 +118,8 @@ async def traccar_forward(body: TraccarForward, request: Request) -> dict:
             str(member["id"]),
             str(member["household_id"]),
             member["display_name"],
+            member["avatar_filename"],
+            member["avatar_seed"],
             body.position.latitude,
             body.position.longitude,
         )
@@ -120,7 +137,8 @@ async def overland_forward(body: OverlandForward, request: Request) -> dict:
         for location in body.locations:
             device_id = location.properties.device_id
             member = await conn.fetchrow(
-                "SELECT id, household_id, display_name FROM substrate.members WHERE device_id = $1",
+                "SELECT id, household_id, display_name, avatar_filename, avatar_seed FROM substrate.members "
+                "WHERE device_id = $1",
                 device_id,
             )
             if member is None:
@@ -129,7 +147,14 @@ async def overland_forward(body: OverlandForward, request: Request) -> dict:
 
             lon, lat = location.geometry.coordinates[0], location.geometry.coordinates[1]
             await _record_position(
-                conn, str(member["id"]), str(member["household_id"]), member["display_name"], lat, lon
+                conn,
+                str(member["id"]),
+                str(member["household_id"]),
+                member["display_name"],
+                member["avatar_filename"],
+                member["avatar_seed"],
+                lat,
+                lon,
             )
 
     return {"result": "ok"}

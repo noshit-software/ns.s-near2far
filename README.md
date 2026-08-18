@@ -14,19 +14,26 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   position also runs through `app/trips.py`'s in-memory per-member trip detector (speed-based:
   moving/stationary thresholds, walking vs driving by average speed over the trip) — on trip end it
   sends a Web Push notification ("Alex stopped — finished driving, 4.2 km in 9 min, avg 28 km/h") to
-  every browser subscribed via `POST /api/push/subscribe`. See "Trip alerts" below.
+  every browser subscribed via `POST /api/push/subscribe`. See "Trip alerts" below. Members also have
+  `POST /api/setup/members/{id}/avatar` (multipart photo upload, JPEG/PNG/WebP, 5MB max, saved under
+  `uploads/avatars/` and served at `/uploads/avatars/<filename>`) and `POST
+  /api/setup/members/{id}/avatar-seed` (picks a generated placeholder avatar — see "Member avatars"
+  below).
 - **dashboard/** — React+Vite PWA styled as a native-feeling app shell (fixed top bar + bottom tab
   bar around a scrollable content area, `100dvh` height, `env(safe-area-inset-*)` padding for iOS/
   Android notches and home indicators, `viewport-fit=cover` + `apple-mobile-web-app-*` meta tags for a
   chromeless standalone install on both platforms). The **Map** tab is a full-bleed live family map:
-  every member's latest reported position (currently via Traccar/real phone GPS) renders on a shared
-  map, live-updated over the existing WebSocket event stream, with a floating row of "snap to" pills
+  every member's latest reported position (currently via Traccar/real phone GPS) renders as a
+  circular avatar marker (their uploaded photo, or a generated placeholder — see "Member avatars"),
+  shrinking to a plain colored dot once zoomed out past neighborhood level, live-updated over the
+  existing WebSocket event stream, with a floating row of "snap to" pills (each with a small avatar)
   over the bottom of the map to quickly center on any member, and an "Enable trip alerts" banner that
   subscribes the browser to Web Push. The **Settings** tab has household/member management (home
-  geofence via a Leaflet map you click to place a pin, member list, per-member device linking). No
-  address search — Nominatim's free geocoder wasn't reliable enough at house-level precision to be
-  worth the confusion. No trust tiers — every member sees every other member's exact location; that's
-  the whole point for a family-safety use case. Place alerts (geofence-based) are still a placeholder.
+  geofence via a Leaflet map you click to place a pin, member list, per-member device linking, and an
+  avatar picker per member). No address search — Nominatim's free geocoder wasn't reliable enough at
+  house-level precision to be worth the confusion. No trust tiers — every member sees every other
+  member's exact location; that's the whole point for a family-safety use case. Place alerts
+  (geofence-based) are still a placeholder.
 - **db/** — Postgres 16 + pgvector + Apache AGE
 - **traccar** — official `traccar/traccar` image, own embedded database (unrelated to the Postgres
   above). Web UI + REST API on :8082 (localhost-only — reach it via an nginx-proxied subdomain, e.g.
@@ -114,6 +121,24 @@ Leaving `VAPID_PRIVATE_KEY` blank disables push entirely — the trip detector s
 `send_push_to_household` no-ops, and the dashboard's enable button hides itself once it sees no key
 returned from `/api/push/vapid-public-key`.
 
+## Member avatars
+
+Every member gets a randomly-assigned placeholder avatar at creation (`avatar_seed`, a random
+token — the dashboard turns it into an image via `@dicebear/collection`'s `funEmoji` style,
+rendered **fully client-side, no network calls** — consistent with near2far's self-hosted/
+private-by-default stance; no third-party avatar CDN is ever contacted). In Settings, tap a
+member's avatar to open a picker: 6 fresh random options plus a **Shuffle** button for more, or
+**Upload photo** to use a real picture instead — an uploaded photo always takes priority over the
+generated one. Photos are stored server-side under `backend/uploads/avatars/` (a docker volume
+locally; just a directory on the VPS since the backend runs bare via pm2) and served at
+`/uploads/avatars/<filename>`, proxied through nginx/vite same as `/api`.
+
+On the map, avatars render as circular markers, cropped via CSS (`background-image` +
+`border-radius: 50%`), with a per-member colored border/dot color derived deterministically from
+their member ID (see `dashboard/src/lib/avatar.ts`). Below zoom level 15 they shrink to a plain
+colored dot — a full avatar reads as visual noise once the map is showing a whole city rather than
+a neighborhood.
+
 ### VPS deploy gotchas (learned the hard way)
 
 - **`git pull` alone does nothing for the running backend.** `pm2` doesn't hot-reload — after
@@ -129,7 +154,12 @@ returned from `/api/push/vapid-public-key`.
   subnets without opening the port publicly).
 - **`db/init/*.sql` only runs once**, when a Postgres volume is first created. Schema changes added
   after that need a manual `ALTER TABLE`/`docker compose down -v` — a plain `git pull` doesn't apply
-  them to an already-running database.
+  them to an already-running database. `avatar_filename`/`avatar_seed` on `substrate.members` and
+  `substrate.push_subscriptions` are both examples of columns/tables added after initial release.
+- **Member photo uploads need `backend/uploads/` to persist and be writable.** Locally that's the
+  `backend_uploads` docker volume; on the VPS (bare pm2, no container) it's just a directory next to
+  the app code — make sure it survives deploys (it's not in git) and that the pm2 process can write
+  to it.
 - **A browser's "This page isn't working" screen isn't necessarily a connectivity failure** — check
   for a specific HTTP status code in the error page (e.g. "HTTP ERROR 400") before assuming DNS/
   firewall/network issues; that generic wrapper renders for any 4xx/5xx response with an empty body.

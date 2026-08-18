@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 
 import { apiGet, apiPost, getAdminPassword, setAdminPassword } from "../lib/api"
+import { AvatarPicker } from "./AvatarPicker"
 import { FamilyMap } from "./FamilyMap"
 import { LocationPicker } from "./LocationPicker"
 import { NotificationSetup } from "./NotificationSetup"
@@ -9,6 +10,8 @@ type Member = {
   id: string
   display_name: string
   device_id: string | null
+  avatar_filename: string | null
+  avatar_seed: string
 }
 
 type Household = {
@@ -81,6 +84,14 @@ export function SetupWizard() {
     } catch (e) {
       setError((e as Error).message)
     }
+  }
+
+  function updateMember(updated: Member) {
+    if (!household) return
+    setHousehold({
+      ...household,
+      members: household.members.map((m) => (m.id === updated.id ? updated : m)),
+    })
   }
 
   async function saveMemberDevice(memberId: string) {
@@ -209,7 +220,10 @@ export function SetupWizard() {
             <ul>
               {household.members.map((m) => (
                 <li key={m.id} className="member-row">
-                  <span>{m.display_name}</span>
+                  <div className="member-row-header">
+                    <AvatarPicker member={m} onUpdated={updateMember} />
+                    <span>{m.display_name}</span>
+                  </div>
                   <div className="member-device-row">
                     <input
                       value={deviceInputs[m.id] ?? m.device_id ?? ""}

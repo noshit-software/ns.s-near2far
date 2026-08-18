@@ -189,10 +189,13 @@ h3 {
 }
 
 .member-snap-button {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   font: inherit;
   font-weight: 600;
   font-size: 0.85rem;
-  padding: 0.5rem 1rem;
+  padding: 0.35rem 1rem 0.35rem 0.35rem;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--surface);
@@ -204,6 +207,36 @@ h3 {
 
 .member-snap-button:hover {
   background: var(--surface-2);
+}
+
+.member-snap-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface-2);
+  flex-shrink: 0;
+}
+
+/* --- Map marker icons (leaflet divIcon content) --- */
+
+.member-pin-dot {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid white;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+
+.member-pin-photo {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  border: 3px solid;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+  background-color: var(--surface-2);
 }
 
 .notification-setup {
@@ -301,7 +334,102 @@ h3 {
 .member-row {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.5rem;
+}
+
+.member-row-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 600;
+}
+
+.avatar-picker {
+  position: relative;
+}
+
+.avatar-picker-current {
+  padding: 0;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-2);
+  cursor: pointer;
+  overflow: hidden;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+}
+
+.avatar-picker-current img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatar-picker-panel {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  width: 260px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.avatar-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.avatar-picker-option {
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  background: var(--surface-2);
+  cursor: pointer;
+  overflow: hidden;
+  aspect-ratio: 1;
+}
+
+.avatar-picker-option:hover {
+  border-color: var(--accent);
+}
+
+.avatar-picker-option img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatar-picker-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.avatar-picker-actions button,
+.avatar-picker-upload {
+  flex: 1;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-align: center;
+  padding: 0.45rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.avatar-picker-upload input {
+  display: none;
 }
 
 .member-device-row {

@@ -1,10 +1,11 @@
 import "leaflet/dist/leaflet.css"
 
-import type L from "leaflet"
+import L from "leaflet"
 import { useEffect, useRef, useState } from "react"
-import { CircleMarker, MapContainer, Popup, TileLayer, useMap } from "react-leaflet"
+import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from "react-leaflet"
 
 import { apiGet } from "../lib/api"
+import { generatedAvatarDataUri, memberColor } from "../lib/avatar"
 import { useEventStream } from "../lib/ws"
 
 type Household = {
@@ -16,9 +17,41 @@ type Household = {
 type Position = {
   member_id: string
   display_name: string
+  avatar_filename: string | null
+  avatar_seed: string
   lat: number
   lng: number
   recorded_at: string
+}
+
+// Below this zoom, avatars shrink to plain colored dots — a full photo/generated avatar
+// reads as noise once the map is showing a whole city rather than a neighborhood.
+const AVATAR_ZOOM_THRESHOLD = 15
+
+function memberIcon(p: Position, zoom: number): L.DivIcon {
+  const color = memberColor(p.member_id)
+
+  if (zoom < AVATAR_ZOOM_THRESHOLD) {
+    return L.divIcon({
+      className: "member-pin-wrapper",
+      html: `<div class="member-pin-dot" style="background:${color}"></div>`,
+      iconSize: [16, 16],
+      iconAnchor: [8, 8],
+      popupAnchor: [0, -8],
+    })
+  }
+
+  const imageUrl = p.avatar_filename
+    ? `/uploads/avatars/${p.avatar_filename}`
+    : generatedAvatarDataUri(p.avatar_seed)
+
+  return L.divIcon({
+    className: "member-pin-wrapper",
+    html: `<div class="member-pin-photo" style="background-image:url('${imageUrl}');border-color:${color}"></div>`,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+    popupAnchor: [0, -20],
+  })
 }
 
 function FitToMarkers({ positions, home }: { positions: Position[]; home: { lat: number; lng: number } }) {
@@ -38,8 +71,16 @@ function FitToMarkers({ positions, home }: { positions: Position[]; home: { lat:
   return null
 }
 
+function ZoomTracker({ onZoom }: { onZoom: (zoom: number) => void }) {
+  const map = useMapEvents({
+    zoomend: () => onZoom(map.getZoom()),
+  })
+  return null
+}
+
 export function FamilyMap({ household }: { household: Household }) {
   const [positions, setPositions] = useState<Record<string, Position>>({})
+  const [zoom, setZoom] = useState(14)
   const mapRef = useRef<L.Map | null>(null)
   const lastEvent = useEventStream()
 
@@ -81,14 +122,15 @@ export function FamilyMap({ household }: { household: Household }) {
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         <FitToMarkers positions={positionList} home={household.home_geofence} />
+        <ZoomTracker onZoom={setZoom} />
         {positionList.map((p) => (
-          <CircleMarker key={p.member_id} center={{ lat: p.lat, lng: p.lng }} radius={8}>
+          <Marker key={p.member_id} position={{ lat: p.lat, lng: p.lng }} icon={memberIcon(p, zoom)}>
             <Popup>
               {p.display_name}
               <br />
               {new Date(p.recorded_at).toLocaleTimeString()}
             </Popup>
-          </CircleMarker>
+          </Marker>
         ))}
       </MapContainer>
       <div className="map-overlay-bottom">
@@ -101,6 +143,11 @@ export function FamilyMap({ household }: { household: Household }) {
                 className="member-snap-button"
                 onClick={() => snapTo(p)}
               >
+                <img
+                  className="member-snap-avatar"
+                  src={p.avatar_filename ? `/uploads/avatars/${p.avatar_filename}` : generatedAvatarDataUri(p.avatar_seed)}
+                  alt=""
+                />
                 {p.display_name}
               </button>
             ))}

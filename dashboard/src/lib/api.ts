@@ -37,3 +37,14 @@ export async function apiPost<T>(path: string, payload: unknown): Promise<T> {
   })
   return unwrap<T>(res)
 }
+
+export async function apiUpload<T>(path: string, file: File): Promise<T> {
+  const body = new FormData()
+  body.append("file", file)
+  const res = await fetch(`/api${path}`, {
+    method: "POST",
+    headers: authHeaders(),
+    body,
+  })
+  return unwrap<T>(res)
+}
