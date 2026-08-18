@@ -23,8 +23,9 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   bar around a scrollable content area, `100dvh` height, `env(safe-area-inset-*)` padding for iOS/
   Android notches and home indicators, `viewport-fit=cover` + `apple-mobile-web-app-*` meta tags for a
   chromeless standalone install on both platforms). The **Map** tab is a full-bleed live family map:
-  every member's latest reported position (currently via Traccar/real phone GPS) renders as a
-  circular avatar marker (their uploaded photo, or a generated placeholder — see "Member avatars"),
+  every member's latest reported position (Traccar, OwnTracks, or Overland — see "iOS GPS" below)
+  renders as a circular avatar marker (their uploaded photo, or a generated placeholder — see
+  "Member avatars"),
   shrinking to a plain colored dot once zoomed out past neighborhood level, live-updated over the
   existing WebSocket event stream, with a floating row of "snap to" pills (each with a small avatar)
   over the bottom of the map to quickly center on any member, and an "Enable trip alerts" banner that
@@ -216,23 +217,16 @@ know about:
 
 ## Trip alerts (Web Push)
 
-Every position recorded via Traccar or Overland feeds `app/trips.py`'s per-member trip detector:
+Every position recorded via any GPS source (Traccar, Overland, or OwnTracks) feeds
+`app/trips.py`'s per-member trip detector:
 speed above ~0.8 m/s (1.8 mph) starts a trip, stopping for 3+ minutes ends it, and the trip is
 classified as driving vs walking by its average speed. On trip end, every browser that's enabled
 alerts gets a push notification with distance/duration/avg speed. State is in-memory only — a
 backend restart mid-trip just costs one missed alert, not persisted history.
 
-1. On an existing install (VPS), the `db/init/*.sql` scripts only run once — rerunning
-   `docker compose exec db psql -U near2far -d near2far -f /docker-entrypoint-initdb.d/02-schema.sql`
-   is safe for *new tables* (`CREATE TABLE IF NOT EXISTS` — this is how `substrate.push_subscriptions`
-   gets created on an existing install) but does **nothing** for new columns on a table that already
-   exists, like `avatar_filename`/`avatar_seed` on `substrate.members` — `CREATE TABLE IF NOT EXISTS`
-   skips the whole statement if the table's already there. Those need an explicit `ALTER TABLE`:
-   ```sql
-   ALTER TABLE substrate.members ADD COLUMN IF NOT EXISTS avatar_filename TEXT;
-   ALTER TABLE substrate.members ADD COLUMN IF NOT EXISTS avatar_seed TEXT NOT NULL
-     DEFAULT substr(md5(random()::text || clock_timestamp()::text), 1, 10);
-   ```
+1. On an existing install (VPS), run the schema migration — see "VPS deploy gotchas" below for
+   exactly what's needed and why (`db/init/*.sql` reruns only pick up genuinely new tables like
+   `substrate.push_subscriptions`, not new columns on existing ones).
 2. Generate a VAPID keypair (from `backend/`): `uv run --with pywebpush python -c "..."` (or any
    VAPID keygen tool) — you need the raw base64url public/private key bytes, not PEM. Paste them into
    `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` in `.env`.
@@ -256,8 +250,8 @@ partial update via `COALESCE` — also handles color, since both are optional fi
 row), a color picker for their map marker — 8 presets plus a native color-input swatch for any
 custom color (`color` column; falls back to a color hashed from the member's id when unset, see
 `resolveMemberColor` in `dashboard/src/lib/avatar.ts`), Device ID, and **Remove member**
-(`DELETE /api/setup/members/{id}`, behind a
-confirm step) — which also deletes their uploaded avatar file and cascades their position
+(`DELETE /api/setup/members/{id}`, behind a confirm step) — which also deletes their uploaded
+avatar file and cascades their position
 history (`positions.member_id` has `ON DELETE CASCADE`).
 
 ## Member avatars
