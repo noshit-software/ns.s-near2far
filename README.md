@@ -236,9 +236,10 @@ returned from `/api/push/vapid-public-key`.
 Tapping a member's row in Settings opens a bottom-sheet **Edit member** modal — the one place
 for everything about that member: avatar (see below), rename (`POST /api/setup/members/{id}`,
 partial update via `COALESCE` — also handles color, since both are optional fields on the same
-row), an 8-color preset picker for their map marker (`color` column; falls back to a color
-hashed from the member's id when unset, see `resolveMemberColor` in `dashboard/src/lib/
-avatar.ts`), Device ID, and **Remove member** (`DELETE /api/setup/members/{id}`, behind a
+row), a color picker for their map marker — 8 presets plus a native color-input swatch for any
+custom color (`color` column; falls back to a color hashed from the member's id when unset, see
+`resolveMemberColor` in `dashboard/src/lib/avatar.ts`), Device ID, and **Remove member**
+(`DELETE /api/setup/members/{id}`, behind a
 confirm step) — which also deletes their uploaded avatar file and cascades their position
 history (`positions.member_id` has `ON DELETE CASCADE`).
 
@@ -308,11 +309,11 @@ a neighborhood.
   assuming a deploy failed: `curl -s https://near2far.family/assets/index-<hash>.css` (get the
   current hash from `curl -s https://near2far.family/ | grep -o 'assets/index-[^"]*\.css'`) and grep
   it for whatever CSS/behavior you just shipped.
-- **Uploaded-photo re-crop can silently fail for a specific image without any visible error** —
-  seen once, root cause not confirmed (suspected a canvas "tainted" security error, which some
-  browsers surface as a thrown exception rather than a UI-visible message). If it happens: check the
-  browser DevTools console for a red error when tapping Save in the crop tool. Not yet reproduced
-  reliably enough to fix; flagging so a future install doesn't re-diagnose from scratch.
+- **Uploaded-photo re-crop silently failing for a specific image, previously flagged as
+  unresolved, is fixed**: `AvatarCropper`'s save step (`ctx.drawImage`/`canvas.toBlob`) had no
+  error handling at all — a thrown exception (e.g. a tainted-canvas security error) or a `null`
+  blob from `toBlob` both failed with zero feedback. Now wrapped in `try`/`catch` with the failure
+  surfaced as a real error message in the crop tool instead of a silent no-op.
 
 ## Auth
 

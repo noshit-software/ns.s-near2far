@@ -118,6 +118,19 @@ export function MemberEditModal({
                 onClick={() => pickColor(c)}
               />
             ))}
+            <label
+              className={`member-edit-color-swatch member-edit-color-custom ${
+                !COLOR_PRESETS.includes(resolveMemberColor(member)) ? "active" : ""
+              }`}
+              style={{ background: resolveMemberColor(member) }}
+              aria-label="Custom color"
+            >
+              <input
+                type="color"
+                value={resolveMemberColor(member)}
+                onChange={(e) => pickColor(e.target.value)}
+              />
+            </label>
           </div>
         </label>
 

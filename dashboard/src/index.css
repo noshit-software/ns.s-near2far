@@ -442,13 +442,16 @@ h3 {
 .member-edit-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  /* Leaflet's own panes/controls use z-index values up to ~1000 (the Home geofence map in
+     this same Settings screen is a Leaflet map) — must clear that or the modal renders
+     underneath it. */
+  z-index: 1000;
   background: rgba(0, 0, 0, 0.5);
 }
 
 .member-edit-modal {
   position: fixed;
-  z-index: 51;
+  z-index: 1001;
   left: 0;
   right: 0;
   bottom: 0;
@@ -540,6 +543,37 @@ h3 {
 .member-edit-modal .member-edit-color-swatch.active {
   border-color: var(--surface);
   box-shadow: 0 0 0 2px var(--text);
+}
+
+.member-edit-modal .member-edit-color-custom {
+  position: relative;
+  overflow: hidden;
+  display: block;
+  margin: 0;
+}
+
+.member-edit-modal .member-edit-color-custom::after {
+  content: "+";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+}
+
+.member-edit-modal .member-edit-color-custom input[type="color"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .member-edit-danger-zone {
@@ -769,23 +803,6 @@ h3 {
   padding: 0;
 }
 
-.member-device-row {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.member-device-row input {
-  flex: 1;
-  min-width: 0;
-  font-size: 0.8rem;
-  padding: 0.4rem 0.6rem;
-}
-
-.member-device-row button {
-  flex-shrink: 0;
-  font-size: 0.8rem;
-  padding: 0.4rem 0.8rem;
-}
 
 .member-form-row {
   display: flex;

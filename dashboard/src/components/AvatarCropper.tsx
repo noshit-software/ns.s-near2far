@@ -32,6 +32,7 @@ export function AvatarCropper({
   const [natural, setNatural] = useState({ w: 0, h: 0 })
   const [zoom, setZoom] = useState(1)
   const [offset, setOffset] = useState<Point>({ x: 0, y: 0 })
+  const [error, setError] = useState<string | null>(null)
   const dragRef = useRef<{ startX: number; startY: number; origin: Point } | null>(null)
 
   function onImageLoad() {
@@ -70,23 +71,37 @@ export function AvatarCropper({
   function confirm() {
     const img = imgRef.current
     if (!img || natural.w === 0) return
+    setError(null)
 
-    const canvas = document.createElement("canvas")
-    canvas.width = OUTPUT_SIZE
-    canvas.height = OUTPUT_SIZE
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
+    try {
+      const canvas = document.createElement("canvas")
+      canvas.width = OUTPUT_SIZE
+      canvas.height = OUTPUT_SIZE
+      const ctx = canvas.getContext("2d")
+      if (!ctx) {
+        setError("Couldn't process the image — try a different photo.")
+        return
+      }
 
-    const k = OUTPUT_SIZE / PREVIEW_SIZE
-    const baseScale = Math.max(PREVIEW_SIZE / natural.w, PREVIEW_SIZE / natural.h)
-    const scale = baseScale * zoom
-    const drawW = natural.w * scale * k
-    const drawH = natural.h * scale * k
-    const drawX = OUTPUT_SIZE / 2 - drawW / 2 + offset.x * k
-    const drawY = OUTPUT_SIZE / 2 - drawH / 2 + offset.y * k
+      const k = OUTPUT_SIZE / PREVIEW_SIZE
+      const baseScale = Math.max(PREVIEW_SIZE / natural.w, PREVIEW_SIZE / natural.h)
+      const scale = baseScale * zoom
+      const drawW = natural.w * scale * k
+      const drawH = natural.h * scale * k
+      const drawX = OUTPUT_SIZE / 2 - drawW / 2 + offset.x * k
+      const drawY = OUTPUT_SIZE / 2 - drawH / 2 + offset.y * k
 
-    ctx.drawImage(img, drawX, drawY, drawW, drawH)
-    canvas.toBlob((blob) => blob && onConfirm(blob), "image/jpeg", 0.9)
+      ctx.drawImage(img, drawX, drawY, drawW, drawH)
+      canvas.toBlob((blob) => {
+        if (blob) {
+          onConfirm(blob)
+        } else {
+          setError("Couldn't save this photo — try uploading it again.")
+        }
+      }, "image/jpeg", 0.9)
+    } catch (e) {
+      setError((e as Error).message || "Couldn't save this photo — try uploading it again.")
+    }
   }
 
   const baseScale = natural.w > 0 ? Math.max(PREVIEW_SIZE / natural.w, PREVIEW_SIZE / natural.h) : 1
@@ -132,6 +147,7 @@ export function AvatarCropper({
           Save
         </button>
       </div>
+      {error && <p className="error">{error}</p>}
     </div>
   )
 }

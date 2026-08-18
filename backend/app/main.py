@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api import health, positions, push, setup, topics
+from app.api import health, positions, push, setup
 from app.config import settings
 from app.dashboard_stream import router as dashboard_stream_router
 from app.db import create_pool
@@ -31,7 +31,6 @@ app.add_middleware(
 )
 
 app.include_router(health.router)
-app.include_router(topics.router)
 app.include_router(setup.router)
 app.include_router(positions.router)
 app.include_router(push.router)

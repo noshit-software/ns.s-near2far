@@ -18,6 +18,11 @@ MIN_TRIP_DISTANCE_M = 50
 _state: dict[str, dict] = {}
 
 
+def forget_member(member_id: str) -> None:
+    """Called on member deletion so this doesn't grow unbounded over the life of the process."""
+    _state.pop(member_id, None)
+
+
 def _haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     r = 6371000
     p1, p2 = math.radians(lat1), math.radians(lat2)
