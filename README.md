@@ -308,7 +308,10 @@ backend changed" seemed true at the time:
 git pull
 cd dashboard && npm run build && cd ..
 pm2 restart near2far
-docker compose up -d --build   # traccar/any containerized services
+docker compose up -d --build traccar   # only traccar runs in Compose on the VPS — the
+                                        # backend/dashboard services in this compose file are
+                                        # for local dev only; don't start them here, they'll
+                                        # fight pm2/nginx for the same ports
 ```
 
 ### VPS deploy gotchas (learned the hard way)
