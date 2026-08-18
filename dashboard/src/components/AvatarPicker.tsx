@@ -2,6 +2,8 @@ import { useState } from "react"
 
 import { apiPost, apiUpload } from "../lib/api"
 import { generatedAvatarDataUri, randomSeed } from "../lib/avatar"
+import { AvatarCropper } from "./AvatarCropper"
+import { CloseIcon } from "./icons"
 
 type Member = {
   id: string
@@ -21,6 +23,7 @@ export function AvatarPicker({
   const [open, setOpen] = useState(false)
   const [candidates, setCandidates] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [cropUrl, setCropUrl] = useState<string | null>(null)
 
   const currentSrc = member.avatar_filename
     ? `/uploads/avatars/${member.avatar_filename}`
@@ -48,18 +51,29 @@ export function AvatarPicker({
     }
   }
 
-  async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+  function onFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
+    e.target.value = ""
     if (!file) return
     setError(null)
+    setCropUrl(URL.createObjectURL(file))
+  }
+
+  function cancelCrop() {
+    if (cropUrl) URL.revokeObjectURL(cropUrl)
+    setCropUrl(null)
+  }
+
+  async function confirmCrop(blob: Blob) {
+    setError(null)
     try {
+      const file = new File([blob], "avatar.jpg", { type: "image/jpeg" })
       const updated = await apiUpload<Member>(`/setup/members/${member.id}/avatar`, file)
       onUpdated(updated)
+      cancelCrop()
       setOpen(false)
     } catch (err) {
       setError((err as Error).message)
-    } finally {
-      e.target.value = ""
     }
   }
 
@@ -76,32 +90,47 @@ export function AvatarPicker({
           {/* Keyboard/screen-reader users get a real, focusable close control instead. */}
           <div className="avatar-picker-panel">
             <div className="avatar-picker-panel-header">
-              <span>Choose avatar</span>
-              <button type="button" className="avatar-picker-close" onClick={() => setOpen(false)}>
-                ✕
+              <span>{cropUrl ? "Adjust photo" : "Choose avatar"}</span>
+              <button
+                type="button"
+                className="avatar-picker-close"
+                onClick={cropUrl ? cancelCrop : () => setOpen(false)}
+              >
+                <CloseIcon />
               </button>
             </div>
-            <div className="avatar-picker-grid">
-              {candidates.map((seed) => (
-                <button
-                  key={seed}
-                  type="button"
-                  className="avatar-picker-option"
-                  onClick={() => pickSeed(seed)}
-                >
-                  <img src={generatedAvatarDataUri(seed)} alt="" />
-                </button>
-              ))}
-            </div>
-            <div className="avatar-picker-actions">
-              <button type="button" onClick={shuffle}>
-                Shuffle
-              </button>
-              <label className="avatar-picker-upload">
-                Upload photo
-                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadPhoto} />
-              </label>
-            </div>
+
+            {cropUrl ? (
+              <AvatarCropper imageUrl={cropUrl} onCancel={cancelCrop} onConfirm={confirmCrop} />
+            ) : (
+              <>
+                <div className="avatar-picker-grid">
+                  {candidates.map((seed) => (
+                    <button
+                      key={seed}
+                      type="button"
+                      className="avatar-picker-option"
+                      onClick={() => pickSeed(seed)}
+                    >
+                      <img src={generatedAvatarDataUri(seed)} alt="" />
+                    </button>
+                  ))}
+                </div>
+                <div className="avatar-picker-actions">
+                  <button type="button" onClick={shuffle}>
+                    Shuffle
+                  </button>
+                  <label className="avatar-picker-upload">
+                    Upload photo
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={onFileSelected}
+                    />
+                  </label>
+                </div>
+              </>
+            )}
             {error && <p className="error">{error}</p>}
           </div>
         </>

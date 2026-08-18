@@ -3,8 +3,10 @@ import { useEffect, useState } from "react"
 import { apiGet, apiPost, getAdminPassword, setAdminPassword } from "../lib/api"
 import { AvatarPicker } from "./AvatarPicker"
 import { FamilyMap } from "./FamilyMap"
+import { InfoIcon, MapIcon, SettingsIcon } from "./icons"
 import { LocationPicker } from "./LocationPicker"
 import { NotificationSetup } from "./NotificationSetup"
+import { PasswordInput } from "./PasswordInput"
 
 type Member = {
   id: string
@@ -36,6 +38,7 @@ export function SetupWizard() {
 
   const [memberName, setMemberName] = useState("")
   const [deviceInputs, setDeviceInputs] = useState<Record<string, string>>({})
+  const [showDeviceHint, setShowDeviceHint] = useState(false)
 
   useEffect(() => {
     apiGet<Household | null>("/setup/household")
@@ -144,11 +147,7 @@ export function SetupWizard() {
           </label>
           <label>
             Admin password
-            <input
-              type="password"
-              value={adminPassword}
-              onChange={(e) => setAdminPasswordInput(e.target.value)}
-            />
+            <PasswordInput value={adminPassword} onChange={setAdminPasswordInput} />
           </label>
           <LocationPicker
             value={homeLocation}
@@ -178,11 +177,7 @@ export function SetupWizard() {
           <h2>{household.name}</h2>
           <label>
             Admin password
-            <input
-              type="password"
-              value={loginPassword}
-              onChange={(e) => setLoginPassword(e.target.value)}
-            />
+            <PasswordInput value={loginPassword} onChange={setLoginPassword} />
           </label>
           <button onClick={submitLogin} disabled={!loginPassword}>
             Unlock
@@ -216,7 +211,29 @@ export function SetupWizard() {
               lockedByDefault
             />
 
-            <h3>Members</h3>
+            <div className="section-heading-row">
+              <h3>Members</h3>
+              <button
+                type="button"
+                className="info-toggle"
+                aria-label="About linking a device"
+                onClick={() => setShowDeviceHint(!showDeviceHint)}
+              >
+                <InfoIcon />
+              </button>
+            </div>
+            {showDeviceHint && (
+              <p className="hint">
+                For real phone GPS via{" "}
+                <a href="http://localhost:8082" target="_blank" rel="noreferrer">
+                  Traccar
+                </a>
+                : create a device there and give it any identifier you want — it's just a label,
+                not a real device number, e.g. <code>alex-phone</code> or{" "}
+                <code>drakuls-galaxy-s25</code>. Paste that exact same text into the Device ID
+                field below to link it to this member.
+              </p>
+            )}
             <ul>
               {household.members.map((m) => (
                 <li key={m.id} className="member-row">
@@ -235,15 +252,6 @@ export function SetupWizard() {
                 </li>
               ))}
             </ul>
-            <p className="hint">
-              For real phone GPS via{" "}
-              <a href="http://localhost:8082" target="_blank" rel="noreferrer">
-                Traccar
-              </a>
-              : create a device there and give it any identifier you want — it's just a label, not
-              a real device number, e.g. <code>alex-phone</code> or <code>drakuls-galaxy-s25</code>.
-              Paste that exact same text into the field below to link it to this member.
-            </p>
 
             <div className="member-form-row">
               <input
@@ -266,9 +274,7 @@ export function SetupWizard() {
           className={`tab-button ${!showSettings ? "active" : ""}`}
           onClick={() => setShowSettings(false)}
         >
-          <span className="tab-icon" aria-hidden="true">
-            🗺️
-          </span>
+          <MapIcon />
           Map
         </button>
         <button
@@ -276,9 +282,7 @@ export function SetupWizard() {
           className={`tab-button ${showSettings ? "active" : ""}`}
           onClick={() => setShowSettings(true)}
         >
-          <span className="tab-icon" aria-hidden="true">
-            ⚙️
-          </span>
+          <SettingsIcon />
           Settings
         </button>
       </nav>
