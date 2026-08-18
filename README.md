@@ -140,6 +140,13 @@ generated one. Photos are stored server-side under `backend/uploads/avatars/` (a
 locally; just a directory on the VPS since the backend runs bare via pm2) and served at
 `/uploads/avatars/<filename>`, proxied through nginx/vite same as `/api`.
 
+The backend caps uploads at 5MB, but **nginx's own default body-size limit is 1MB** and rejects
+anything bigger before the backend ever sees it, with an HTML error page instead of JSON (surfaces
+in the dashboard as a cryptic "Unexpected token '<'..." error). The dashboard's own `nginx.conf`
+sets `client_max_body_size 6M;`, but the VPS's site-block nginx config for `near2far.family` is a
+separate file (see "Traccar" section above for the pattern) and needs the same directive added by
+hand — it isn't picked up from this repo automatically.
+
 On the map, avatars render as circular markers, cropped via CSS (`background-image` +
 `border-radius: 50%`), with a per-member colored border/dot color derived deterministically from
 their member ID (see `dashboard/src/lib/avatar.ts`). Below zoom level 15 they shrink to a plain

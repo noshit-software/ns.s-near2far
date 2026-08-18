@@ -16,6 +16,12 @@ function authHeaders(): HeadersInit {
 }
 
 async function unwrap<T>(res: Response): Promise<T> {
+  if (!res.ok && !res.headers.get("content-type")?.includes("application/json")) {
+    // A non-JSON error body means something in front of the backend rejected the request
+    // (nginx body-size limit, a proxy timeout, etc.) rather than the app itself.
+    throw new Error(`Request failed (${res.status} ${res.statusText})`)
+  }
+
   const body = (await res.json()) as ApiResponse<T> | { detail: string }
   if ("success" in body) {
     if (!body.success) throw new Error(body.error)

@@ -348,7 +348,11 @@ h3 {
   position: relative;
 }
 
-.avatar-picker-current {
+/* Doubled-up class selectors below (.avatar-picker .avatar-picker-*) deliberately outweigh
+   the generic ".setup-wizard button" rule's specificity (0,1,1 vs. a bare class's 0,1,0),
+   which otherwise clobbers these buttons' padding/border-radius with its 8px/rect defaults. */
+
+.avatar-picker .avatar-picker-current {
   padding: 0;
   border: 2px solid var(--border);
   border-radius: 50%;
@@ -387,7 +391,7 @@ h3 {
   margin-bottom: 0.65rem;
 }
 
-.avatar-picker-option {
+.avatar-picker .avatar-picker-option {
   padding: 0;
   border: 2px solid transparent;
   border-radius: 50%;
@@ -413,7 +417,7 @@ h3 {
   gap: 0.5rem;
 }
 
-.avatar-picker-actions button,
+.avatar-picker .avatar-picker-actions button,
 .avatar-picker-upload {
   flex: 1;
   font: inherit;
@@ -430,6 +434,41 @@ h3 {
 
 .avatar-picker-upload input {
   display: none;
+}
+
+.avatar-picker-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+
+.avatar-picker-panel-header span {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.avatar-picker .avatar-picker-close {
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.avatar-picker .avatar-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  background: transparent;
+  border: none;
+  padding: 0;
 }
 
 .member-device-row {

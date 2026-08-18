@@ -70,30 +70,41 @@ export function AvatarPicker({
       </button>
 
       {open && (
-        <div className="avatar-picker-panel">
-          <div className="avatar-picker-grid">
-            {candidates.map((seed) => (
-              <button
-                key={seed}
-                type="button"
-                className="avatar-picker-option"
-                onClick={() => pickSeed(seed)}
-              >
-                <img src={generatedAvatarDataUri(seed)} alt="" />
+        <>
+          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
+          <div className="avatar-picker-backdrop" onClick={() => setOpen(false)} />
+          {/* Keyboard/screen-reader users get a real, focusable close control instead. */}
+          <div className="avatar-picker-panel">
+            <div className="avatar-picker-panel-header">
+              <span>Choose avatar</span>
+              <button type="button" className="avatar-picker-close" onClick={() => setOpen(false)}>
+                ✕
               </button>
-            ))}
+            </div>
+            <div className="avatar-picker-grid">
+              {candidates.map((seed) => (
+                <button
+                  key={seed}
+                  type="button"
+                  className="avatar-picker-option"
+                  onClick={() => pickSeed(seed)}
+                >
+                  <img src={generatedAvatarDataUri(seed)} alt="" />
+                </button>
+              ))}
+            </div>
+            <div className="avatar-picker-actions">
+              <button type="button" onClick={shuffle}>
+                Shuffle
+              </button>
+              <label className="avatar-picker-upload">
+                Upload photo
+                <input type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadPhoto} />
+              </label>
+            </div>
+            {error && <p className="error">{error}</p>}
           </div>
-          <div className="avatar-picker-actions">
-            <button type="button" onClick={shuffle}>
-              Shuffle
-            </button>
-            <label className="avatar-picker-upload">
-              Upload photo
-              <input type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadPhoto} />
-            </label>
-          </div>
-          {error && <p className="error">{error}</p>}
-        </div>
+        </>
       )}
     </div>
   )
