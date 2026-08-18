@@ -1,9 +1,11 @@
-from datetime import datetime
+import base64
+from datetime import datetime, timezone
 
 import structlog
-from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, Field
 
+from app.auth import verify_password
 from app.events import publish
 from app.middleware.auth import require_admin_auth
 from app.trips import on_position as _on_position
@@ -31,7 +33,7 @@ class OverlandGeometry(BaseModel):
 
 
 class OverlandProperties(BaseModel):
-    device_id: str
+    device_id: str | None = None
     timestamp: datetime | None = None
 
 
@@ -42,6 +44,14 @@ class OverlandLocation(BaseModel):
 
 class OverlandForward(BaseModel):
     locations: list[OverlandLocation]
+
+
+class OwnTracksLocation(BaseModel):
+    type_: str = Field(alias="_type")
+    lat: float
+    lon: float
+    tst: int | None = None  # unix seconds
+    tid: str | None = None  # tracker ID — used as our device_id
 
 
 def _position_dict(
@@ -159,6 +169,10 @@ async def overland_forward(body: OverlandForward, request: Request) -> dict:
     async with request.app.state.db_pool.acquire() as conn:
         for location in body.locations:
             device_id = location.properties.device_id
+            if device_id is None:
+                log.warning("overland_forward_missing_device_id")
+                continue
+
             member = await conn.fetchrow(
                 "SELECT id, household_id, display_name, avatar_filename, avatar_seed FROM substrate.members "
                 "WHERE device_id = $1",
@@ -182,3 +196,60 @@ async def overland_forward(body: OverlandForward, request: Request) -> dict:
             )
 
     return {"result": "ok"}
+
+
+async def _verify_owntracks_auth(conn, request: Request) -> None:
+    """OwnTracks' HTTP endpoint only supports HTTP Basic auth, not the Bearer scheme every
+    other endpoint here uses — so this can't reuse require_admin_auth. Username is ignored;
+    the password must match the household admin password, same credential as everywhere
+    else."""
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.startswith("Basic "):
+        raise HTTPException(status_code=401, detail="Missing Basic auth")
+
+    try:
+        decoded = base64.b64decode(auth_header.removeprefix("Basic ").strip()).decode()
+        _, _, password = decoded.partition(":")
+    except (ValueError, UnicodeDecodeError) as e:
+        raise HTTPException(status_code=401, detail="Invalid Basic auth") from e
+
+    household = await conn.fetchrow("SELECT admin_password_hash FROM substrate.households LIMIT 1")
+    if household is None or not verify_password(password, household["admin_password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+
+@router.post("/api/owntracks/forward")
+async def owntracks_forward(body: OwnTracksLocation, request: Request) -> dict:
+    """Receives OwnTracks' HTTP-mode location report — an alternative iOS/Android GPS client
+    to Overland, no forced batch-size floor. Maps to a member via `tid` (tracker ID), the same
+    role Traccar/Overland's device_id plays. Ignores non-location report types (OwnTracks also
+    posts 'transition'/'waypoint' events through the same endpoint)."""
+    async with request.app.state.db_pool.acquire() as conn:
+        await _verify_owntracks_auth(conn, request)
+
+        if body.type_ != "location" or body.tid is None:
+            return {}
+
+        member = await conn.fetchrow(
+            "SELECT id, household_id, display_name, avatar_filename, avatar_seed FROM substrate.members "
+            "WHERE device_id = $1",
+            body.tid,
+        )
+        if member is None:
+            log.info("owntracks_forward_unmapped_device", tid=body.tid)
+            return {}
+
+        recorded_at = datetime.fromtimestamp(body.tst, tz=timezone.utc) if body.tst else None
+        await _record_position(
+            conn,
+            str(member["id"]),
+            str(member["household_id"]),
+            member["display_name"],
+            member["avatar_filename"],
+            member["avatar_seed"],
+            body.lat,
+            body.lon,
+            recorded_at=recorded_at,
+        )
+
+    return {}
