@@ -155,6 +155,7 @@ async def overland_forward(body: OverlandForward, request: Request) -> dict:
     iOS). Overland sends the household admin password as its configured access token
     (Authorization: Bearer <password>). Silently no-ops for devices not yet assigned to a
     member. Responds in the shape Overland expects so it doesn't keep retrying."""
+    log.info("overland_forward_received", location_count=len(body.locations))
     async with request.app.state.db_pool.acquire() as conn:
         for location in body.locations:
             device_id = location.properties.device_id
