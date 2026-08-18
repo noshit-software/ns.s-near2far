@@ -55,6 +55,12 @@ docker compose up --build
 
 First build compiles Apache AGE from source (needs flex/bison, included in the db Dockerfile) — takes ~3 min.
 
+`backend/uv.lock` is committed and the Docker build installs from it with `--frozen` — every build
+gets the exact same dependency versions instead of whatever satisfies each package's `>=` range is
+newest that day. To add or upgrade a backend dependency: edit `pyproject.toml`, run `uv lock` from
+`backend/`, and commit the updated `uv.lock` alongside it — `--frozen` fails the build loudly if
+the two ever drift apart instead of silently re-resolving.
+
 ## Tests
 
 Backend unit tests (`backend/tests/`) cover the security-critical logic: password hashing,
@@ -96,6 +102,12 @@ stream the browser-geolocation reporting uses — both sources land in the same 
 `TRACCAR_FORWARD_URL` differs by deployment:
 - Local all-in-one docker-compose dev: `http://backend:8000/api/traccar/forward`
 - VPS (backend runs via pm2, not in this compose file): `http://host.docker.internal:5101/api/traccar/forward`
+
+This endpoint originally had no auth of its own at all, relying entirely on `ufw` never exposing
+it publicly — a single misconfigured firewall rule away from accepting fake position data from
+anyone. Set `TRACCAR_FORWARD_TOKEN` in `.env` to a random secret and append `?token=<same value>`
+to `TRACCAR_FORWARD_URL` (Traccar can't send custom headers, so the token has to live in the URL)
+to close that gap. Leave both blank to keep the old network-only behavior.
 
 ## iOS GPS: use OwnTracks, not Overland
 
@@ -305,6 +317,13 @@ a neighborhood.
   `backend_uploads` docker volume; on the VPS (bare pm2, no container) it's just a directory next to
   the app code — make sure it survives deploys (it's not in git) and that the pm2 process can write
   to it.
+- **The backend's Docker container runs as a non-root user (`appuser`, uid 1000) as of the
+  security audit.** This only affects local `docker compose` dev — the VPS runs the backend bare
+  via pm2, under whatever OS user pm2 itself runs as, entirely untouched by this. If you ever have
+  an *existing local* `backend_uploads` volume from before this change, its files are still
+  root-owned and need `docker compose down -v` (wipes and lets a fresh volume inherit the image's
+  ownership) or a manual `docker compose exec -u root backend chown -R appuser:appuser
+  /app/uploads`.
 - **A browser's "This page isn't working" screen isn't necessarily a connectivity failure** — check
   for a specific HTTP status code in the error page (e.g. "HTTP ERROR 400") before assuming DNS/
   firewall/network issues; that generic wrapper renders for any 4xx/5xx response with an empty body.

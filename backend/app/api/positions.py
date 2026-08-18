@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.auth import verify_password
+from app.config import settings
 from app.events import publish
 from app.middleware.auth import require_admin_auth
 from app.trips import on_position as _on_position
@@ -138,10 +139,17 @@ async def latest_positions(request: Request) -> dict:
 
 @router.post("/api/traccar/forward")
 async def traccar_forward(body: TraccarForward, request: Request) -> dict:
-    """Receives Traccar's position-forwarding webhook (forward.type=json). No admin auth —
-    only reachable from the traccar container / host, never exposed publicly. Silently
-    no-ops for devices not yet assigned to a member, since Traccar has no useful way to
-    react to an error here and would otherwise retry forever."""
+    """Receives Traccar's position-forwarding webhook (forward.type=json). Traccar can't send
+    custom auth headers, so if TRACCAR_FORWARD_TOKEN is set, it must be baked into
+    TRACCAR_FORWARD_URL as a query param and is checked here — this endpoint otherwise relied
+    entirely on network-level firewalling (ufw) never exposing it publicly, a single point of
+    failure if that rule is ever missing. Silently no-ops for devices not yet assigned to a
+    member, since Traccar has no useful way to react to an error here and would otherwise retry
+    forever."""
+    if settings.traccar_forward_token:
+        if request.query_params.get("token") != settings.traccar_forward_token:
+            raise HTTPException(status_code=401, detail="Invalid or missing token")
+
     async with request.app.state.db_pool.acquire() as conn:
         member = await conn.fetchrow(
             "SELECT id, household_id, display_name, avatar_filename, avatar_seed, color FROM substrate.members "
