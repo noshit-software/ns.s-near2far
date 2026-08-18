@@ -198,18 +198,20 @@ async def overland_forward(body: OverlandForward, request: Request) -> dict:
     return {"result": "ok"}
 
 
-async def _verify_owntracks_auth(conn, request: Request) -> None:
+async def _verify_owntracks_auth(conn, request: Request) -> str:
     """OwnTracks' HTTP endpoint only supports HTTP Basic auth, not the Bearer scheme every
-    other endpoint here uses — so this can't reuse require_admin_auth. Username is ignored;
-    the password must match the household admin password, same credential as everywhere
-    else."""
+    other endpoint here uses — so this can't reuse require_admin_auth. The password must
+    match the household admin password, same credential as everywhere else. The username is
+    returned (not just discarded) since it doubles as our device_id — OwnTracks' own
+    "Tracker ID" field is capped at 2 characters by the app itself, too short to be a
+    meaningful identifier, but the Basic auth username has no such limit."""
     auth_header = request.headers.get("authorization", "")
     if not auth_header.startswith("Basic "):
         raise HTTPException(status_code=401, detail="Missing Basic auth")
 
     try:
         decoded = base64.b64decode(auth_header.removeprefix("Basic ").strip()).decode()
-        _, _, password = decoded.partition(":")
+        username, _, password = decoded.partition(":")
     except (ValueError, UnicodeDecodeError) as e:
         raise HTTPException(status_code=401, detail="Invalid Basic auth") from e
 
@@ -217,26 +219,29 @@ async def _verify_owntracks_auth(conn, request: Request) -> None:
     if household is None or not verify_password(password, household["admin_password_hash"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    return username
+
 
 @router.post("/api/owntracks/forward")
 async def owntracks_forward(body: OwnTracksLocation, request: Request) -> dict:
     """Receives OwnTracks' HTTP-mode location report — an alternative iOS/Android GPS client
-    to Overland, no forced batch-size floor. Maps to a member via `tid` (tracker ID), the same
-    role Traccar/Overland's device_id plays. Ignores non-location report types (OwnTracks also
+    to Overland, no forced batch-size floor. Maps to a member via the Basic auth username
+    (see _verify_owntracks_auth), not `tid` — OwnTracks' 2-character Tracker ID field is too
+    short to be a meaningful device_id. Ignores non-location report types (OwnTracks also
     posts 'transition'/'waypoint' events through the same endpoint)."""
     async with request.app.state.db_pool.acquire() as conn:
-        await _verify_owntracks_auth(conn, request)
+        username = await _verify_owntracks_auth(conn, request)
 
-        if body.type_ != "location" or body.tid is None:
+        if body.type_ != "location":
             return {}
 
         member = await conn.fetchrow(
             "SELECT id, household_id, display_name, avatar_filename, avatar_seed FROM substrate.members "
             "WHERE device_id = $1",
-            body.tid,
+            username,
         )
         if member is None:
-            log.info("owntracks_forward_unmapped_device", tid=body.tid)
+            log.info("owntracks_forward_unmapped_device", username=username)
             return {}
 
         recorded_at = datetime.fromtimestamp(body.tst, tz=timezone.utc) if body.tst else None
