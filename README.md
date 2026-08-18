@@ -10,15 +10,20 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   `GET /api/positions/latest` for current per-member position, `POST /api/traccar/forward` — receives
   Traccar's position-forwarding webhook and maps it to a member via the source-agnostic `device_id`
   column — and `POST /api/overland/forward`, the same mapping for the [Overland](https://overland.p3k.app/)
-  iOS app (Traccar Client is unreliable on iOS; Overland is the iPhone GPS source).
+  iOS app (Traccar Client is unreliable on iOS; Overland is the iPhone GPS source). Every recorded
+  position also runs through `app/trips.py`'s in-memory per-member trip detector (speed-based:
+  moving/stationary thresholds, walking vs driving by average speed over the trip) — on trip end it
+  sends a Web Push notification ("Alex stopped — finished driving, 4.2 km in 9 min, avg 28 km/h") to
+  every browser subscribed via `POST /api/push/subscribe`. See "Trip alerts" below.
 - **dashboard/** — React+Vite PWA. Once a household exists, the live family map is the default view:
   every member's latest reported position (currently via Traccar/real phone GPS) renders on a shared
   map, live-updated over the existing WebSocket event stream, with a row of "snap to" buttons below
-  the map to quickly center on any member. A "Settings" button opens household/member management (home
-  geofence via a Leaflet map you click to place a pin, member list, per-member device linking). No
-  address search — Nominatim's free geocoder wasn't reliable enough at house-level precision to be
-  worth the confusion. No trust tiers — every member sees every other member's exact location; that's
-  the whole point for a family-safety use case. Place alerts are still a placeholder.
+  the map to quickly center on any member, and an "Enable trip alerts" button that subscribes the
+  browser to Web Push. A "Settings" button opens household/member management (home geofence via a
+  Leaflet map you click to place a pin, member list, per-member device linking). No address search —
+  Nominatim's free geocoder wasn't reliable enough at house-level precision to be worth the confusion.
+  No trust tiers — every member sees every other member's exact location; that's the whole point for a
+  family-safety use case. Place alerts (geofence-based) are still a placeholder.
 - **db/** — Postgres 16 + pgvector + Apache AGE
 - **traccar** — official `traccar/traccar` image, own embedded database (unrelated to the Postgres
   above). Web UI + REST API on :8082 (localhost-only — reach it via an nginx-proxied subdomain, e.g.
@@ -78,6 +83,33 @@ dependency the dashboard API uses).
    - **Device ID**: the same identifier you set in Settings
 3. Overland forwards location batches from then on; the backend maps each by `device_id` and pushes
    it to the family map over the same WebSocket stream Traccar and browser-geolocation use.
+
+## Trip alerts (Web Push)
+
+Every position recorded via Traccar or Overland feeds `app/trips.py`'s per-member trip detector:
+speed above ~0.8 m/s (1.8 mph) starts a trip, stopping for 3+ minutes ends it, and the trip is
+classified as driving vs walking by its average speed. On trip end, every browser that's enabled
+alerts gets a push notification with distance/duration/avg speed. State is in-memory only — a
+backend restart mid-trip just costs one missed alert, not persisted history.
+
+1. On an existing install (VPS), the `db/init/*.sql` scripts only run once — the new
+   `substrate.push_subscriptions` table needs a manual migration:
+   `docker compose exec db psql -U near2far -d near2far -f /docker-entrypoint-initdb.d/02-schema.sql`
+   is safe to rerun (every statement is `CREATE TABLE IF NOT EXISTS`).
+2. Generate a VAPID keypair (from `backend/`): `uv run --with pywebpush python -c "..."` (or any
+   VAPID keygen tool) — you need the raw base64url public/private key bytes, not PEM. Paste them into
+   `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` in `.env`.
+3. Restart the backend so it picks up the keys (`pm2 restart near2far` on the VPS, `docker compose up
+   -d backend` locally).
+4. In the dashboard, click **Enable trip alerts** (appears above the map once a household exists) and
+   accept the browser's notification permission prompt. This POSTs the browser's push subscription to
+   `/api/push/subscribe`, authenticated with the admin password like every other settings write.
+5. Dead subscriptions (uninstalled PWA, revoked permission) are pruned automatically the next time a
+   push to them 404s/410s.
+
+Leaving `VAPID_PRIVATE_KEY` blank disables push entirely — the trip detector still runs (harmless) but
+`send_push_to_household` no-ops, and the dashboard's enable button hides itself once it sees no key
+returned from `/api/push/vapid-public-key`.
 
 ### VPS deploy gotchas (learned the hard way)
 

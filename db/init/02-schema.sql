@@ -32,3 +32,15 @@ CREATE TABLE IF NOT EXISTS runtime.positions (
   lng DOUBLE PRECISION NOT NULL,
   recorded_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Web Push subscriptions for the household's dashboard (browser push, e.g. trip-end alerts).
+-- Household-wide, not per-member: whoever has the dashboard unlocked on a given browser
+-- subscribes that browser, matching the single shared-admin-password auth model.
+CREATE TABLE IF NOT EXISTS substrate.push_subscriptions (
+  id BIGSERIAL PRIMARY KEY,
+  household_id UUID NOT NULL REFERENCES substrate.households(id),
+  endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

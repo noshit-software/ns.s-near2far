@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import { apiGet, apiPost, getAdminPassword, setAdminPassword } from "../lib/api"
 import { FamilyMap } from "./FamilyMap"
 import { LocationPicker } from "./LocationPicker"
+import { NotificationSetup } from "./NotificationSetup"
 
 type Member = {
   id: string
@@ -186,6 +187,7 @@ export function SetupWizard() {
             Settings
           </button>
         </div>
+        <NotificationSetup />
         <FamilyMap household={household} />
       </div>
     )

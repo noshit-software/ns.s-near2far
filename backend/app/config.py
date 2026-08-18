@@ -10,5 +10,9 @@ class Settings(BaseSettings):
     postgres_pass: str
     postgres_db: str
 
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
+    vapid_claims_sub: str = "mailto:admin@near2far.family"
+
 
 settings = Settings()

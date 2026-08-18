@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from app.events import publish
 from app.middleware.auth import require_admin_auth
+from app.trips import on_position as _on_position
 
 router = APIRouter()
 log = structlog.get_logger(__name__)
@@ -47,7 +48,9 @@ def _position_dict(row) -> dict:
     return data
 
 
-async def _record_position(conn, member_id: str, lat: float, lng: float) -> dict:
+async def _record_position(
+    conn, member_id: str, household_id: str, display_name: str, lat: float, lng: float
+) -> dict:
     row = await conn.fetchrow(
         "INSERT INTO runtime.positions (member_id, lat, lng) VALUES ($1, $2, $3) "
         "RETURNING id, member_id, lat, lng, recorded_at",
@@ -57,6 +60,7 @@ async def _record_position(conn, member_id: str, lat: float, lng: float) -> dict
     )
     data = _position_dict(row)
     await publish("position.updated", data)
+    await _on_position(conn, member_id, display_name, household_id, lat, lng, row["recorded_at"])
     return data
 
 
@@ -86,14 +90,22 @@ async def traccar_forward(body: TraccarForward, request: Request) -> dict:
     no-ops for devices not yet assigned to a member, since Traccar has no useful way to
     react to an error here and would otherwise retry forever."""
     async with request.app.state.db_pool.acquire() as conn:
-        member_id = await conn.fetchval(
-            "SELECT id FROM substrate.members WHERE device_id = $1", body.device.uniqueId
+        member = await conn.fetchrow(
+            "SELECT id, household_id, display_name FROM substrate.members WHERE device_id = $1",
+            body.device.uniqueId,
         )
-        if member_id is None:
+        if member is None:
             log.info("traccar_forward_unmapped_device", unique_id=body.device.uniqueId)
             return {"success": True, "data": None}
 
-        await _record_position(conn, str(member_id), body.position.latitude, body.position.longitude)
+        await _record_position(
+            conn,
+            str(member["id"]),
+            str(member["household_id"]),
+            member["display_name"],
+            body.position.latitude,
+            body.position.longitude,
+        )
 
     return {"success": True, "data": None}
 
@@ -107,14 +119,17 @@ async def overland_forward(body: OverlandForward, request: Request) -> dict:
     async with request.app.state.db_pool.acquire() as conn:
         for location in body.locations:
             device_id = location.properties.device_id
-            member_id = await conn.fetchval(
-                "SELECT id FROM substrate.members WHERE device_id = $1", device_id
+            member = await conn.fetchrow(
+                "SELECT id, household_id, display_name FROM substrate.members WHERE device_id = $1",
+                device_id,
             )
-            if member_id is None:
+            if member is None:
                 log.info("overland_forward_unmapped_device", device_id=device_id)
                 continue
 
             lon, lat = location.geometry.coordinates[0], location.geometry.coordinates[1]
-            await _record_position(conn, str(member_id), lat, lon)
+            await _record_position(
+                conn, str(member["id"]), str(member["household_id"]), member["display_name"], lat, lon
+            )
 
     return {"result": "ok"}
