@@ -298,6 +298,19 @@ their member ID (see `dashboard/src/lib/avatar.ts`). Below zoom level 15 they sh
 colored dot — a full avatar reads as visual noise once the map is showing a whole city rather than
 a neighborhood.
 
+### VPS deploy sequence
+
+Run the same four steps every time, in this order, regardless of which files changed — the
+gotchas below are all cases of skipping one because "only the frontend changed" or "only the
+backend changed" seemed true at the time:
+
+```bash
+git pull
+cd dashboard && npm run build && cd ..
+pm2 restart near2far
+docker compose up -d --build   # traccar/any containerized services
+```
+
 ### VPS deploy gotchas (learned the hard way)
 
 - **`git pull` alone does nothing for the running backend.** `pm2` doesn't hot-reload — after
