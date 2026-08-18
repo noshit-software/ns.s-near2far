@@ -54,6 +54,23 @@ docker compose up --build
 
 First build compiles Apache AGE from source (needs flex/bison, included in the db Dockerfile) — takes ~3 min.
 
+## Tests
+
+Backend unit tests (`backend/tests/`) cover the security-critical logic: password hashing,
+`require_admin_auth`, OwnTracks' Basic-auth handling, the null-island rejection and
+explicit-timestamp behavior in `_record_position`, and the trip-detection state machine. They run
+against fake asyncpg-shaped connection objects (`tests/conftest.py`'s `FakeConn`), not a real
+Postgres — fast, no Docker needed, safe to run in CI.
+
+```bash
+cd backend
+uv sync
+uv run pytest -v
+```
+
+Runs automatically on every push/PR via `.github/workflows/backend-tests.yml`. No frontend test
+framework is set up yet (dashboard has no Vitest/Jest).
+
 ## Traccar (real phone GPS)
 
 The web UI (:8082) is bound to `127.0.0.1` in `docker-compose.yml`, not exposed publicly — reach it
