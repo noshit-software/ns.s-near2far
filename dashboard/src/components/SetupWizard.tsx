@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react"
 
 import { apiGet, apiPost, getAdminPassword, setAdminPassword } from "../lib/api"
-import { AvatarPicker } from "./AvatarPicker"
+import { generatedAvatarDataUri } from "../lib/avatar"
 import { FamilyMap } from "./FamilyMap"
 import { InfoIcon, MapIcon, SettingsIcon } from "./icons"
 import { LocationPicker } from "./LocationPicker"
+import { MemberEditModal } from "./MemberEditModal"
 import { NotificationSetup } from "./NotificationSetup"
 import { PasswordInput } from "./PasswordInput"
 
@@ -14,6 +15,7 @@ type Member = {
   device_id: string | null
   avatar_filename: string | null
   avatar_seed: string
+  color: string | null
 }
 
 type Household = {
@@ -37,8 +39,8 @@ export function SetupWizard() {
   const [loginPassword, setLoginPassword] = useState("")
 
   const [memberName, setMemberName] = useState("")
-  const [deviceInputs, setDeviceInputs] = useState<Record<string, string>>({})
   const [showDeviceHint, setShowDeviceHint] = useState(false)
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null)
 
   useEffect(() => {
     apiGet<Household | null>("/setup/household")
@@ -97,20 +99,10 @@ export function SetupWizard() {
     })
   }
 
-  async function saveMemberDevice(memberId: string) {
+  function removeMember(memberId: string) {
     if (!household) return
-    setError(null)
-    try {
-      const updated = await apiPost<Member>(`/setup/members/${memberId}/device`, {
-        device_id: deviceInputs[memberId]?.trim() || null,
-      })
-      setHousehold({
-        ...household,
-        members: household.members.map((m) => (m.id === memberId ? updated : m)),
-      })
-    } catch (e) {
-      setError((e as Error).message)
-    }
+    setHousehold({ ...household, members: household.members.filter((m) => m.id !== memberId) })
+    setEditingMemberId(null)
   }
 
   async function submitMember() {
@@ -237,21 +229,39 @@ export function SetupWizard() {
             <ul>
               {household.members.map((m) => (
                 <li key={m.id} className="member-row">
-                  <div className="member-row-header">
-                    <AvatarPicker member={m} onUpdated={updateMember} />
-                    <span>{m.display_name}</span>
-                  </div>
-                  <div className="member-device-row">
-                    <input
-                      value={deviceInputs[m.id] ?? m.device_id ?? ""}
-                      onChange={(e) => setDeviceInputs({ ...deviceInputs, [m.id]: e.target.value })}
-                      placeholder="Device ID"
+                  <button
+                    type="button"
+                    className="member-row-header member-row-edit-trigger"
+                    onClick={() => setEditingMemberId(m.id)}
+                  >
+                    <img
+                      className="member-row-avatar"
+                      src={
+                        m.avatar_filename
+                          ? `/uploads/avatars/${m.avatar_filename}`
+                          : generatedAvatarDataUri(m.avatar_seed)
+                      }
+                      alt=""
                     />
-                    <button onClick={() => saveMemberDevice(m.id)}>Save</button>
-                  </div>
+                    <span>{m.display_name}</span>
+                    <span className="member-row-edit-hint">Edit</span>
+                  </button>
                 </li>
               ))}
             </ul>
+
+            {editingMemberId &&
+              (() => {
+                const editing = household.members.find((m) => m.id === editingMemberId)
+                return editing ? (
+                  <MemberEditModal
+                    member={editing}
+                    onUpdated={updateMember}
+                    onDeleted={removeMember}
+                    onClose={() => setEditingMemberId(null)}
+                  />
+                ) : null
+              })()}
 
             <div className="member-form-row">
               <input

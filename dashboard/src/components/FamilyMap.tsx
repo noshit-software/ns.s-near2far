@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react"
 import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from "react-leaflet"
 
 import { apiGet } from "../lib/api"
-import { generatedAvatarDataUri, memberColor } from "../lib/avatar"
+import { generatedAvatarDataUri, resolveMemberColor } from "../lib/avatar"
 import { useEventStream } from "../lib/ws"
 
 type Household = {
@@ -19,6 +19,7 @@ type Position = {
   display_name: string
   avatar_filename: string | null
   avatar_seed: string
+  color: string | null
   lat: number
   lng: number
   recorded_at: string
@@ -29,7 +30,7 @@ type Position = {
 const AVATAR_ZOOM_THRESHOLD = 15
 
 function memberIcon(p: Position, zoom: number): L.DivIcon {
-  const color = memberColor(p.member_id)
+  const color = resolveMemberColor({ id: p.member_id, color: p.color })
 
   if (zoom < AVATAR_ZOOM_THRESHOLD) {
     return L.divIcon({

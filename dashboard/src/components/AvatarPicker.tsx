@@ -11,6 +11,7 @@ type Member = {
   device_id: string | null
   avatar_filename: string | null
   avatar_seed: string
+  color: string | null
 }
 
 export function AvatarPicker({

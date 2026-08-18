@@ -54,6 +54,11 @@ class SetMemberAvatarSeed(BaseModel):
     avatar_seed: str
 
 
+class UpdateMember(BaseModel):
+    display_name: str | None = None
+    color: str | None = None
+
+
 class VerifyPassword(BaseModel):
     password: str
 
@@ -68,7 +73,7 @@ async def get_household(request: Request) -> dict:
             return {"success": True, "data": None}
 
         members = await conn.fetch(
-            "SELECT id, display_name, device_id, avatar_filename, avatar_seed FROM substrate.members "
+            "SELECT id, display_name, device_id, avatar_filename, avatar_seed, color FROM substrate.members "
             "WHERE household_id = $1",
             household["id"],
         )
@@ -145,7 +150,7 @@ async def create_member(body: CreateMember, request: Request) -> dict:
 
         row = await conn.fetchrow(
             "INSERT INTO substrate.members (household_id, display_name) VALUES ($1, $2) "
-            "RETURNING id, display_name, device_id, avatar_filename, avatar_seed",
+            "RETURNING id, display_name, device_id, avatar_filename, avatar_seed, color",
             body.household_id,
             body.display_name,
         )
@@ -161,7 +166,7 @@ async def set_member_device(member_id: str, body: SetMemberDevice, request: Requ
         try:
             row = await conn.fetchrow(
                 "UPDATE substrate.members SET device_id = $1 WHERE id = $2 "
-                "RETURNING id, display_name, device_id, avatar_filename, avatar_seed",
+                "RETURNING id, display_name, device_id, avatar_filename, avatar_seed, color",
                 body.device_id,
                 member_id,
             )
@@ -178,6 +183,46 @@ async def set_member_device(member_id: str, body: SetMemberDevice, request: Requ
     return {"success": True, "data": data}
 
 
+@router.post("/api/setup/members/{member_id}", dependencies=[Depends(require_admin_auth)])
+async def update_member(member_id: str, body: UpdateMember, request: Request) -> dict:
+    """Renames a member and/or sets their custom map marker color. Both fields optional —
+    only what's provided gets updated (COALESCE keeps the rest as-is)."""
+    async with request.app.state.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "UPDATE substrate.members SET "
+            "display_name = COALESCE($1, display_name), color = COALESCE($2, color) "
+            "WHERE id = $3 "
+            "RETURNING id, display_name, device_id, avatar_filename, avatar_seed, color",
+            body.display_name,
+            body.color,
+            member_id,
+        )
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    data = {**dict(row), "id": str(row["id"])}
+    await publish("member.updated", data)
+    return {"success": True, "data": data}
+
+
+@router.delete("/api/setup/members/{member_id}", dependencies=[Depends(require_admin_auth)])
+async def delete_member(member_id: str, request: Request) -> dict:
+    async with request.app.state.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "DELETE FROM substrate.members WHERE id = $1 RETURNING id, avatar_filename", member_id
+        )
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    if row["avatar_filename"]:
+        (AVATAR_DIR / row["avatar_filename"]).unlink(missing_ok=True)
+
+    await publish("member.deleted", {"id": str(row["id"])})
+    return {"success": True, "data": None}
+
+
 @router.post("/api/setup/members/{member_id}/avatar-seed", dependencies=[Depends(require_admin_auth)])
 async def set_member_avatar_seed(member_id: str, body: SetMemberAvatarSeed, request: Request) -> dict:
     """Picks a new generated placeholder avatar (see dashboard's @dicebear picker). Ignored
@@ -185,7 +230,7 @@ async def set_member_avatar_seed(member_id: str, body: SetMemberAvatarSeed, requ
     async with request.app.state.db_pool.acquire() as conn:
         row = await conn.fetchrow(
             "UPDATE substrate.members SET avatar_seed = $1 WHERE id = $2 "
-            "RETURNING id, display_name, device_id, avatar_filename, avatar_seed",
+            "RETURNING id, display_name, device_id, avatar_filename, avatar_seed, color",
             body.avatar_seed,
             member_id,
         )
@@ -219,7 +264,7 @@ async def upload_member_avatar(member_id: str, file: UploadFile, request: Reques
 
         row = await conn.fetchrow(
             "UPDATE substrate.members SET avatar_filename = $1 WHERE id = $2 "
-            "RETURNING id, display_name, device_id, avatar_filename, avatar_seed",
+            "RETURNING id, display_name, device_id, avatar_filename, avatar_seed, color",
             filename,
             member_id,
         )

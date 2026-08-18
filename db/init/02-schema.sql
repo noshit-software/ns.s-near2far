@@ -29,12 +29,15 @@ CREATE TABLE IF NOT EXISTS substrate.members (
   -- Seed for a locally-generated placeholder avatar (dashboard renders it via @dicebear, no
   -- network calls). Randomly assigned at creation; the member can reroll it in Settings.
   avatar_seed TEXT NOT NULL DEFAULT substr(md5(random()::text || clock_timestamp()::text), 1, 10),
+  -- User-chosen map marker color (hex, e.g. "#5b8cff"). NULL falls back to a color hashed
+  -- deterministically from the member's id (see dashboard's lib/avatar.ts memberColor).
+  color TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS runtime.positions (
   id BIGSERIAL PRIMARY KEY,
-  member_id UUID NOT NULL REFERENCES substrate.members(id),
+  member_id UUID NOT NULL REFERENCES substrate.members(id) ON DELETE CASCADE,
   lat DOUBLE PRECISION NOT NULL,
   lng DOUBLE PRECISION NOT NULL,
   recorded_at TIMESTAMPTZ NOT NULL DEFAULT now()

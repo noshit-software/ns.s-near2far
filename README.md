@@ -128,6 +128,17 @@ Leaving `VAPID_PRIVATE_KEY` blank disables push entirely — the trip detector s
 `send_push_to_household` no-ops, and the dashboard's enable button hides itself once it sees no key
 returned from `/api/push/vapid-public-key`.
 
+## Editing a member
+
+Tapping a member's row in Settings opens a bottom-sheet **Edit member** modal — the one place
+for everything about that member: avatar (see below), rename (`POST /api/setup/members/{id}`,
+partial update via `COALESCE` — also handles color, since both are optional fields on the same
+row), an 8-color preset picker for their map marker (`color` column; falls back to a color
+hashed from the member's id when unset, see `resolveMemberColor` in `dashboard/src/lib/
+avatar.ts`), Device ID, and **Remove member** (`DELETE /api/setup/members/{id}`, behind a
+confirm step) — which also deletes their uploaded avatar file and cascades their position
+history (`positions.member_id` has `ON DELETE CASCADE`).
+
 ## Member avatars
 
 Every member gets a randomly-assigned placeholder avatar at creation (`avatar_seed`, a random
@@ -168,8 +179,13 @@ a neighborhood.
   subnets without opening the port publicly).
 - **`db/init/*.sql` only runs once**, when a Postgres volume is first created. Schema changes added
   after that need a manual `ALTER TABLE`/`docker compose down -v` — a plain `git pull` doesn't apply
-  them to an already-running database. `avatar_filename`/`avatar_seed` on `substrate.members` and
-  `substrate.push_subscriptions` are both examples of columns/tables added after initial release.
+  them to an already-running database. `avatar_filename`/`avatar_seed`/`color` on
+  `substrate.members` and `substrate.push_subscriptions` are all examples of columns/tables added
+  after initial release. `color` needs `ALTER TABLE substrate.members ADD COLUMN IF NOT EXISTS
+  color TEXT;` on an existing install; `positions.member_id`'s `ON DELETE CASCADE` needs `ALTER
+  TABLE runtime.positions DROP CONSTRAINT positions_member_id_fkey, ADD CONSTRAINT
+  positions_member_id_fkey FOREIGN KEY (member_id) REFERENCES substrate.members(id) ON DELETE
+  CASCADE;` (dropping/re-adding is the only way to change an existing FK's delete behavior).
 - **Member photo uploads need `backend/uploads/` to persist and be writable.** Locally that's the
   `backend_uploads` docker volume; on the VPS (bare pm2, no container) it's just a directory next to
   the app code — make sure it survives deploys (it's not in git) and that the pm2 process can write

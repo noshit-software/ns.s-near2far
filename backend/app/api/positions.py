@@ -55,13 +55,19 @@ class OwnTracksLocation(BaseModel):
 
 
 def _position_dict(
-    member_id: str, display_name: str, avatar_filename: str | None, avatar_seed: str, row
+    member_id: str,
+    display_name: str,
+    avatar_filename: str | None,
+    avatar_seed: str,
+    color: str | None,
+    row,
 ) -> dict:
     return {
         "member_id": member_id,
         "display_name": display_name,
         "avatar_filename": avatar_filename,
         "avatar_seed": avatar_seed,
+        "color": color,
         "lat": row["lat"],
         "lng": row["lng"],
         "recorded_at": row["recorded_at"].isoformat(),
@@ -75,6 +81,7 @@ async def _record_position(
     display_name: str,
     avatar_filename: str | None,
     avatar_seed: str,
+    color: str | None,
     lat: float,
     lng: float,
     recorded_at: datetime | None = None,
@@ -104,7 +111,7 @@ async def _record_position(
             lat,
             lng,
         )
-    data = _position_dict(member_id, display_name, avatar_filename, avatar_seed, row)
+    data = _position_dict(member_id, display_name, avatar_filename, avatar_seed, color, row)
     await publish("position.updated", data)
     await _on_position(conn, member_id, display_name, household_id, lat, lng, row["recorded_at"])
     return data
@@ -116,7 +123,7 @@ async def latest_positions(request: Request) -> dict:
         rows = await conn.fetch(
             """
             SELECT DISTINCT ON (p.member_id)
-                p.member_id, m.display_name, m.avatar_filename, m.avatar_seed, p.lat, p.lng, p.recorded_at
+                p.member_id, m.display_name, m.avatar_filename, m.avatar_seed, m.color, p.lat, p.lng, p.recorded_at
             FROM runtime.positions p
             JOIN substrate.members m ON m.id = p.member_id
             ORDER BY p.member_id, p.recorded_at DESC
@@ -137,7 +144,7 @@ async def traccar_forward(body: TraccarForward, request: Request) -> dict:
     react to an error here and would otherwise retry forever."""
     async with request.app.state.db_pool.acquire() as conn:
         member = await conn.fetchrow(
-            "SELECT id, household_id, display_name, avatar_filename, avatar_seed FROM substrate.members "
+            "SELECT id, household_id, display_name, avatar_filename, avatar_seed, color FROM substrate.members "
             "WHERE device_id = $1",
             body.device.uniqueId,
         )
@@ -152,6 +159,7 @@ async def traccar_forward(body: TraccarForward, request: Request) -> dict:
             member["display_name"],
             member["avatar_filename"],
             member["avatar_seed"],
+            member["color"],
             body.position.latitude,
             body.position.longitude,
         )
@@ -174,7 +182,7 @@ async def overland_forward(body: OverlandForward, request: Request) -> dict:
                 continue
 
             member = await conn.fetchrow(
-                "SELECT id, household_id, display_name, avatar_filename, avatar_seed FROM substrate.members "
+                "SELECT id, household_id, display_name, avatar_filename, avatar_seed, color FROM substrate.members "
                 "WHERE device_id = $1",
                 device_id,
             )
@@ -190,6 +198,7 @@ async def overland_forward(body: OverlandForward, request: Request) -> dict:
                 member["display_name"],
                 member["avatar_filename"],
                 member["avatar_seed"],
+                member["color"],
                 lat,
                 lon,
                 recorded_at=location.properties.timestamp,
@@ -236,7 +245,7 @@ async def owntracks_forward(body: OwnTracksLocation, request: Request) -> dict:
             return {}
 
         member = await conn.fetchrow(
-            "SELECT id, household_id, display_name, avatar_filename, avatar_seed FROM substrate.members "
+            "SELECT id, household_id, display_name, avatar_filename, avatar_seed, color FROM substrate.members "
             "WHERE device_id = $1",
             username,
         )
@@ -252,6 +261,7 @@ async def owntracks_forward(body: OwnTracksLocation, request: Request) -> dict:
             member["display_name"],
             member["avatar_filename"],
             member["avatar_seed"],
+            member["color"],
             body.lat,
             body.lon,
             recorded_at=recorded_at,
