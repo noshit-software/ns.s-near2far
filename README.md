@@ -9,9 +9,9 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
 - **backend/** — FastAPI, event bus, WebSocket stream to dashboard, setup API (household + members),
   `GET /api/positions/latest` for current per-member position, `POST /api/traccar/forward` — receives
   Traccar's position-forwarding webhook and maps it to a member via the source-agnostic `device_id`
-  column — and `POST /api/overland/forward`, the same mapping for the [Overland](https://overland.p3k.app/)
-  iOS app (Traccar Client is unreliable on iOS; Overland is the iPhone GPS source). Every recorded
-  position also runs through `app/trips.py`'s in-memory per-member trip detector (speed-based:
+  column — `POST /api/overland/forward` (deprecated in practice, see "iOS GPS" below — kept working
+  but not recommended), and `POST /api/owntracks/forward`, the recommended iOS GPS source. Every
+  recorded position also runs through `app/trips.py`'s in-memory per-member trip detector (speed-based:
   moving/stationary thresholds, walking vs driving by average speed over the trip) — on trip end it
   sends a Web Push notification ("Alex stopped — finished driving, 4.2 km in 9 min, avg 28 km/h") to
   every browser subscribed via `POST /api/push/subscribe`. See "Trip alerts" below. Members also have
@@ -29,8 +29,9 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   existing WebSocket event stream, with a floating row of "snap to" pills (each with a small avatar)
   over the bottom of the map to quickly center on any member, and an "Enable trip alerts" banner that
   subscribes the browser to Web Push. The **Settings** tab has household/member management (home
-  geofence via a Leaflet map you click to place a pin, member list, per-member device linking, and an
-  avatar picker per member). No address search — Nominatim's free geocoder wasn't reliable enough at
+  geofence via a Leaflet map you click to place a pin, member list — tapping a member opens a full
+  **Edit member** modal: rename, avatar, a map-color picker, Device ID, and remove). No address
+  search — Nominatim's free geocoder wasn't reliable enough at
   house-level precision to be worth the confusion. No trust tiers — every member sees every other
   member's exact location; that's the whole point for a family-safety use case. Place alerts
   (geofence-based) are still a placeholder.
@@ -78,21 +79,123 @@ stream the browser-geolocation reporting uses — both sources land in the same 
 - Local all-in-one docker-compose dev: `http://backend:8000/api/traccar/forward`
 - VPS (backend runs via pm2, not in this compose file): `http://host.docker.internal:5101/api/traccar/forward`
 
-## Overland (iOS GPS — Traccar Client is unreliable on iPhone)
+## iOS GPS: use OwnTracks, not Overland
 
-[Overland](https://overland.p3k.app/) is a paid iOS app that posts location batches to a configured
-URL. Unlike Traccar's `:5055` port, this hits the backend directly and is exposed publicly, so the
-endpoint requires the household admin password as a bearer token (same `require_admin_auth`
-dependency the dashboard API uses).
+**Short version: don't use Overland.** A full night was burned chasing it — correct config
+(Server URL, Access Token, Device ID all verified right), correct location permissions ("Always" +
+Precise Location on), reachable network (confirmed via Safari and via an iOS Shortcuts POST to the
+same endpoint) — and it still never reliably transmitted. `POST /api/overland/forward` still exists
+in the backend (harmless to leave; it's a real, tested endpoint) in case a future Overland version
+fixes whatever was wrong, but don't start a new install with it. Use **OwnTracks** instead — see
+below. (If you do try Overland anyway: its **batch size floor is 50 with no way to set it lower**,
+meaning up to a ~4 minute delay between map updates by design, not a bug — one more reason to skip
+it.)
 
-1. In near2far's dashboard Settings, set the member's "Device ID" field to whatever you'll enter as
-   Overland's Device ID (e.g. `alex-iphone`).
-2. In the Overland app, set:
-   - **Receiver Endpoint URL**: `https://near2far.family/api/overland/forward`
-   - **Access Token**: the household admin password
-   - **Device ID**: the same identifier you set in Settings
-3. Overland forwards location batches from then on; the backend maps each by `device_id` and pushes
-   it to the family map over the same WebSocket stream Traccar and browser-geolocation use.
+### OwnTracks (recommended)
+
+[OwnTracks](https://owntracks.org/) is a free, open-source location tracker built specifically for
+self-hosted setups like this one — no forced batch minimum, reports on its own time/distance
+thresholds. Its HTTP-mode endpoint only supports **HTTP Basic auth** (username + password), not the
+Bearer scheme every other endpoint here uses — `_verify_owntracks_auth` in `positions.py` handles
+this separately.
+
+**Why the backend matches by Basic-auth username, not OwnTracks' own "Tracker ID" field:**
+OwnTracks has a "Tracker ID" (`tid`) setting that looks like the natural device identifier, but the
+app caps it at **2 characters** by design (it's meant as a short map-pin label, not a real ID) —
+useless as a real `device_id`. The Basic-auth **username** has no such limit and is sent with every
+request anyway, so that's what `/api/owntracks/forward` actually matches members on.
+
+1. In near2far's dashboard, open the member's **Edit member** modal (tap their row in Settings) and
+   set **Device ID** to something meaningful, e.g. `alex-iphone`.
+2. Install **OwnTracks** from the App Store. Open its settings (tap the **"i" icon**, top-left on
+   the main map screen) → set **Mode** to **HTTP** (it defaults to MQTT, which is a different
+   protocol entirely and won't work here).
+3. Depending on the app version, the HTTP settings are either a single **URL** field, or split
+   **Host** + **Path**:
+   - Single field: **URL** = `https://near2far.family/api/owntracks/forward`
+   - Split fields: **Host** = `near2far.family`, **Path** = `/api/owntracks/forward`
+4. Turn **Auth** on. **Username** (sometimes labeled **UserID**) = the *exact same* string you set
+   as Device ID in step 1 (e.g. `alex-iphone`). **Password** = the household admin password.
+5. Leave **Tracker ID** as whatever default — it's unused for matching, only shows on OwnTracks'
+   own internal map.
+6. Turn on **Tracking Enabled**.
+
+From then on it reports location to the family map over the same WebSocket stream Traccar uses.
+
+**If it doesn't show up:** the single most likely cause on a real deploy is the Cloudflare issue
+below, not anything in this list. Verify OwnTracks is actually configured right first (steps
+above), then read on.
+
+### Cloudflare "Flexible" SSL can silently block background location apps
+
+This is the root cause that actually explains the whole Overland/OwnTracks saga, and will bite any
+GPS-forwarding app pointed at `near2far.family` directly, not just those two specifically.
+
+**The symptom:** the phone app is correctly configured, has a real GPS fix, "sends" with no visible
+error — but nothing ever arrives server-side. `pm2 logs near2far` never shows the request at all
+(not even a rejected/401 one). Meanwhile a plain browser (Safari) hitting the same domain, or an
+iOS **Shortcuts** "Get Contents of URL" action making the identical POST, both work fine.
+
+**The cause:** this domain's Cloudflare SSL/TLS mode is **Flexible** (browser↔Cloudflare is HTTPS,
+Cloudflare↔origin is unencrypted HTTP). Cloudflare's own docs discourage Flexible mode for anything
+beyond simple static sites — some non-browser HTTP clients (background location trackers among
+them) handle it badly in ways that never surface as an error or a Cloudflare firewall/security
+event, they just silently never complete.
+
+**The fix:** bypass Cloudflare's proxy entirely for GPS ingestion, the same way Traccar's port 5055
+already does, using a **DNS-only ("grey cloud") subdomain** instead of the normal proxied
+(orange-cloud) one:
+
+1. Cloudflare DNS: add an A record for a subdomain (e.g. `gps.near2far.family`, same one Traccar's
+   port already uses) pointed at the VPS's IP, set to **DNS only** (grey cloud, not proxied).
+2. Get a **real, publicly-trusted certificate** for it via Let's Encrypt — **do not** use a
+   Cloudflare Origin Certificate here, it only validates Cloudflare↔origin traffic and is not
+   trusted by any other client (curl, phone apps, anything) when Cloudflare is bypassed. This was
+   tried and failed with `SSL certificate problem: unable to get local issuer certificate` before
+   switching to Let's Encrypt:
+   ```bash
+   sudo apt install -y certbot python3-certbot-nginx
+   sudo certbot --nginx -d gps.near2far.family
+   ```
+3. Add an nginx server block for it (certbot mostly writes this for you, but the shape is):
+   ```nginx
+   server {
+       listen 443 ssl;
+       server_name gps.near2far.family;
+       # certbot fills in ssl_certificate / ssl_certificate_key here
+
+       location /api {
+           proxy_pass http://127.0.0.1:5101;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+       }
+   }
+   ```
+4. `sudo ufw allow 443/tcp`, `sudo nginx -t && sudo systemctl reload nginx`.
+5. Point OwnTracks (or whatever GPS app) at `https://gps.near2far.family/api/owntracks/forward`
+   instead of `https://near2far.family/...`. Same Device ID/username/password — only the host
+   changes.
+
+Verify it's actually working before wiring up a phone: `curl -v https://gps.near2far.family/api/owntracks/forward`
+should show a real, CA-trusted TLS handshake (`SSL certificate verify ok`) and get a response from
+FastAPI (`405 Method Not Allowed` for a bare GET is correct — it proves the request reached the
+app).
+
+### Why a member's position can silently stay stuck at "null island" (0, 0)
+
+`(0, 0)` is the standard placeholder value GPS sources send when they have no real fix yet — never
+a genuine location. `_record_position` in `positions.py` rejects it outright (logs
+`position_rejected_null_island`, doesn't insert). This matters for two reasons an installer should
+know about:
+
+- If every point a misconfigured device sends is `(0, 0)`, the map will just never update for that
+  member and look identical to "nothing is arriving at all" — check `pm2 logs` for
+  `position_rejected_null_island` to tell the two apart from a device that isn't connecting at all.
+- Positions are ordered by each point's own reported timestamp (`recorded_at`), not by when the
+  server received it — this matters because apps that queue points offline and flush them in a
+  batch (Overland, OwnTracks) can deliver a stale `(0, 0)` point *after* a real one in the same
+  batch; ordering by server-receipt time would have let the stale point win as "latest" purely by
+  delivery order. Ordering by the device's own timestamp avoids that.
 
 ## Trip alerts (Web Push)
 
@@ -193,6 +296,23 @@ a neighborhood.
 - **A browser's "This page isn't working" screen isn't necessarily a connectivity failure** — check
   for a specific HTTP status code in the error page (e.g. "HTTP ERROR 400") before assuming DNS/
   firewall/network issues; that generic wrapper renders for any 4xx/5xx response with an empty body.
+- **A deployed frontend fix can be invisible even after confirming the new build is live on the
+  server.** The dashboard's `index.html` needs an explicit no-cache header (`add_header
+  Cache-Control "no-cache, must-revalidate";` in the nginx `location = /index.html` block) — the
+  hashed asset filenames (`assets/index-<hash>.js/.css`) are safe to cache forever since the hash
+  changes every build, but without this the HTML shell referencing them can get stuck cached
+  indefinitely. An **installed PWA on iOS is worse** — it doesn't reliably recheck for a new page on
+  every open even with the right headers now in place, so after a dashboard deploy that should be
+  visible, also **delete the home-screen icon and re-add it** (Safari → the site → Share → Add to
+  Home Screen) if the fix still doesn't show up. Verify what's actually live yourself before
+  assuming a deploy failed: `curl -s https://near2far.family/assets/index-<hash>.css` (get the
+  current hash from `curl -s https://near2far.family/ | grep -o 'assets/index-[^"]*\.css'`) and grep
+  it for whatever CSS/behavior you just shipped.
+- **Uploaded-photo re-crop can silently fail for a specific image without any visible error** —
+  seen once, root cause not confirmed (suspected a canvas "tainted" security error, which some
+  browsers surface as a thrown exception rather than a UI-visible message). If it happens: check the
+  browser DevTools console for a red error when tapping Save in the crop tool. Not yet reproduced
+  reliably enough to fix; flagging so a future install doesn't re-diagnose from scratch.
 
 ## Auth
 
