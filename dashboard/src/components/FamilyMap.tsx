@@ -35,9 +35,9 @@ function memberIcon(p: Position, zoom: number): L.DivIcon {
     return L.divIcon({
       className: "member-pin-wrapper",
       html: `<div class="member-pin-dot" style="background:${color}"></div>`,
-      iconSize: [16, 16],
-      iconAnchor: [8, 8],
-      popupAnchor: [0, -8],
+      iconSize: [48, 48],
+      iconAnchor: [24, 24],
+      popupAnchor: [0, -24],
     })
   }
 
@@ -48,9 +48,9 @@ function memberIcon(p: Position, zoom: number): L.DivIcon {
   return L.divIcon({
     className: "member-pin-wrapper",
     html: `<div class="member-pin-photo" style="background-image:url('${imageUrl}');border-color:${color}"></div>`,
-    iconSize: [40, 40],
-    iconAnchor: [20, 20],
-    popupAnchor: [0, -20],
+    iconSize: [120, 120],
+    iconAnchor: [60, 60],
+    popupAnchor: [0, -60],
   })
 }
 
