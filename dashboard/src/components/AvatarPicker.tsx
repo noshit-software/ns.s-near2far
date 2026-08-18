@@ -59,6 +59,12 @@ export function AvatarPicker({
     setCropUrl(URL.createObjectURL(file))
   }
 
+  function adjustExistingPhoto() {
+    if (!member.avatar_filename) return
+    setError(null)
+    setCropUrl(`/uploads/avatars/${member.avatar_filename}`)
+  }
+
   function cancelCrop() {
     if (cropUrl) URL.revokeObjectURL(cropUrl)
     setCropUrl(null)
@@ -117,9 +123,15 @@ export function AvatarPicker({
                   ))}
                 </div>
                 <div className="avatar-picker-actions">
-                  <button type="button" onClick={shuffle}>
-                    Shuffle
-                  </button>
+                  {member.avatar_filename ? (
+                    <button type="button" onClick={adjustExistingPhoto}>
+                      Adjust crop
+                    </button>
+                  ) : (
+                    <button type="button" onClick={shuffle}>
+                      Shuffle
+                    </button>
+                  )}
                   <label className="avatar-picker-upload">
                     Upload photo
                     <input

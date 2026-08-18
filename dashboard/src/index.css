@@ -409,13 +409,13 @@ h3 {
 
 .avatar-picker .avatar-picker-current {
   padding: 0;
-  border: 2px solid var(--border);
+  border: 3px solid var(--border);
   border-radius: 50%;
   background: var(--surface-2);
   cursor: pointer;
   overflow: hidden;
-  width: 44px;
-  height: 44px;
+  width: 132px;
+  height: 132px;
   flex-shrink: 0;
 }
 
@@ -432,6 +432,8 @@ h3 {
   top: calc(100% + 0.4rem);
   left: 0;
   width: 260px;
+  max-height: min(70vh, 480px);
+  overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
