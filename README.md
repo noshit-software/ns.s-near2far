@@ -26,10 +26,17 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   every member's latest reported position (Traccar, OwnTracks, or Overland — see "iOS GPS" below)
   renders as a circular avatar marker (their uploaded photo, or a generated placeholder — see
   "Member avatars"),
-  shrinking to a plain colored dot once zoomed out past neighborhood level, live-updated over the
-  existing WebSocket event stream, with a floating row of "snap to" pills (each with a small avatar)
-  over the bottom of the map to quickly center on any member, and an "Enable trip alerts" banner that
-  subscribes the browser to Web Push. The **Settings** tab has household/member management (home
+  shrinking through 80/60/40% size tiers and finally to a plain colored dot (20%) as you zoom out
+  past neighborhood level, live-updated over the existing WebSocket event stream, with a bottom
+  panel grid (one card per member: avatar, name, moving/stationary status with speed, and relative
+  last-seen time) that flex-wraps along the bottom on wide/desktop viewports and stacks on portrait
+  mobile — tapping a card centers the map on that member, snapping to a zoom level chosen from their
+  last-known speed (closer for stationary/walking, wider for driving) rather than a fixed zoom. An
+  "Enable trip alerts" banner subscribes the browser to Web Push. Since an installed PWA doesn't
+  reliably recheck for a new deploy on its own (especially on iOS), the dashboard compares its loaded
+  JS bundle against the server's on every foreground/focus and reloads automatically when they
+  differ — no manual close/reopen needed after a rebuild. The **Settings** tab has household/member
+  management (home
   geofence via a Leaflet map you click to place a pin, member list — tapping a member opens a full
   **Edit member** modal: rename, avatar, a map-color picker, Device ID, and remove). No address
   search — Nominatim's free geocoder wasn't reliable enough at

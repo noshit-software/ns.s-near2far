@@ -205,41 +205,71 @@ h3 {
   pointer-events: auto;
 }
 
-.member-snap-row {
+.member-panel-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  overflow-x: auto;
 }
 
-.member-snap-button {
+.member-panel {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.6rem;
+  flex: 1 1 220px;
+  min-width: 200px;
+  max-width: 320px;
   font: inherit;
-  font-weight: 600;
-  font-size: 0.85rem;
-  padding: 0.35rem 1rem 0.35rem 0.35rem;
-  border-radius: 999px;
+  text-align: left;
+  padding: 0.5rem 0.8rem 0.5rem 0.5rem;
+  border-radius: 12px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-  white-space: nowrap;
 }
 
-.member-snap-button:hover {
+.member-panel:hover {
   background: var(--surface-2);
 }
 
-.member-snap-avatar {
-  width: 26px;
-  height: 26px;
+.member-panel-avatar {
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   object-fit: cover;
   background: var(--surface-2);
   flex-shrink: 0;
+}
+
+.member-panel-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.member-panel-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.member-panel-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  font-weight: 400;
+}
+
+.member-panel-status::after {
+  content: "·";
+  margin-left: 0.4rem;
+  color: var(--text-dim);
 }
 
 /* --- Map marker icons (leaflet divIcon content) --- */

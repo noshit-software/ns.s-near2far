@@ -70,6 +70,44 @@ function memberIcon(p: Position, zoom: number): L.DivIcon {
   })
 }
 
+function haversineM(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const r = 6371000
+  const p1 = (lat1 * Math.PI) / 180
+  const p2 = (lat2 * Math.PI) / 180
+  const dp = ((lat2 - lat1) * Math.PI) / 180
+  const dl = ((lng2 - lng1) * Math.PI) / 180
+  const a = Math.sin(dp / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2
+  return 2 * r * Math.asin(Math.sqrt(a))
+}
+
+// Zoom to snap to when centering on a member, based on their current speed — close-in for
+// someone stationary/walking, progressively further out the faster they're moving so a
+// driving member's road context stays visible instead of the map staying at walking-zoom.
+// Thresholds match the backend's own walking/driving classification (app/trips.py).
+function zoomForSpeed(speedMps: number | undefined): number {
+  if (speedMps === undefined) return 16
+  if (speedMps < 0.8) return 18 // stationary
+  if (speedMps < 3) return 17 // walking
+  if (speedMps < 8) return 15 // city driving
+  if (speedMps < 15) return 13 // faster driving
+  return 11 // highway
+}
+
+function statusForSpeed(speedMps: number | undefined): string {
+  if (speedMps === undefined) return ""
+  if (speedMps < 0.8) return "Stationary"
+  if (speedMps < 3) return `Walking · ${Math.round(speedMps * 3.6)} km/h`
+  return `Driving · ${Math.round(speedMps * 3.6)} km/h`
+}
+
+function relativeTime(iso: string): string {
+  const seconds = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000)
+  if (seconds < 60) return "just now"
+  if (seconds < 3600) return `${Math.round(seconds / 60)}m ago`
+  if (seconds < 86400) return `${Math.round(seconds / 3600)}h ago`
+  return `${Math.round(seconds / 86400)}d ago`
+}
+
 function FitToMarkers({ positions, home }: { positions: Position[]; home: { lat: number; lng: number } }) {
   const map = useMap()
   useEffect(() => {
@@ -98,10 +136,25 @@ export function FamilyMap({ household }: { household: Household }) {
   const [positions, setPositions] = useState<Record<string, Position>>({})
   const [zoom, setZoom] = useState(14)
   const mapRef = useRef<L.Map | null>(null)
+  const speedsRef = useRef<Record<string, number>>({})
   const lastEvent = useEventStream()
+  const [, forceTick] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => forceTick((n) => n + 1), 30_000)
+    return () => clearInterval(interval)
+  }, [])
+
+  function updateSpeed(prev: Position | undefined, next: Position) {
+    if (!prev) return
+    const dtS = (new Date(next.recorded_at).getTime() - new Date(prev.recorded_at).getTime()) / 1000
+    if (dtS <= 0) return
+    const distM = haversineM(prev.lat, prev.lng, next.lat, next.lng)
+    speedsRef.current[next.member_id] = distM / dtS
+  }
 
   function snapTo(p: Position) {
-    mapRef.current?.flyTo([p.lat, p.lng], 16)
+    mapRef.current?.flyTo([p.lat, p.lng], zoomForSpeed(speedsRef.current[p.member_id]))
   }
 
   useEffect(() => {
@@ -121,7 +174,10 @@ export function FamilyMap({ household }: { household: Household }) {
       (lastEvent as { type?: string }).type === "position.updated"
     ) {
       const payload = (lastEvent as { payload: Position }).payload
-      setPositions((prev) => ({ ...prev, [payload.member_id]: payload }))
+      setPositions((prev) => {
+        updateSpeed(prev[payload.member_id], payload)
+        return { ...prev, [payload.member_id]: payload }
+      })
     }
   }, [lastEvent])
 
@@ -151,22 +207,35 @@ export function FamilyMap({ household }: { household: Household }) {
       </MapContainer>
       <div className="map-overlay-bottom">
         {positionList.length > 0 && (
-          <div className="member-snap-row">
-            {positionList.map((p) => (
-              <button
-                key={p.member_id}
-                type="button"
-                className="member-snap-button"
-                onClick={() => snapTo(p)}
-              >
-                <img
-                  className="member-snap-avatar"
-                  src={p.avatar_filename ? `/uploads/avatars/${p.avatar_filename}` : generatedAvatarDataUri(p.avatar_seed)}
-                  alt=""
-                />
-                {p.display_name}
-              </button>
-            ))}
+          <div className="member-panel-grid">
+            {positionList.map((p) => {
+              const status = statusForSpeed(speedsRef.current[p.member_id])
+              return (
+                <button
+                  key={p.member_id}
+                  type="button"
+                  className="member-panel"
+                  onClick={() => snapTo(p)}
+                >
+                  <img
+                    className="member-panel-avatar"
+                    src={
+                      p.avatar_filename
+                        ? `/uploads/avatars/${p.avatar_filename}`
+                        : generatedAvatarDataUri(p.avatar_seed)
+                    }
+                    alt=""
+                  />
+                  <div className="member-panel-info">
+                    <span className="member-panel-name">{p.display_name}</span>
+                    <span className="member-panel-meta">
+                      {status && <span className="member-panel-status">{status}</span>}
+                      <span className="member-panel-time">{relativeTime(p.recorded_at)}</span>
+                    </span>
+                  </div>
+                </button>
+              )
+            })}
           </div>
         )}
         <p className="map-attribution">
