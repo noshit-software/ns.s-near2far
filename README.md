@@ -15,15 +15,18 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   moving/stationary thresholds, walking vs driving by average speed over the trip) — on trip end it
   sends a Web Push notification ("Alex stopped — finished driving, 4.2 km in 9 min, avg 28 km/h") to
   every browser subscribed via `POST /api/push/subscribe`. See "Trip alerts" below.
-- **dashboard/** — React+Vite PWA. Once a household exists, the live family map is the default view:
+- **dashboard/** — React+Vite PWA styled as a native-feeling app shell (fixed top bar + bottom tab
+  bar around a scrollable content area, `100dvh` height, `env(safe-area-inset-*)` padding for iOS/
+  Android notches and home indicators, `viewport-fit=cover` + `apple-mobile-web-app-*` meta tags for a
+  chromeless standalone install on both platforms). The **Map** tab is a full-bleed live family map:
   every member's latest reported position (currently via Traccar/real phone GPS) renders on a shared
-  map, live-updated over the existing WebSocket event stream, with a row of "snap to" buttons below
-  the map to quickly center on any member, and an "Enable trip alerts" button that subscribes the
-  browser to Web Push. A "Settings" button opens household/member management (home geofence via a
-  Leaflet map you click to place a pin, member list, per-member device linking). No address search —
-  Nominatim's free geocoder wasn't reliable enough at house-level precision to be worth the confusion.
-  No trust tiers — every member sees every other member's exact location; that's the whole point for a
-  family-safety use case. Place alerts (geofence-based) are still a placeholder.
+  map, live-updated over the existing WebSocket event stream, with a floating row of "snap to" pills
+  over the bottom of the map to quickly center on any member, and an "Enable trip alerts" banner that
+  subscribes the browser to Web Push. The **Settings** tab has household/member management (home
+  geofence via a Leaflet map you click to place a pin, member list, per-member device linking). No
+  address search — Nominatim's free geocoder wasn't reliable enough at house-level precision to be
+  worth the confusion. No trust tiers — every member sees every other member's exact location; that's
+  the whole point for a family-safety use case. Place alerts (geofence-based) are still a placeholder.
 - **db/** — Postgres 16 + pgvector + Apache AGE
 - **traccar** — official `traccar/traccar` image, own embedded database (unrelated to the Postgres
   above). Web UI + REST API on :8082 (localhost-only — reach it via an nginx-proxied subdomain, e.g.

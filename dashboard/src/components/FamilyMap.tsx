@@ -77,7 +77,7 @@ export function FamilyMap({ household }: { household: Household }) {
         center={household.home_geofence}
         zoom={14}
         attributionControl={false}
-        style={{ height: 400, width: "100%" }}
+        className="family-map-canvas"
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         <FitToMarkers positions={positionList} home={household.home_geofence} />
@@ -91,27 +91,29 @@ export function FamilyMap({ household }: { household: Household }) {
           </CircleMarker>
         ))}
       </MapContainer>
-      {positionList.length > 0 && (
-        <div className="member-snap-row">
-          {positionList.map((p) => (
-            <button
-              key={p.member_id}
-              type="button"
-              className="member-snap-button"
-              onClick={() => snapTo(p)}
-            >
-              {p.display_name}
-            </button>
-          ))}
-        </div>
-      )}
-      <p className="map-attribution">
-        Map data &copy;{" "}
-        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
-          OpenStreetMap
-        </a>{" "}
-        contributors
-      </p>
+      <div className="map-overlay-bottom">
+        {positionList.length > 0 && (
+          <div className="member-snap-row">
+            {positionList.map((p) => (
+              <button
+                key={p.member_id}
+                type="button"
+                className="member-snap-button"
+                onClick={() => snapTo(p)}
+              >
+                {p.display_name}
+              </button>
+            ))}
+          </div>
+        )}
+        <p className="map-attribution">
+          Map data &copy;{" "}
+          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
+            OpenStreetMap
+          </a>{" "}
+          contributors
+        </p>
+      </div>
     </div>
   )
 }

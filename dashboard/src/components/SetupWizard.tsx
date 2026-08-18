@@ -115,143 +115,159 @@ export function SetupWizard() {
   }
 
   if (household === undefined) {
-    return <div className="setup-wizard">loading setup…</div>
+    return (
+      <div className="auth-screen">
+        <div className="auth-card">loading setup…</div>
+      </div>
+    )
   }
 
   if (household === null) {
     return (
-      <div className="setup-wizard">
-        <h2>Set up your household</h2>
-        <label>
-          Household name
-          <input value={name} onChange={(e) => setName(e.target.value)} />
-        </label>
-        <label>
-          Admin password
-          <input
-            type="password"
-            value={adminPassword}
-            onChange={(e) => setAdminPasswordInput(e.target.value)}
+      <div className="auth-screen">
+        <div className="auth-card setup-wizard">
+          <h2>Set up your household</h2>
+          <label>
+            Household name
+            <input value={name} onChange={(e) => setName(e.target.value)} />
+          </label>
+          <label>
+            Admin password
+            <input
+              type="password"
+              value={adminPassword}
+              onChange={(e) => setAdminPasswordInput(e.target.value)}
+            />
+          </label>
+          <LocationPicker
+            value={homeLocation}
+            radiusM={Number(radiusM) || 0}
+            onChange={setHomeLocation}
           />
-        </label>
-        <LocationPicker
-          value={homeLocation}
-          radiusM={Number(radiusM) || 0}
-          onChange={setHomeLocation}
-        />
-        <label>
-          Geofence radius (m)
-          <input value={radiusM} onChange={(e) => setRadiusM(e.target.value)} />
-        </label>
-        <button
-          onClick={submitHousehold}
-          disabled={!name || !adminPassword || !homeLocation}
-        >
-          Create household
-        </button>
-        {error && <p className="error">{error}</p>}
+          <label>
+            Geofence radius (m)
+            <input value={radiusM} onChange={(e) => setRadiusM(e.target.value)} />
+          </label>
+          <button
+            onClick={submitHousehold}
+            disabled={!name || !adminPassword || !homeLocation}
+          >
+            Create household
+          </button>
+          {error && <p className="error">{error}</p>}
+        </div>
       </div>
     )
   }
 
   if (!unlocked) {
     return (
-      <div className="setup-wizard">
-        <h2>{household.name}</h2>
-        <label>
-          Admin password
-          <input
-            type="password"
-            value={loginPassword}
-            onChange={(e) => setLoginPassword(e.target.value)}
-          />
-        </label>
-        <button onClick={submitLogin} disabled={!loginPassword}>
-          Unlock
-        </button>
-        {error && <p className="error">{error}</p>}
-      </div>
-    )
-  }
-
-  if (!showSettings) {
-    return (
-      <div>
-        <div className="dashboard-header">
+      <div className="auth-screen">
+        <div className="auth-card setup-wizard">
           <h2>{household.name}</h2>
-          <button
-            type="button"
-            className="settings-toggle"
-            onClick={() => setShowSettings(true)}
-          >
-            Settings
+          <label>
+            Admin password
+            <input
+              type="password"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+            />
+          </label>
+          <button onClick={submitLogin} disabled={!loginPassword}>
+            Unlock
           </button>
+          {error && <p className="error">{error}</p>}
         </div>
-        <NotificationSetup />
-        <FamilyMap household={household} />
       </div>
     )
   }
 
   return (
-    <div className="setup-wizard">
-      <div className="dashboard-header">
-        <h2>{household.name} — Settings</h2>
+    <div className="app-shell">
+      <header className="app-topbar">
+        <h1>{showSettings ? "Settings" : household.name}</h1>
+      </header>
+
+      <main className={`app-content ${!showSettings ? "app-content-map" : ""}`}>
+        {!showSettings ? (
+          <>
+            <NotificationSetup />
+            <FamilyMap household={household} />
+          </>
+        ) : (
+          <div className="setup-wizard settings-panel">
+            <h3>Home</h3>
+            <LocationPicker
+              value={household.home_geofence}
+              radiusM={household.home_geofence.radius_m}
+              onChange={updateGeofence}
+              height={200}
+              lockedByDefault
+            />
+
+            <h3>Members</h3>
+            <ul>
+              {household.members.map((m) => (
+                <li key={m.id} className="member-row">
+                  <span>{m.display_name}</span>
+                  <div className="member-device-row">
+                    <input
+                      value={deviceInputs[m.id] ?? m.device_id ?? ""}
+                      onChange={(e) => setDeviceInputs({ ...deviceInputs, [m.id]: e.target.value })}
+                      placeholder="Device ID"
+                    />
+                    <button onClick={() => saveMemberDevice(m.id)}>Save</button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <p className="hint">
+              For real phone GPS via{" "}
+              <a href="http://localhost:8082" target="_blank" rel="noreferrer">
+                Traccar
+              </a>
+              : create a device there and give it any identifier you want — it's just a label, not
+              a real device number, e.g. <code>alex-phone</code> or <code>drakuls-galaxy-s25</code>.
+              Paste that exact same text into the field below to link it to this member.
+            </p>
+
+            <div className="member-form-row">
+              <input
+                value={memberName}
+                onChange={(e) => setMemberName(e.target.value)}
+                placeholder="Member name"
+              />
+              <button onClick={submitMember} disabled={!memberName}>
+                Add member
+              </button>
+            </div>
+            {error && <p className="error">{error}</p>}
+          </div>
+        )}
+      </main>
+
+      <nav className="tab-bar">
         <button
           type="button"
-          className="settings-toggle"
+          className={`tab-button ${!showSettings ? "active" : ""}`}
           onClick={() => setShowSettings(false)}
         >
-          Back to map
+          <span className="tab-icon" aria-hidden="true">
+            🗺️
+          </span>
+          Map
         </button>
-      </div>
-
-      <h3>Home</h3>
-      <LocationPicker
-        value={household.home_geofence}
-        radiusM={household.home_geofence.radius_m}
-        onChange={updateGeofence}
-        height={200}
-        lockedByDefault
-      />
-
-      <h3>Members</h3>
-      <ul>
-        {household.members.map((m) => (
-          <li key={m.id} className="member-row">
-            <span>{m.display_name}</span>
-            <div className="member-device-row">
-              <input
-                value={deviceInputs[m.id] ?? m.device_id ?? ""}
-                onChange={(e) => setDeviceInputs({ ...deviceInputs, [m.id]: e.target.value })}
-                placeholder="Device ID"
-              />
-              <button onClick={() => saveMemberDevice(m.id)}>Save</button>
-            </div>
-          </li>
-        ))}
-      </ul>
-      <p className="hint">
-        For real phone GPS via{" "}
-        <a href="http://localhost:8082" target="_blank" rel="noreferrer">
-          Traccar
-        </a>
-        : create a device there and give it any identifier you want — it's just a label, not a real
-        device number, e.g. <code>alex-phone</code> or <code>drakuls-galaxy-s25</code>. Paste that
-        exact same text into the field below to link it to this member.
-      </p>
-
-      <div className="member-form-row">
-        <input
-          value={memberName}
-          onChange={(e) => setMemberName(e.target.value)}
-          placeholder="Member name"
-        />
-        <button onClick={submitMember} disabled={!memberName}>
-          Add member
+        <button
+          type="button"
+          className={`tab-button ${showSettings ? "active" : ""}`}
+          onClick={() => setShowSettings(true)}
+        >
+          <span className="tab-icon" aria-hidden="true">
+            ⚙️
+          </span>
+          Settings
         </button>
-      </div>
-      {error && <p className="error">{error}</p>}
+      </nav>
     </div>
   )
 }
