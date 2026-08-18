@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import structlog
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
@@ -30,6 +32,7 @@ class OverlandGeometry(BaseModel):
 
 class OverlandProperties(BaseModel):
     device_id: str
+    timestamp: datetime | None = None
 
 
 class OverlandLocation(BaseModel):
@@ -64,14 +67,33 @@ async def _record_position(
     avatar_seed: str,
     lat: float,
     lng: float,
-) -> dict:
-    row = await conn.fetchrow(
-        "INSERT INTO runtime.positions (member_id, lat, lng) VALUES ($1, $2, $3) "
-        "RETURNING id, member_id, lat, lng, recorded_at",
-        member_id,
-        lat,
-        lng,
-    )
+    recorded_at: datetime | None = None,
+) -> dict | None:
+    if lat == 0 and lng == 0:
+        # (0, 0) — "null island" — is the standard sentinel a GPS source sends when it has no
+        # real fix yet. Never a genuine location; recording it would put a member's marker in
+        # the Gulf of Guinea and, worse, could win as "latest" over a real point if it arrives
+        # later in a queued/batched delivery.
+        log.warning("position_rejected_null_island", member_id=member_id)
+        return None
+
+    if recorded_at is not None:
+        row = await conn.fetchrow(
+            "INSERT INTO runtime.positions (member_id, lat, lng, recorded_at) VALUES ($1, $2, $3, $4) "
+            "RETURNING id, member_id, lat, lng, recorded_at",
+            member_id,
+            lat,
+            lng,
+            recorded_at,
+        )
+    else:
+        row = await conn.fetchrow(
+            "INSERT INTO runtime.positions (member_id, lat, lng) VALUES ($1, $2, $3) "
+            "RETURNING id, member_id, lat, lng, recorded_at",
+            member_id,
+            lat,
+            lng,
+        )
     data = _position_dict(member_id, display_name, avatar_filename, avatar_seed, row)
     await publish("position.updated", data)
     await _on_position(conn, member_id, display_name, household_id, lat, lng, row["recorded_at"])
@@ -155,6 +177,7 @@ async def overland_forward(body: OverlandForward, request: Request) -> dict:
                 member["avatar_seed"],
                 lat,
                 lon,
+                recorded_at=location.properties.timestamp,
             )
 
     return {"result": "ok"}
