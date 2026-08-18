@@ -25,33 +25,48 @@ type Position = {
   recorded_at: string
 }
 
-// Below this zoom, avatars shrink to plain colored dots — a full photo/generated avatar
-// reads as noise once the map is showing a whole city rather than a neighborhood.
-const AVATAR_ZOOM_THRESHOLD = 15
+// Full avatar size at "close" zoom, in px. Every other tier below is a fraction of this.
+const BASE_SIZE = 120
+
+// Zoom >= the key's threshold gets that fraction of BASE_SIZE, photo/generated avatar. Below
+// the lowest key (15), it drops to a plain colored dot at 20% — a full avatar reads as noise
+// once the map is showing a whole city rather than a neighborhood, and shouldn't just cap out
+// at one fixed size for every zoom level above that, it should keep shrinking as you zoom out.
+const ZOOM_SIZE_TIERS: [minZoom: number, fraction: number][] = [
+  [18, 1.0],
+  [17, 0.8],
+  [16, 0.6],
+  [15, 0.4],
+]
+const DOT_FRACTION = 0.2
 
 function memberIcon(p: Position, zoom: number): L.DivIcon {
   const color = resolveMemberColor({ id: p.member_id, color: p.color })
+  const tier = ZOOM_SIZE_TIERS.find(([minZoom]) => zoom >= minZoom)
 
-  if (zoom < AVATAR_ZOOM_THRESHOLD) {
+  if (!tier) {
+    const size = Math.round(BASE_SIZE * DOT_FRACTION)
     return L.divIcon({
       className: "member-pin-wrapper",
       html: `<div class="member-pin-dot" style="background:${color}"></div>`,
-      iconSize: [48, 48],
-      iconAnchor: [24, 24],
-      popupAnchor: [0, -24],
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+      popupAnchor: [0, -size / 2],
     })
   }
 
+  const size = Math.round(BASE_SIZE * tier[1])
+  const borderWidth = Math.max(2, Math.round(size * (5 / BASE_SIZE)))
   const imageUrl = p.avatar_filename
     ? `/uploads/avatars/${p.avatar_filename}`
     : generatedAvatarDataUri(p.avatar_seed)
 
   return L.divIcon({
     className: "member-pin-wrapper",
-    html: `<div class="member-pin-photo" style="background-image:url('${imageUrl}');border-color:${color}"></div>`,
-    iconSize: [120, 120],
-    iconAnchor: [60, 60],
-    popupAnchor: [0, -60],
+    html: `<div class="member-pin-photo" style="background-image:url('${imageUrl}');border-color:${color};border-width:${borderWidth}px"></div>`,
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+    popupAnchor: [0, -size / 2],
   })
 }
 
