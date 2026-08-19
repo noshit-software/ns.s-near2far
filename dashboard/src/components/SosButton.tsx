@@ -126,10 +126,11 @@ export function SosButton({
                       <Icon />
                     </span>
                   </button>
-                  {/* Always rendered (even empty) so a tile's icon doesn't shift position
-                      depending on whether it happens to have configured numbers. */}
-                  <div className="sos-panel-category-dials">
-                    {categoryContacts.map((ct) => (
+                  {/* Floating on the tile itself (translucent, so the big icon shows through)
+                      instead of a bottom bar — first 2 stack up the left edge, any 3rd spills
+                      to the right, rather than reserving fixed space whether or not it's used. */}
+                  <div className="sos-panel-category-dials sos-panel-category-dials-left">
+                    {categoryContacts.slice(0, 2).map((ct) => (
                       <a
                         key={ct.id}
                         href={`tel:${ct.phone}`}
@@ -143,49 +144,74 @@ export function SosButton({
                       </a>
                     ))}
                   </div>
+                  {categoryContacts.length > 2 && (
+                    <div className="sos-panel-category-dials sos-panel-category-dials-right">
+                      {categoryContacts.slice(2).map((ct) => (
+                        <a
+                          key={ct.id}
+                          href={`tel:${ct.phone}`}
+                          className="sos-panel-dial sos-panel-dial-small"
+                          onClick={() => fire(c.key, ct.phone, "help", ct.name)}
+                        >
+                          <span className="sos-panel-dial-icon">
+                            <PhoneIcon />
+                          </span>
+                          <span className="sos-panel-dial-label">{ct.name}</span>
+                        </a>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )
             })}
           </div>
 
-          <div className="sos-panel-general">
-            {generalContacts[0] && (
-              <a
-                key={generalContacts[0].id}
-                href={`tel:${generalContacts[0].phone}`}
-                className="sos-panel-dial sos-panel-general-left"
-                onClick={() => fire("general", generalContacts[0].phone)}
-              >
-                <span className="sos-panel-dial-icon">
-                  <PhoneIcon />
-                </span>
-                <span className="sos-panel-dial-label">{generalContacts[0].name}</span>
-              </a>
-            )}
+        </div>
+      )}
+
+      {/* Rendered as a sibling of .sos-panel, not a child — .sos-panel's backdrop-filter makes
+          it the containing block for any position:fixed descendant (a CSS spec quirk), which
+          turned this row's `bottom: -30px` into overflow *inside* the blurred panel instead of
+          the viewport, forcing an unwanted scrollbar. Kept fully separate so it stays anchored
+          to the real viewport regardless of what .sos-panel does with its own stacking. */}
+      {panelOpen && (
+        <div className="sos-panel-general">
+          {generalContacts[0] && (
             <a
-              href="tel:911"
-              className="sos-panel-dial sos-panel-dial-911"
-              onClick={() => fire("general", "911")}
+              key={generalContacts[0].id}
+              href={`tel:${generalContacts[0].phone}`}
+              className="sos-panel-dial sos-panel-general-left"
+              onClick={() => fire("general", generalContacts[0].phone)}
             >
               <span className="sos-panel-dial-icon">
                 <PhoneIcon />
               </span>
-              <span className="sos-panel-dial-label">911</span>
+              <span className="sos-panel-dial-label">{generalContacts[0].name}</span>
             </a>
-            {generalContacts[1] && (
-              <a
-                key={generalContacts[1].id}
-                href={`tel:${generalContacts[1].phone}`}
-                className="sos-panel-dial sos-panel-general-right"
-                onClick={() => fire("general", generalContacts[1].phone)}
-              >
-                <span className="sos-panel-dial-icon">
-                  <PhoneIcon />
-                </span>
-                <span className="sos-panel-dial-label">{generalContacts[1].name}</span>
-              </a>
-            )}
-          </div>
+          )}
+          <a
+            href="tel:911"
+            className="sos-panel-dial sos-panel-dial-911"
+            onClick={() => fire("general", "911")}
+          >
+            <span className="sos-panel-dial-icon">
+              <PhoneIcon />
+            </span>
+            <span className="sos-panel-dial-label">911</span>
+          </a>
+          {generalContacts[1] && (
+            <a
+              key={generalContacts[1].id}
+              href={`tel:${generalContacts[1].phone}`}
+              className="sos-panel-dial sos-panel-general-right"
+              onClick={() => fire("general", generalContacts[1].phone)}
+            >
+              <span className="sos-panel-dial-icon">
+                <PhoneIcon />
+              </span>
+              <span className="sos-panel-dial-label">{generalContacts[1].name}</span>
+            </a>
+          )}
         </div>
       )}
 
