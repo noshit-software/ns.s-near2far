@@ -35,7 +35,18 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   "Enable trip alerts" banner subscribes the browser to Web Push. Since an installed PWA doesn't
   reliably recheck for a new deploy on its own (especially on iOS), the dashboard compares its loaded
   JS bundle against the server's on every foreground/focus and reloads automatically when they
-  differ — no manual close/reopen needed after a rebuild. The **Settings** tab has household/member
+  differ — no manual close/reopen needed after a rebuild. A round **SOS button** floats above the
+  bottom tab bar (like a camera shutter button) — tapping it 3 times fast triggers a general alert;
+  a single tap first reveals two smaller Medical/Security satellite buttons, each also requiring a
+  triple-tap. This is deliberately not a single tap or long-press: easy enough to reach in a real
+  emergency, but not something a phone in a pocket can fire by accident. On trigger, the device's
+  current location is reverse-geocoded to the nearest street (best-effort — see
+  `backend/app/geocode.py`) and every *other* connected household device (identified by a
+  per-browser client id, so the triggering device itself never alarms) gets a full-screen flashing
+  red overlay with a looping siren (Web Audio, no bundled audio file) and vibration, plus a Web
+  Push notification for anyone with the app backgrounded/closed. It stays up until someone taps
+  "I see it — stop alarm", which clears it on every device via the same WebSocket event stream. The
+  **Settings** tab has household/member
   management (home
   geofence via a Leaflet map you click to place a pin, member list — tapping a member opens a full
   **Edit member** modal: rename, avatar, a map-color picker, Device ID, and remove). No address
@@ -335,7 +346,19 @@ docker compose up -d --build traccar   # only traccar runs in Compose on the VPS
   color TEXT;` on an existing install; `positions.member_id`'s `ON DELETE CASCADE` needs `ALTER
   TABLE runtime.positions DROP CONSTRAINT positions_member_id_fkey, ADD CONSTRAINT
   positions_member_id_fkey FOREIGN KEY (member_id) REFERENCES substrate.members(id) ON DELETE
-  CASCADE;` (dropping/re-adding is the only way to change an existing FK's delete behavior).
+  CASCADE;` (dropping/re-adding is the only way to change an existing FK's delete behavior). The
+  SOS button needs `runtime.sos_alerts` on an existing install:
+  ```sql
+  CREATE TABLE IF NOT EXISTS runtime.sos_alerts (
+    id BIGSERIAL PRIMARY KEY,
+    household_id UUID NOT NULL REFERENCES substrate.households(id),
+    lat DOUBLE PRECISION, lng DOUBLE PRECISION, address TEXT,
+    category TEXT NOT NULL DEFAULT 'general',
+    origin_client_id TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    acknowledged_at TIMESTAMPTZ
+  );
+  ```
 - **Member photo uploads need `backend/uploads/` to persist and be writable.** Locally that's the
   `backend_uploads` docker volume; on the VPS (bare pm2, no container) it's just a directory next to
   the app code — make sure it survives deploys (it's not in git) and that the pm2 process can write

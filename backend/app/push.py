@@ -26,14 +26,18 @@ def _send_one(endpoint: str, p256dh: str, auth: str, payload: dict) -> int | Non
         return status
 
 
-async def send_push_to_household(conn, household_id: str, payload: dict) -> None:
+async def send_push_to_household(
+    conn, household_id: str, payload: dict, exclude_endpoint: str | None = None
+) -> None:
     if not settings.vapid_private_key:
         log.warning("push_skipped_no_vapid_key")
         return
 
     rows = await conn.fetch(
-        "SELECT id, endpoint, p256dh, auth FROM substrate.push_subscriptions WHERE household_id = $1",
+        "SELECT id, endpoint, p256dh, auth FROM substrate.push_subscriptions "
+        "WHERE household_id = $1 AND ($2::text IS NULL OR endpoint != $2)",
         household_id,
+        exclude_endpoint,
     )
 
     dead_ids = []

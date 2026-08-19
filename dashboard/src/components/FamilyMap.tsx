@@ -6,7 +6,6 @@ import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from "re
 
 import { apiGet } from "../lib/api"
 import { generatedAvatarDataUri, resolveMemberColor } from "../lib/avatar"
-import { useEventStream } from "../lib/ws"
 
 type Household = {
   id: string
@@ -132,12 +131,11 @@ function ZoomTracker({ onZoom }: { onZoom: (zoom: number) => void }) {
   return null
 }
 
-export function FamilyMap({ household }: { household: Household }) {
+export function FamilyMap({ household, lastEvent }: { household: Household; lastEvent: unknown }) {
   const [positions, setPositions] = useState<Record<string, Position>>({})
   const [zoom, setZoom] = useState(14)
   const mapRef = useRef<L.Map | null>(null)
   const speedsRef = useRef<Record<string, number>>({})
-  const lastEvent = useEventStream()
   const [, forceTick] = useState(0)
 
   useEffect(() => {

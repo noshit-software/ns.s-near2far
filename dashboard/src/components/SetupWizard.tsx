@@ -2,12 +2,15 @@ import { useEffect, useState } from "react"
 
 import { apiGet, apiPost, getAdminPassword, setAdminPassword } from "../lib/api"
 import { generatedAvatarDataUri } from "../lib/avatar"
+import { useEventStream } from "../lib/ws"
 import { FamilyMap } from "./FamilyMap"
 import { InfoIcon, MapIcon, SettingsIcon } from "./icons"
 import { LocationPicker } from "./LocationPicker"
 import { MemberEditModal } from "./MemberEditModal"
 import { NotificationSetup } from "./NotificationSetup"
 import { PasswordInput } from "./PasswordInput"
+import { SosAlarm } from "./SosAlarm"
+import { SosButton } from "./SosButton"
 
 type Member = {
   id: string
@@ -41,6 +44,8 @@ export function SetupWizard() {
   const [memberName, setMemberName] = useState("")
   const [showDeviceHint, setShowDeviceHint] = useState(false)
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null)
+
+  const lastEvent = useEventStream()
 
   useEffect(() => {
     apiGet<Household | null>("/setup/household")
@@ -182,6 +187,7 @@ export function SetupWizard() {
 
   return (
     <div className="app-shell">
+      <SosAlarm lastEvent={lastEvent} />
       <header className="app-topbar">
         <h1>{showSettings ? "Settings" : household.name}</h1>
       </header>
@@ -190,7 +196,7 @@ export function SetupWizard() {
         {!showSettings ? (
           <>
             <NotificationSetup />
-            <FamilyMap household={household} />
+            <FamilyMap household={household} lastEvent={lastEvent} />
           </>
         ) : (
           <div className="setup-wizard settings-panel">
@@ -287,6 +293,7 @@ export function SetupWizard() {
           <MapIcon />
           Map
         </button>
+        <SosButton />
         <button
           type="button"
           className={`tab-button ${showSettings ? "active" : ""}`}

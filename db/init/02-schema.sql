@@ -54,3 +54,19 @@ CREATE TABLE IF NOT EXISTS substrate.push_subscriptions (
   auth TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Panic-button alerts. Not tied to a specific member — the shared admin password model has
+-- no per-member login, so an SOS is "someone on this household's device" rather than
+-- attributed to a member identity. Kept in runtime (not substrate) since these are
+-- time-bound incidents, not durable reference data.
+CREATE TABLE IF NOT EXISTS runtime.sos_alerts (
+  id BIGSERIAL PRIMARY KEY,
+  household_id UUID NOT NULL REFERENCES substrate.households(id),
+  lat DOUBLE PRECISION,
+  lng DOUBLE PRECISION,
+  address TEXT,
+  category TEXT NOT NULL DEFAULT 'general',
+  origin_client_id TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  acknowledged_at TIMESTAMPTZ
+);

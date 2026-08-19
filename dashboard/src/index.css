@@ -115,9 +115,95 @@ h3 {
 .tab-bar {
   flex-shrink: 0;
   display: flex;
+  position: relative;
+  z-index: 1001;
   border-top: 1px solid var(--border);
   background: var(--surface);
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+.sos-dock {
+  flex: 0 0 76px;
+  position: relative;
+}
+
+.sos-main-button {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translate(-50%, -55%);
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  border: 3px solid var(--surface);
+  background: #c62828;
+  color: white;
+  font: inherit;
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+  z-index: 5;
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+
+.sos-main-button.sos-tapping {
+  background: #e53935;
+  transform: translate(-50%, -55%) scale(1.08);
+}
+
+.sos-main-button.sos-sending {
+  background: #8d1616;
+}
+
+.sos-tap-count {
+  position: absolute;
+  bottom: -1.1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #c62828;
+  white-space: nowrap;
+}
+
+.sos-satellites {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 0.5rem);
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.6rem;
+  z-index: 5;
+}
+
+.sos-satellite {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.65rem;
+  color: white;
+  background: #b71c1c;
+  border: none;
+  border-radius: 12px;
+  padding: 0.5rem 0.7rem;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+}
+
+.sos-satellite.sos-tapping {
+  background: #e53935;
+}
+
+.sos-satellite-icon {
+  font-size: 1rem;
+  font-weight: 900;
 }
 
 .tab-button {
@@ -142,6 +228,50 @@ h3 {
 
 .tab-button.active {
   color: var(--accent);
+}
+
+.sos-alarm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+  background: #b71c1c;
+  color: white;
+  animation: sos-flash 1s ease-in-out infinite;
+}
+
+@keyframes sos-flash {
+  0%, 100% { background: #b71c1c; }
+  50% { background: #7f0000; }
+}
+
+.sos-alarm-label {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.sos-alarm-address {
+  font-size: 1.1rem;
+  opacity: 0.9;
+}
+
+.sos-alarm-ack {
+  margin-top: 1rem;
+  font: inherit;
+  font-weight: 700;
+  padding: 0.9rem 1.6rem;
+  border-radius: 10px;
+  border: none;
+  background: white;
+  color: #b71c1c;
+  cursor: pointer;
 }
 
 /* --- Auth screens (setup / unlock) --- */
