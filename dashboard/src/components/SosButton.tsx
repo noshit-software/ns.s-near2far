@@ -4,27 +4,8 @@ import { apiPost } from "../lib/api"
 import { getClientId } from "../lib/clientId"
 import { BadgeIcon, BellIcon, CarIcon, MedicalCrossIcon, PhoneIcon, SuspiciousIcon } from "./icons"
 
-type ContactHousehold = {
-  emergency_contact_1_name: string | null
-  emergency_contact_1_phone: string | null
-  emergency_contact_2_name: string | null
-  emergency_contact_2_phone: string | null
-  emergency_contact_3_name: string | null
-  emergency_contact_3_phone: string | null
-  emergency_contact_4_name: string | null
-  emergency_contact_4_phone: string | null
-}
-
-function quickDialContacts(household: ContactHousehold | null | undefined) {
-  if (!household) return []
-  const slots = [1, 2, 3, 4] as const
-  return slots
-    .map((n) => ({
-      name: household[`emergency_contact_${n}_name`],
-      phone: household[`emergency_contact_${n}_phone`],
-    }))
-    .filter((c): c is { name: string; phone: string } => Boolean(c.phone))
-}
+type EmergencyContact = { id: string; category: string | null; name: string; phone: string }
+type ContactHousehold = { emergency_contacts: EmergencyContact[] }
 
 const TAP_WINDOW_MS = 600
 const TAPS_TO_TRIGGER = 3
@@ -71,7 +52,6 @@ export function SosButton({
   onTriggered: (alertId: number) => void
 }) {
   const [expanded, setExpanded] = useState(false)
-  const contacts = quickDialContacts(household)
   const [taps, setTaps] = useState<Record<string, number>>({})
   const [sending, setSending] = useState(false)
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
@@ -122,6 +102,17 @@ export function SosButton({
 
   const mainTaps = taps["general"] ?? 0
 
+  const allContacts = household?.emergency_contacts ?? []
+  const generalContacts = allContacts.filter((c) => c.category === null)
+  // A category's own contacts (AAA for car trouble, etc.) only show once that category has
+  // been engaged (at least one tap toward its triple-tap) — irrelevant numbers shouldn't
+  // clutter the call row before the person even indicates which kind of emergency this is.
+  const engagedCategories = CATEGORIES.filter((c) => (taps[c.key] ?? 0) > 0).map((c) => c.key)
+  const categoryContacts = allContacts.filter(
+    (c) => c.category !== null && engagedCategories.includes(c.category as Category),
+  )
+  const contacts = [...generalContacts, ...categoryContacts]
+
   return (
     <div className="sos-dock">
       {expanded && (
@@ -132,7 +123,7 @@ export function SosButton({
           </a>
           {contacts.map((c) => (
             <a
-              key={c.phone}
+              key={c.id}
               href={`tel:${c.phone}`}
               className="sos-call-button"
               aria-label={`Call ${c.name}`}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 
-import { apiGet, apiPost, getAdminPassword, setAdminPassword } from "../lib/api"
+import { apiDelete, apiGet, apiPost, getAdminPassword, setAdminPassword } from "../lib/api"
 import { generatedAvatarDataUri } from "../lib/avatar"
 import { useEventStream } from "../lib/ws"
 import { FamilyMap } from "./FamilyMap"
@@ -22,19 +22,26 @@ type Member = {
   color: string | null
 }
 
+export type EmergencyContact = {
+  id: string
+  category: string | null
+  name: string
+  phone: string
+}
+
 type Household = {
   id: string
   name: string
   home_geofence: { lat: number; lng: number; radius_m: number }
   members: Member[]
-  emergency_contact_1_name: string | null
-  emergency_contact_1_phone: string | null
-  emergency_contact_2_name: string | null
-  emergency_contact_2_phone: string | null
-  emergency_contact_3_name: string | null
-  emergency_contact_3_phone: string | null
-  emergency_contact_4_name: string | null
-  emergency_contact_4_phone: string | null
+  emergency_contacts: EmergencyContact[]
+}
+
+const SOS_CATEGORY_LABELS: Record<string, string> = {
+  medical: "Medical",
+  security: "Authority threat",
+  suspicious: "Being followed",
+  car: "Car trouble",
 }
 
 export function SetupWizard() {
@@ -54,14 +61,8 @@ export function SetupWizard() {
   const [showDeviceHint, setShowDeviceHint] = useState(false)
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null)
 
-  const [contact1Name, setContact1Name] = useState("")
-  const [contact1Phone, setContact1Phone] = useState("")
-  const [contact2Name, setContact2Name] = useState("")
-  const [contact2Phone, setContact2Phone] = useState("")
-  const [contact3Name, setContact3Name] = useState("")
-  const [contact3Phone, setContact3Phone] = useState("")
-  const [contact4Name, setContact4Name] = useState("")
-  const [contact4Phone, setContact4Phone] = useState("")
+  const [newContactName, setNewContactName] = useState<Record<string, string>>({})
+  const [newContactPhone, setNewContactPhone] = useState<Record<string, string>>({})
 
   const lastEvent = useEventStream()
   const [activeSosId, setActiveSosId] = useState<number | null>(null)
@@ -81,42 +82,31 @@ export function SetupWizard() {
       .catch((e) => setError(e.message))
   }, [])
 
-  useEffect(() => {
+  async function addEmergencyContact(category: string | null) {
     if (!household) return
-    setContact1Name(household.emergency_contact_1_name ?? "")
-    setContact1Phone(household.emergency_contact_1_phone ?? "")
-    setContact2Name(household.emergency_contact_2_name ?? "")
-    setContact2Phone(household.emergency_contact_2_phone ?? "")
-    setContact3Name(household.emergency_contact_3_name ?? "")
-    setContact3Phone(household.emergency_contact_3_phone ?? "")
-    setContact4Name(household.emergency_contact_4_name ?? "")
-    setContact4Phone(household.emergency_contact_4_phone ?? "")
-  }, [household?.id])
+    const key = category ?? "general"
+    const name = (newContactName[key] ?? "").trim()
+    const phone = (newContactPhone[key] ?? "").trim()
+    if (!name || !phone) return
+    setError(null)
+    try {
+      const created = await apiPost<EmergencyContact>("/setup/emergency-contacts", { category, name, phone })
+      setHousehold({ ...household, emergency_contacts: [...household.emergency_contacts, created] })
+      setNewContactName((prev) => ({ ...prev, [key]: "" }))
+      setNewContactPhone((prev) => ({ ...prev, [key]: "" }))
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
 
-  async function saveEmergencyContacts() {
+  async function removeEmergencyContact(contactId: string) {
     if (!household) return
     setError(null)
     try {
-      const updated = await apiPost<Household>("/setup/household/emergency-contacts", {
-        emergency_contact_1_name: contact1Name || null,
-        emergency_contact_1_phone: contact1Phone || null,
-        emergency_contact_2_name: contact2Name || null,
-        emergency_contact_2_phone: contact2Phone || null,
-        emergency_contact_3_name: contact3Name || null,
-        emergency_contact_3_phone: contact3Phone || null,
-        emergency_contact_4_name: contact4Name || null,
-        emergency_contact_4_phone: contact4Phone || null,
-      })
+      await apiDelete(`/setup/emergency-contacts/${contactId}`)
       setHousehold({
         ...household,
-        emergency_contact_1_name: updated.emergency_contact_1_name,
-        emergency_contact_1_phone: updated.emergency_contact_1_phone,
-        emergency_contact_2_name: updated.emergency_contact_2_name,
-        emergency_contact_2_phone: updated.emergency_contact_2_phone,
-        emergency_contact_3_name: updated.emergency_contact_3_name,
-        emergency_contact_3_phone: updated.emergency_contact_3_phone,
-        emergency_contact_4_name: updated.emergency_contact_4_name,
-        emergency_contact_4_phone: updated.emergency_contact_4_phone,
+        emergency_contacts: household.emergency_contacts.filter((c) => c.id !== contactId),
       })
     } catch (e) {
       setError((e as Error).message)
@@ -134,7 +124,7 @@ export function SetupWizard() {
       })
       setAdminPassword(adminPassword)
       setUnlocked(true)
-      setHousehold({ ...created, members: [] })
+      setHousehold({ ...created, members: [], emergency_contacts: [] })
     } catch (e) {
       setError((e as Error).message)
     }
@@ -355,64 +345,54 @@ export function SetupWizard() {
 
             <h3>Emergency contacts</h3>
             <p className="hint">
-              Shown as one-tap dial buttons on the SOS button, alongside 911 — for someone to call
-              immediately in an emergency, not just be notified after the fact.
+              One-tap dial buttons on the SOS button, alongside 911. "General" shows for every
+              SOS category; each category's own contacts (e.g. AAA and insurance for Car trouble)
+              only show once that category is engaged.
             </p>
-            <div className="emergency-contact-row">
-              <input
-                value={contact1Name}
-                onChange={(e) => setContact1Name(e.target.value)}
-                placeholder="Name (e.g. Dad)"
-              />
-              <input
-                value={contact1Phone}
-                onChange={(e) => setContact1Phone(e.target.value)}
-                placeholder="Phone number"
-                type="tel"
-              />
-            </div>
-            <div className="emergency-contact-row">
-              <input
-                value={contact2Name}
-                onChange={(e) => setContact2Name(e.target.value)}
-                placeholder="Name (e.g. Lawyer)"
-              />
-              <input
-                value={contact2Phone}
-                onChange={(e) => setContact2Phone(e.target.value)}
-                placeholder="Phone number"
-                type="tel"
-              />
-            </div>
-            <div className="emergency-contact-row">
-              <input
-                value={contact3Name}
-                onChange={(e) => setContact3Name(e.target.value)}
-                placeholder="Name"
-              />
-              <input
-                value={contact3Phone}
-                onChange={(e) => setContact3Phone(e.target.value)}
-                placeholder="Phone number"
-                type="tel"
-              />
-            </div>
-            <div className="emergency-contact-row">
-              <input
-                value={contact4Name}
-                onChange={(e) => setContact4Name(e.target.value)}
-                placeholder="Name"
-              />
-              <input
-                value={contact4Phone}
-                onChange={(e) => setContact4Phone(e.target.value)}
-                placeholder="Phone number"
-                type="tel"
-              />
-            </div>
-            <button type="button" onClick={saveEmergencyContacts}>
-              Save contacts
-            </button>
+            {(
+              [
+                [null, "General", 2],
+                ...Object.entries(SOS_CATEGORY_LABELS).map(
+                  ([key, label]) => [key, label, 3] as [string, string, number],
+                ),
+              ] as [string | null, string, number][]
+            ).map(([category, label, cap]) => {
+              const key = category ?? "general"
+              const existing = household.emergency_contacts.filter((c) => c.category === category)
+              return (
+                <div key={key} className="emergency-contact-group">
+                  <h4>{label}</h4>
+                  {existing.map((c) => (
+                    <div key={c.id} className="emergency-contact-row">
+                      <span className="emergency-contact-name">
+                        {c.name} — {c.phone}
+                      </span>
+                      <button type="button" onClick={() => removeEmergencyContact(c.id)}>
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  {existing.length < cap && (
+                    <div className="emergency-contact-row">
+                      <input
+                        value={newContactName[key] ?? ""}
+                        onChange={(e) => setNewContactName((prev) => ({ ...prev, [key]: e.target.value }))}
+                        placeholder="Name"
+                      />
+                      <input
+                        value={newContactPhone[key] ?? ""}
+                        onChange={(e) => setNewContactPhone((prev) => ({ ...prev, [key]: e.target.value }))}
+                        placeholder="Phone number"
+                        type="tel"
+                      />
+                      <button type="button" onClick={() => addEmergencyContact(category)}>
+                        Add
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
 
             {error && <p className="error">{error}</p>}
           </div>

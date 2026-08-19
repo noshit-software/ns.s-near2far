@@ -39,10 +39,13 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   above the bottom tab bar (like a camera shutter button, clipped by the screen edge) — tapping it
   3 times fast triggers a general alert. A single tap first reveals a 2×2 grid of category buttons
   (Medical, Authority threat, Being followed, Car trouble — each its own icon, each also requiring
-  a triple-tap) plus a row of one-tap `tel:` call buttons above it: 911 always, and up to 4
-  household-configured emergency contacts (Settings → Emergency contacts) — these dial immediately
-  on a single tap since placing a call is already its own confirmation step. The triple-tap gate on
-  the alert buttons themselves is deliberate: easy enough to reach in a real emergency, but not
+  a triple-tap) plus a row of one-tap `tel:` call buttons above it: 911 always, up to 2
+  household-configured general contacts (shown regardless of category), and up to 3 more scoped to
+  whichever category has actually been engaged (e.g. AAA and insurance only appear once Car
+  trouble has at least one tap toward its own triple-tap) — configured in Settings → Emergency
+  contacts, per category. These dial immediately on a single tap since placing a call is already
+  its own confirmation step. The triple-tap gate on the alert buttons themselves is deliberate:
+  easy enough to reach in a real emergency, but not
   something a phone in a pocket can fire by accident. On trigger, the device's current location is
   reverse-geocoded to the nearest street (best-effort — see `backend/app/geocode.py`), the map
   flashes a pulsing marker at that location and flies to it, and every *other* connected household
@@ -368,17 +371,18 @@ docker compose up -d --build traccar   # only traccar runs in Compose on the VPS
     acknowledged_at TIMESTAMPTZ
   );
   ```
-  The one-tap emergency call buttons need 4 contact columns on `substrate.households`:
+  The one-tap emergency call buttons need `substrate.emergency_contacts` on an existing install
+  (category `NULL` = general, shown for every SOS category; a specific category's contacts only
+  show once that category is engaged):
   ```sql
-  ALTER TABLE substrate.households
-    ADD COLUMN IF NOT EXISTS emergency_contact_1_name TEXT,
-    ADD COLUMN IF NOT EXISTS emergency_contact_1_phone TEXT,
-    ADD COLUMN IF NOT EXISTS emergency_contact_2_name TEXT,
-    ADD COLUMN IF NOT EXISTS emergency_contact_2_phone TEXT,
-    ADD COLUMN IF NOT EXISTS emergency_contact_3_name TEXT,
-    ADD COLUMN IF NOT EXISTS emergency_contact_3_phone TEXT,
-    ADD COLUMN IF NOT EXISTS emergency_contact_4_name TEXT,
-    ADD COLUMN IF NOT EXISTS emergency_contact_4_phone TEXT;
+  CREATE TABLE IF NOT EXISTS substrate.emergency_contacts (
+    id BIGSERIAL PRIMARY KEY,
+    household_id UUID NOT NULL REFERENCES substrate.households(id),
+    category TEXT,
+    name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0
+  );
   ```
 - **Member photo uploads need `backend/uploads/` to persist and be writable.** Locally that's the
   `backend_uploads` docker volume; on the VPS (bare pm2, no container) it's just a directory next to

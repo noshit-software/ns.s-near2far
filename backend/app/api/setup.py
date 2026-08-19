@@ -13,13 +13,13 @@ from app.middleware.auth import require_admin_auth
 
 router = APIRouter()
 
-HOUSEHOLD_COLUMNS = (
-    "id, name, home_geofence, "
-    "emergency_contact_1_name, emergency_contact_1_phone, "
-    "emergency_contact_2_name, emergency_contact_2_phone, "
-    "emergency_contact_3_name, emergency_contact_3_phone, "
-    "emergency_contact_4_name, emergency_contact_4_phone"
-)
+HOUSEHOLD_COLUMNS = "id, name, home_geofence"
+
+# App-enforced caps, not DB constraints — keeps the SOS quick-dial row from growing unbounded.
+# 2 general (shown for every category) + 3 per specific category.
+GENERAL_CONTACT_CAP = 2
+CATEGORY_CONTACT_CAP = 3
+SOS_CATEGORIES = {"medical", "security", "suspicious", "car"}
 
 AVATAR_DIR = Path(settings.upload_dir) / "avatars"
 AVATAR_CONTENT_TYPES = {
@@ -44,15 +44,10 @@ class HomeGeofence(BaseModel):
     radius_m: float
 
 
-class EmergencyContacts(BaseModel):
-    emergency_contact_1_name: str | None = None
-    emergency_contact_1_phone: str | None = None
-    emergency_contact_2_name: str | None = None
-    emergency_contact_2_phone: str | None = None
-    emergency_contact_3_name: str | None = None
-    emergency_contact_3_phone: str | None = None
-    emergency_contact_4_name: str | None = None
-    emergency_contact_4_phone: str | None = None
+class CreateEmergencyContact(BaseModel):
+    category: str | None = None
+    name: str
+    phone: str
 
 
 class CreateHousehold(BaseModel):
@@ -97,12 +92,18 @@ async def get_household(request: Request) -> dict:
             "WHERE household_id = $1",
             household["id"],
         )
+        contacts = await conn.fetch(
+            "SELECT id, category, name, phone FROM substrate.emergency_contacts "
+            "WHERE household_id = $1 ORDER BY sort_order, id",
+            household["id"],
+        )
 
     return {
         "success": True,
         "data": {
             **_household_dict(household),
             "members": [{**dict(m), "id": str(m["id"])} for m in members],
+            "emergency_contacts": [{**dict(c), "id": str(c["id"])} for c in contacts],
         },
     }
 
@@ -145,33 +146,55 @@ async def update_geofence(body: HomeGeofence, request: Request) -> dict:
     return {"success": True, "data": data}
 
 
-@router.post("/api/setup/household/emergency-contacts", dependencies=[Depends(require_admin_auth)])
-async def update_emergency_contacts(body: EmergencyContacts, request: Request) -> dict:
+@router.post("/api/setup/emergency-contacts", dependencies=[Depends(require_admin_auth)])
+async def create_emergency_contact(body: CreateEmergencyContact, request: Request) -> dict:
+    if body.category is not None and body.category not in SOS_CATEGORIES:
+        raise HTTPException(status_code=400, detail="Unknown category")
+
     async with request.app.state.db_pool.acquire() as conn:
+        household_id = await conn.fetchval(
+            "SELECT id FROM substrate.households ORDER BY created_at LIMIT 1"
+        )
+        if household_id is None:
+            raise HTTPException(status_code=404, detail="Household not found")
+
+        cap = GENERAL_CONTACT_CAP if body.category is None else CATEGORY_CONTACT_CAP
+        count = await conn.fetchval(
+            "SELECT count(*) FROM substrate.emergency_contacts "
+            "WHERE household_id = $1 AND category IS NOT DISTINCT FROM $2",
+            household_id,
+            body.category,
+        )
+        if count >= cap:
+            raise HTTPException(status_code=400, detail=f"Limit of {cap} contacts reached for this category")
+
         row = await conn.fetchrow(
-            f"UPDATE substrate.households SET emergency_contact_1_name = $1, "
-            f"emergency_contact_1_phone = $2, emergency_contact_2_name = $3, "
-            f"emergency_contact_2_phone = $4, emergency_contact_3_name = $5, "
-            f"emergency_contact_3_phone = $6, emergency_contact_4_name = $7, "
-            f"emergency_contact_4_phone = $8 "
-            f"WHERE id = (SELECT id FROM substrate.households ORDER BY created_at LIMIT 1) "
-            f"RETURNING {HOUSEHOLD_COLUMNS}",
-            body.emergency_contact_1_name,
-            body.emergency_contact_1_phone,
-            body.emergency_contact_2_name,
-            body.emergency_contact_2_phone,
-            body.emergency_contact_3_name,
-            body.emergency_contact_3_phone,
-            body.emergency_contact_4_name,
-            body.emergency_contact_4_phone,
+            "INSERT INTO substrate.emergency_contacts (household_id, category, name, phone, sort_order) "
+            "VALUES ($1, $2, $3, $4, $5) RETURNING id, category, name, phone",
+            household_id,
+            body.category,
+            body.name,
+            body.phone,
+            count,
         )
 
-    if row is None:
-        raise HTTPException(status_code=404, detail="Household not found")
-
-    data = _household_dict(row)
-    await publish("household.updated", data)
+    data = {**dict(row), "id": str(row["id"])}
+    await publish("household.updated", None)
     return {"success": True, "data": data}
+
+
+@router.delete("/api/setup/emergency-contacts/{contact_id}", dependencies=[Depends(require_admin_auth)])
+async def delete_emergency_contact(contact_id: int, request: Request) -> dict:
+    async with request.app.state.db_pool.acquire() as conn:
+        result = await conn.execute(
+            "DELETE FROM substrate.emergency_contacts WHERE id = $1", contact_id
+        )
+
+    if result == "DELETE 0":
+        raise HTTPException(status_code=404, detail="Contact not found")
+
+    await publish("household.updated", None)
+    return {"success": True, "data": None}
 
 
 @router.post("/api/setup/verify")

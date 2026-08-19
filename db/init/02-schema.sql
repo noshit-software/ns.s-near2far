@@ -11,19 +11,7 @@ CREATE TABLE IF NOT EXISTS substrate.households (
   name TEXT NOT NULL,
   home_geofence JSONB,
   admin_password_hash TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  -- One-tap emergency dial targets shown alongside 911 on the SOS button (up to 4, for 5
-  -- one-tap call buttons total) — e.g. a spouse and a lawyer, for a household where the actual
-  -- risk in an emergency can be an authority (ICE, police) rather than something 911 itself
-  -- would help with. All optional.
-  emergency_contact_1_name TEXT,
-  emergency_contact_1_phone TEXT,
-  emergency_contact_2_name TEXT,
-  emergency_contact_2_phone TEXT,
-  emergency_contact_3_name TEXT,
-  emergency_contact_3_phone TEXT,
-  emergency_contact_4_name TEXT,
-  emergency_contact_4_phone TEXT
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS substrate.members (
@@ -81,4 +69,18 @@ CREATE TABLE IF NOT EXISTS runtime.sos_alerts (
   origin_client_id TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   acknowledged_at TIMESTAMPTZ
+);
+
+-- One-tap emergency dial targets shown on the SOS button alongside 911. `category` NULL means
+-- "general" — shown regardless of which SOS category is selected (e.g. a spouse, a lawyer).
+-- A non-null category (matching sos_alerts.category) only shows once that category is engaged
+-- — e.g. 'car' contacts (AAA, insurance, non-emergency police) are only relevant for car
+-- trouble, not a medical emergency. App-enforced caps: 2 general, 3 per category.
+CREATE TABLE IF NOT EXISTS substrate.emergency_contacts (
+  id BIGSERIAL PRIMARY KEY,
+  household_id UUID NOT NULL REFERENCES substrate.households(id),
+  category TEXT,
+  name TEXT NOT NULL,
+  phone TEXT NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0
 );
