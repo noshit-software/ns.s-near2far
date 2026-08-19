@@ -65,3 +65,69 @@ export function EyeOffIcon() {
     </svg>
   )
 }
+
+export function BellIcon() {
+  return (
+    <svg {...common} width="36" height="36" aria-hidden="true">
+      <path d="M6 8a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6" />
+      <path d="M10 21a2 2 0 0 0 4 0" />
+    </svg>
+  )
+}
+
+export function MedicalCrossIcon() {
+  return (
+    <svg {...common} width="20" height="20" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="4" />
+      <line x1="12" y1="7.5" x2="12" y2="16.5" />
+      <line x1="7.5" y1="12" x2="16.5" y2="12" />
+    </svg>
+  )
+}
+
+export function BadgeIcon() {
+  return (
+    <svg {...common} width="20" height="20" aria-hidden="true">
+      <path d="M12 2l2.5 2.5H18v3.5L20.5 10.5 18 13v3.5h-3.5L12 19l-2.5-2.5H6V13L3.5 10.5 6 8V4.5h3.5z" />
+      <circle cx="12" cy="11" r="3" />
+    </svg>
+  )
+}
+
+export function LockIcon() {
+  return (
+    <svg {...common} width="22" height="22" aria-hidden="true">
+      <rect x="4" y="11" width="16" height="10" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  )
+}
+
+export function PhoneIcon() {
+  return (
+    <svg {...common} width="18" height="18" aria-hidden="true">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+    </svg>
+  )
+}
+
+export function CarIcon() {
+  return (
+    <svg {...common} width="20" height="20" aria-hidden="true">
+      <path d="M3 13l1.5-5A2 2 0 0 1 6.4 6.5h11.2A2 2 0 0 1 19.5 8L21 13" />
+      <rect x="2" y="13" width="20" height="6" rx="2" />
+      <circle cx="7" cy="19" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="17" cy="19" r="1.6" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
+export function SuspiciousIcon() {
+  return (
+    <svg {...common} width="20" height="20" aria-hidden="true">
+      <path d="M2 10c1.5-2.5 4-4 6-4s3.5 1.5 4 2c.5-.5 2-2 4-2s4.5 1.5 6 4c-1.5 2.5-4 4-6 4s-3.5-1.5-4-2c-.5.5-2 2-4 2s-4.5-1.5-6-4Z" />
+      <circle cx="8" cy="10" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="16" cy="10" r="1.4" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}

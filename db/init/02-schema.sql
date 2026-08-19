@@ -11,7 +11,19 @@ CREATE TABLE IF NOT EXISTS substrate.households (
   name TEXT NOT NULL,
   home_geofence JSONB,
   admin_password_hash TEXT NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- One-tap emergency dial targets shown alongside 911 on the SOS button (up to 4, for 5
+  -- one-tap call buttons total) — e.g. a spouse and a lawyer, for a household where the actual
+  -- risk in an emergency can be an authority (ICE, police) rather than something 911 itself
+  -- would help with. All optional.
+  emergency_contact_1_name TEXT,
+  emergency_contact_1_phone TEXT,
+  emergency_contact_2_name TEXT,
+  emergency_contact_2_phone TEXT,
+  emergency_contact_3_name TEXT,
+  emergency_contact_3_phone TEXT,
+  emergency_contact_4_name TEXT,
+  emergency_contact_4_phone TEXT
 );
 
 CREATE TABLE IF NOT EXISTS substrate.members (

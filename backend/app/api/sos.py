@@ -11,7 +11,9 @@ router = APIRouter()
 CATEGORY_LABELS = {
     "general": "SOS",
     "medical": "Medical emergency",
-    "security": "Security threat",
+    "security": "Authority threat",
+    "suspicious": "Being followed",
+    "car": "Car trouble",
 }
 
 

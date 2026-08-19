@@ -35,18 +35,27 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   "Enable trip alerts" banner subscribes the browser to Web Push. Since an installed PWA doesn't
   reliably recheck for a new deploy on its own (especially on iOS), the dashboard compares its loaded
   JS bundle against the server's on every foreground/focus and reloads automatically when they
-  differ — no manual close/reopen needed after a rebuild. A round **SOS button** floats above the
-  bottom tab bar (like a camera shutter button) — tapping it 3 times fast triggers a general alert;
-  a single tap first reveals two smaller Medical/Security satellite buttons, each also requiring a
-  triple-tap. This is deliberately not a single tap or long-press: easy enough to reach in a real
-  emergency, but not something a phone in a pocket can fire by accident. On trigger, the device's
-  current location is reverse-geocoded to the nearest street (best-effort — see
-  `backend/app/geocode.py`) and every *other* connected household device (identified by a
-  per-browser client id, so the triggering device itself never alarms) gets a full-screen flashing
-  red overlay with a looping siren (Web Audio, no bundled audio file) and vibration, plus a Web
-  Push notification for anyone with the app backgrounded/closed. It stays up until someone taps
-  "I see it — stop alarm", which clears it on every device via the same WebSocket event stream. The
-  **Settings** tab has household/member
+  differ — no manual close/reopen needed after a rebuild. A round **SOS button** (bell icon) floats
+  above the bottom tab bar (like a camera shutter button, clipped by the screen edge) — tapping it
+  3 times fast triggers a general alert. A single tap first reveals a 2×2 grid of category buttons
+  (Medical, Authority threat, Being followed, Car trouble — each its own icon, each also requiring
+  a triple-tap) plus a row of one-tap `tel:` call buttons above it: 911 always, and up to 4
+  household-configured emergency contacts (Settings → Emergency contacts) — these dial immediately
+  on a single tap since placing a call is already its own confirmation step. The triple-tap gate on
+  the alert buttons themselves is deliberate: easy enough to reach in a real emergency, but not
+  something a phone in a pocket can fire by accident. On trigger, the device's current location is
+  reverse-geocoded to the nearest street (best-effort — see `backend/app/geocode.py`), the map
+  flashes a pulsing marker at that location and flies to it, and every *other* connected household
+  device (identified by a per-browser client id, so the triggering device never alarms on itself)
+  gets a full-screen flashing red overlay — big centered category icon/label, address, siren (Web
+  Audio, no bundled audio file), vibration — plus a Web Push notification if backgrounded/closed.
+  That overlay's "Silence" button is local-only: it stops the sound/vibration on that one device but
+  does **not** resolve the alert anywhere else, so it can't be used to make the alert disappear for
+  everyone. Only the device that triggered the SOS sees a persistent "SOS active" banner with a
+  "Disable" control gated behind re-typing the admin password as a confirmation code — deliberately
+  not a single tap, so whoever the emergency is about can't just grab the nearest phone and cancel
+  it. Disabling broadcasts over the same WebSocket stream to clear every device's alarm and the map
+  marker. The **Settings** tab has household/member
   management (home
   geofence via a Leaflet map you click to place a pin, member list — tapping a member opens a full
   **Edit member** modal: rename, avatar, a map-color picker, Device ID, and remove). No address
@@ -358,6 +367,18 @@ docker compose up -d --build traccar   # only traccar runs in Compose on the VPS
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     acknowledged_at TIMESTAMPTZ
   );
+  ```
+  The one-tap emergency call buttons need 4 contact columns on `substrate.households`:
+  ```sql
+  ALTER TABLE substrate.households
+    ADD COLUMN IF NOT EXISTS emergency_contact_1_name TEXT,
+    ADD COLUMN IF NOT EXISTS emergency_contact_1_phone TEXT,
+    ADD COLUMN IF NOT EXISTS emergency_contact_2_name TEXT,
+    ADD COLUMN IF NOT EXISTS emergency_contact_2_phone TEXT,
+    ADD COLUMN IF NOT EXISTS emergency_contact_3_name TEXT,
+    ADD COLUMN IF NOT EXISTS emergency_contact_3_phone TEXT,
+    ADD COLUMN IF NOT EXISTS emergency_contact_4_name TEXT,
+    ADD COLUMN IF NOT EXISTS emergency_contact_4_phone TEXT;
   ```
 - **Member photo uploads need `backend/uploads/` to persist and be writable.** Locally that's the
   `backend_uploads` docker volume; on the VPS (bare pm2, no container) it's just a directory next to

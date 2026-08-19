@@ -122,6 +122,15 @@ function spreadOverlapping(
   return result
 }
 
+function sosIcon(): L.DivIcon {
+  return L.divIcon({
+    className: "sos-map-marker-wrapper",
+    html: `<div class="sos-map-marker"><div class="sos-map-marker-ring"></div><div class="sos-map-marker-dot"></div></div>`,
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+  })
+}
+
 function haversineM(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const r = 6371000
   const p1 = (lat1 * Math.PI) / 180
@@ -189,6 +198,9 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
   const [zoom, setZoom] = useState(14)
   const mapRef = useRef<L.Map | null>(null)
   const speedsRef = useRef<Record<string, number>>({})
+  const [sosMarker, setSosMarker] = useState<{ id: number; lat: number; lng: number; category: string } | null>(
+    null,
+  )
   const [, forceTick] = useState(0)
 
   useEffect(() => {
@@ -219,16 +231,23 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
   }, [])
 
   useEffect(() => {
-    if (
-      lastEvent &&
-      typeof lastEvent === "object" &&
-      (lastEvent as { type?: string }).type === "position.updated"
-    ) {
-      const payload = (lastEvent as { payload: Position }).payload
+    if (!lastEvent || typeof lastEvent !== "object") return
+    const { type, payload } = lastEvent as { type?: string; payload?: unknown }
+
+    if (type === "position.updated") {
+      const p = payload as Position
       setPositions((prev) => {
-        updateSpeed(prev[payload.member_id], payload)
-        return { ...prev, [payload.member_id]: payload }
+        updateSpeed(prev[p.member_id], p)
+        return { ...prev, [p.member_id]: p }
       })
+    } else if (type === "sos.triggered") {
+      const a = payload as { id: number; lat: number | null; lng: number | null; category: string }
+      if (a.lat == null || a.lng == null) return
+      setSosMarker({ id: a.id, lat: a.lat, lng: a.lng, category: a.category })
+      mapRef.current?.flyTo([a.lat, a.lng], 17)
+    } else if (type === "sos.acknowledged") {
+      const { id } = payload as { id: number }
+      setSosMarker((prev) => (prev?.id === id ? null : prev))
     }
   }, [lastEvent])
 
@@ -256,6 +275,7 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
             </Popup>
           </Marker>
         ))}
+        {sosMarker && <Marker position={[sosMarker.lat, sosMarker.lng]} icon={sosIcon()} zIndexOffset={1000} />}
       </MapContainer>
       <div className="map-overlay-bottom">
         {positionList.length > 0 && (

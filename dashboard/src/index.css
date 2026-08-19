@@ -176,13 +176,61 @@ h3 {
   white-space: nowrap;
 }
 
+.sos-call-row {
+  position: fixed;
+  left: 50%;
+  bottom: 292px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 200px;
+  z-index: 1002;
+}
+
+.sos-call-button {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.7rem;
+  color: white;
+  background: #2b2e33;
+  border: none;
+  border-radius: 999px;
+  padding: 0.4rem 0.7rem;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+}
+
+.sos-call-button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.sos-call-911 {
+  background: #c62828;
+}
+
 .sos-satellites {
   position: fixed;
   left: 50%;
   bottom: 96px;
   transform: translateX(-50%);
-  display: flex;
-  gap: 0.6rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 2px;
+  width: 184px;
+  height: 184px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4);
   z-index: 1002;
 }
 
@@ -191,18 +239,17 @@ h3 {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
+  justify-content: center;
+  gap: 0.3rem;
   font: inherit;
   font-weight: 700;
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   color: white;
   background: #b71c1c;
   border: none;
-  border-radius: 12px;
-  padding: 0.5rem 0.7rem;
+  border-radius: 0;
+  padding: 0;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  white-space: nowrap;
 }
 
 .sos-satellite.sos-tapping {
@@ -210,8 +257,12 @@ h3 {
 }
 
 .sos-satellite-icon {
-  font-size: 1rem;
-  font-weight: 900;
+  display: flex;
+}
+
+.sos-satellite-icon svg {
+  width: 30px;
+  height: 30px;
 }
 
 .tab-button {
@@ -246,7 +297,7 @@ h3 {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
+  gap: 1.5rem;
   padding: 2rem;
   text-align: center;
   background: #b71c1c;
@@ -254,13 +305,31 @@ h3 {
   animation: sos-flash 1s ease-in-out infinite;
 }
 
+.sos-alarm-overlay.sos-alarm-silenced {
+  animation: none;
+  background: #7f0000;
+}
+
 @keyframes sos-flash {
   0%, 100% { background: #b71c1c; }
   50% { background: #7f0000; }
 }
 
+.sos-alarm-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.sos-alarm-icon svg {
+  width: 84px;
+  height: 84px;
+  stroke-width: 1.5;
+}
+
 .sos-alarm-label {
-  font-size: 2rem;
+  font-size: 2.4rem;
   font-weight: 800;
   letter-spacing: 0.02em;
 }
@@ -280,6 +349,93 @@ h3 {
   background: white;
   color: #b71c1c;
   cursor: pointer;
+}
+
+.sos-alarm-silenced-note {
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
+
+.sos-active-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: calc(env(safe-area-inset-top) + 0.6rem) 1rem 0.6rem;
+  background: #b71c1c;
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.sos-active-banner button {
+  font: inherit;
+  font-weight: 700;
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  border: none;
+  background: white;
+  color: #b71c1c;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.sos-active-banner-confirm {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.sos-active-banner-confirm input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  border: none;
+}
+
+.sos-active-banner-error {
+  color: #ffd6d6;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.sos-map-marker {
+  position: relative;
+  width: 40px;
+  height: 40px;
+}
+
+.sos-map-marker-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #e53935;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.5);
+}
+
+.sos-map-marker-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(229, 57, 53, 0.55);
+  animation: sos-marker-pulse 1.2s ease-out infinite;
+}
+
+@keyframes sos-marker-pulse {
+  0% { transform: scale(0.3); opacity: 0.9; }
+  100% { transform: scale(1); opacity: 0; }
 }
 
 /* --- Auth screens (setup / unlock) --- */
@@ -986,6 +1142,17 @@ h3 {
 .member-form-row button {
   flex-shrink: 0;
   padding: 0.6rem 0.8rem;
+}
+
+.emergency-contact-row {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 0.5rem;
+}
+
+.emergency-contact-row input {
+  flex: 1;
+  min-width: 0;
 }
 
 .setup-wizard .hint,

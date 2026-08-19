@@ -9,6 +9,7 @@ import { LocationPicker } from "./LocationPicker"
 import { MemberEditModal } from "./MemberEditModal"
 import { NotificationSetup } from "./NotificationSetup"
 import { PasswordInput } from "./PasswordInput"
+import { SosActiveBanner } from "./SosActiveBanner"
 import { SosAlarm } from "./SosAlarm"
 import { SosButton } from "./SosButton"
 
@@ -26,6 +27,14 @@ type Household = {
   name: string
   home_geofence: { lat: number; lng: number; radius_m: number }
   members: Member[]
+  emergency_contact_1_name: string | null
+  emergency_contact_1_phone: string | null
+  emergency_contact_2_name: string | null
+  emergency_contact_2_phone: string | null
+  emergency_contact_3_name: string | null
+  emergency_contact_3_phone: string | null
+  emergency_contact_4_name: string | null
+  emergency_contact_4_phone: string | null
 }
 
 export function SetupWizard() {
@@ -45,13 +54,74 @@ export function SetupWizard() {
   const [showDeviceHint, setShowDeviceHint] = useState(false)
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null)
 
+  const [contact1Name, setContact1Name] = useState("")
+  const [contact1Phone, setContact1Phone] = useState("")
+  const [contact2Name, setContact2Name] = useState("")
+  const [contact2Phone, setContact2Phone] = useState("")
+  const [contact3Name, setContact3Name] = useState("")
+  const [contact3Phone, setContact3Phone] = useState("")
+  const [contact4Name, setContact4Name] = useState("")
+  const [contact4Phone, setContact4Phone] = useState("")
+
   const lastEvent = useEventStream()
+  const [activeSosId, setActiveSosId] = useState<number | null>(null)
+
+  useEffect(() => {
+    if (!lastEvent || typeof lastEvent !== "object") return
+    const { type, payload } = lastEvent as { type?: string; payload?: unknown }
+    if (type === "sos.acknowledged") {
+      const { id } = payload as { id: number }
+      setActiveSosId((prev) => (prev === id ? null : prev))
+    }
+  }, [lastEvent])
 
   useEffect(() => {
     apiGet<Household | null>("/setup/household")
       .then(setHousehold)
       .catch((e) => setError(e.message))
   }, [])
+
+  useEffect(() => {
+    if (!household) return
+    setContact1Name(household.emergency_contact_1_name ?? "")
+    setContact1Phone(household.emergency_contact_1_phone ?? "")
+    setContact2Name(household.emergency_contact_2_name ?? "")
+    setContact2Phone(household.emergency_contact_2_phone ?? "")
+    setContact3Name(household.emergency_contact_3_name ?? "")
+    setContact3Phone(household.emergency_contact_3_phone ?? "")
+    setContact4Name(household.emergency_contact_4_name ?? "")
+    setContact4Phone(household.emergency_contact_4_phone ?? "")
+  }, [household?.id])
+
+  async function saveEmergencyContacts() {
+    if (!household) return
+    setError(null)
+    try {
+      const updated = await apiPost<Household>("/setup/household/emergency-contacts", {
+        emergency_contact_1_name: contact1Name || null,
+        emergency_contact_1_phone: contact1Phone || null,
+        emergency_contact_2_name: contact2Name || null,
+        emergency_contact_2_phone: contact2Phone || null,
+        emergency_contact_3_name: contact3Name || null,
+        emergency_contact_3_phone: contact3Phone || null,
+        emergency_contact_4_name: contact4Name || null,
+        emergency_contact_4_phone: contact4Phone || null,
+      })
+      setHousehold({
+        ...household,
+        emergency_contact_1_name: updated.emergency_contact_1_name,
+        emergency_contact_1_phone: updated.emergency_contact_1_phone,
+        emergency_contact_2_name: updated.emergency_contact_2_name,
+        emergency_contact_2_phone: updated.emergency_contact_2_phone,
+        emergency_contact_3_name: updated.emergency_contact_3_name,
+        emergency_contact_3_phone: updated.emergency_contact_3_phone,
+        emergency_contact_4_name: updated.emergency_contact_4_name,
+        emergency_contact_4_phone: updated.emergency_contact_4_phone,
+      })
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
 
   async function submitHousehold() {
     if (!homeLocation) return
@@ -188,6 +258,9 @@ export function SetupWizard() {
   return (
     <div className="app-shell">
       <SosAlarm lastEvent={lastEvent} />
+      {activeSosId != null && (
+        <SosActiveBanner alertId={activeSosId} onCleared={() => setActiveSosId(null)} />
+      )}
       <header className="app-topbar">
         <h1>{showSettings ? "Settings" : household.name}</h1>
       </header>
@@ -279,6 +352,68 @@ export function SetupWizard() {
                 Add member
               </button>
             </div>
+
+            <h3>Emergency contacts</h3>
+            <p className="hint">
+              Shown as one-tap dial buttons on the SOS button, alongside 911 — for someone to call
+              immediately in an emergency, not just be notified after the fact.
+            </p>
+            <div className="emergency-contact-row">
+              <input
+                value={contact1Name}
+                onChange={(e) => setContact1Name(e.target.value)}
+                placeholder="Name (e.g. Dad)"
+              />
+              <input
+                value={contact1Phone}
+                onChange={(e) => setContact1Phone(e.target.value)}
+                placeholder="Phone number"
+                type="tel"
+              />
+            </div>
+            <div className="emergency-contact-row">
+              <input
+                value={contact2Name}
+                onChange={(e) => setContact2Name(e.target.value)}
+                placeholder="Name (e.g. Lawyer)"
+              />
+              <input
+                value={contact2Phone}
+                onChange={(e) => setContact2Phone(e.target.value)}
+                placeholder="Phone number"
+                type="tel"
+              />
+            </div>
+            <div className="emergency-contact-row">
+              <input
+                value={contact3Name}
+                onChange={(e) => setContact3Name(e.target.value)}
+                placeholder="Name"
+              />
+              <input
+                value={contact3Phone}
+                onChange={(e) => setContact3Phone(e.target.value)}
+                placeholder="Phone number"
+                type="tel"
+              />
+            </div>
+            <div className="emergency-contact-row">
+              <input
+                value={contact4Name}
+                onChange={(e) => setContact4Name(e.target.value)}
+                placeholder="Name"
+              />
+              <input
+                value={contact4Phone}
+                onChange={(e) => setContact4Phone(e.target.value)}
+                placeholder="Phone number"
+                type="tel"
+              />
+            </div>
+            <button type="button" onClick={saveEmergencyContacts}>
+              Save contacts
+            </button>
+
             {error && <p className="error">{error}</p>}
           </div>
         )}
@@ -293,7 +428,7 @@ export function SetupWizard() {
           <MapIcon />
           Map
         </button>
-        <SosButton />
+        <SosButton household={household} onTriggered={setActiveSosId} />
         <button
           type="button"
           className={`tab-button ${showSettings ? "active" : ""}`}

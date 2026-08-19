@@ -13,6 +13,14 @@ from app.middleware.auth import require_admin_auth
 
 router = APIRouter()
 
+HOUSEHOLD_COLUMNS = (
+    "id, name, home_geofence, "
+    "emergency_contact_1_name, emergency_contact_1_phone, "
+    "emergency_contact_2_name, emergency_contact_2_phone, "
+    "emergency_contact_3_name, emergency_contact_3_phone, "
+    "emergency_contact_4_name, emergency_contact_4_phone"
+)
+
 AVATAR_DIR = Path(settings.upload_dir) / "avatars"
 AVATAR_CONTENT_TYPES = {
     "image/jpeg": "jpg",
@@ -34,6 +42,17 @@ class HomeGeofence(BaseModel):
     lat: float
     lng: float
     radius_m: float
+
+
+class EmergencyContacts(BaseModel):
+    emergency_contact_1_name: str | None = None
+    emergency_contact_1_phone: str | None = None
+    emergency_contact_2_name: str | None = None
+    emergency_contact_2_phone: str | None = None
+    emergency_contact_3_name: str | None = None
+    emergency_contact_3_phone: str | None = None
+    emergency_contact_4_name: str | None = None
+    emergency_contact_4_phone: str | None = None
 
 
 class CreateHousehold(BaseModel):
@@ -68,7 +87,7 @@ class VerifyPassword(BaseModel):
 async def get_household(request: Request) -> dict:
     async with request.app.state.db_pool.acquire() as conn:
         household = await conn.fetchrow(
-            "SELECT id, name, home_geofence FROM substrate.households ORDER BY created_at LIMIT 1"
+            f"SELECT {HOUSEHOLD_COLUMNS} FROM substrate.households ORDER BY created_at LIMIT 1"
         )
         if household is None:
             return {"success": True, "data": None}
@@ -96,8 +115,8 @@ async def create_household(body: CreateHousehold, request: Request) -> dict:
             raise HTTPException(status_code=409, detail="Household already configured")
 
         row = await conn.fetchrow(
-            "INSERT INTO substrate.households (name, home_geofence, admin_password_hash) "
-            "VALUES ($1, $2::jsonb, $3) RETURNING id, name, home_geofence",
+            f"INSERT INTO substrate.households (name, home_geofence, admin_password_hash) "
+            f"VALUES ($1, $2::jsonb, $3) RETURNING {HOUSEHOLD_COLUMNS}",
             body.name,
             body.home_geofence.model_dump_json(),
             hash_password(body.admin_password),
@@ -116,6 +135,35 @@ async def update_geofence(body: HomeGeofence, request: Request) -> dict:
             "WHERE id = (SELECT id FROM substrate.households ORDER BY created_at LIMIT 1) "
             "RETURNING id, name, home_geofence",
             body.model_dump_json(),
+        )
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Household not found")
+
+    data = _household_dict(row)
+    await publish("household.updated", data)
+    return {"success": True, "data": data}
+
+
+@router.post("/api/setup/household/emergency-contacts", dependencies=[Depends(require_admin_auth)])
+async def update_emergency_contacts(body: EmergencyContacts, request: Request) -> dict:
+    async with request.app.state.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            f"UPDATE substrate.households SET emergency_contact_1_name = $1, "
+            f"emergency_contact_1_phone = $2, emergency_contact_2_name = $3, "
+            f"emergency_contact_2_phone = $4, emergency_contact_3_name = $5, "
+            f"emergency_contact_3_phone = $6, emergency_contact_4_name = $7, "
+            f"emergency_contact_4_phone = $8 "
+            f"WHERE id = (SELECT id FROM substrate.households ORDER BY created_at LIMIT 1) "
+            f"RETURNING {HOUSEHOLD_COLUMNS}",
+            body.emergency_contact_1_name,
+            body.emergency_contact_1_phone,
+            body.emergency_contact_2_name,
+            body.emergency_contact_2_phone,
+            body.emergency_contact_3_name,
+            body.emergency_contact_3_phone,
+            body.emergency_contact_4_name,
+            body.emergency_contact_4_phone,
         )
 
     if row is None:
