@@ -70,6 +70,11 @@ class UpdateEmergencyContact(BaseModel):
     phone: str
 
 
+class ReorderEmergencyContacts(BaseModel):
+    category: str | None = None
+    ids: list[int]
+
+
 class CreateHousehold(BaseModel):
     name: str
     admin_password: str
@@ -206,6 +211,26 @@ async def create_emergency_contact(body: CreateEmergencyContact, request: Reques
     data = {**dict(row), "id": str(row["id"])}
     await publish("household.updated", None)
     return {"success": True, "data": data}
+
+
+@router.post("/api/setup/emergency-contacts/reorder", dependencies=[Depends(require_admin_auth)])
+async def reorder_emergency_contacts(body: ReorderEmergencyContacts, request: Request) -> dict:
+    # Scoped to `category` as a safety check — only reorders contacts that actually belong to
+    # the category the caller claims, so a stale/tampered id list can't silently move a contact
+    # into a different group's ordering.
+    async with request.app.state.db_pool.acquire() as conn:
+        async with conn.transaction():
+            for index, contact_id in enumerate(body.ids):
+                await conn.execute(
+                    "UPDATE substrate.emergency_contacts SET sort_order = $1 "
+                    "WHERE id = $2 AND category IS NOT DISTINCT FROM $3",
+                    index,
+                    contact_id,
+                    body.category,
+                )
+
+    await publish("household.updated", None)
+    return {"success": True, "data": None}
 
 
 @router.post("/api/setup/emergency-contacts/{contact_id}", dependencies=[Depends(require_admin_auth)])

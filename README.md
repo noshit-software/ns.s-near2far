@@ -36,28 +36,28 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   reliably recheck for a new deploy on its own (especially on iOS), the dashboard compares its loaded
   JS bundle against the server's on every foreground/focus and reloads automatically when they
   differ — no manual close/reopen needed after a rebuild. A round **SOS button** (bell icon) floats
-  above the bottom tab bar (like a camera shutter button, clipped by the screen edge) — there are
-  two ways to trigger it. **Triple-tapping it fires a general alert immediately**, no screen to
-  navigate — the fast path for "I need this to go out right now." **A single tap instead opens a
-  full-screen SOS panel**, semi-transparent over a blurred map rather than a fully opaque screen.
-  A 2×2 grid of category tiles (Medical, Authority threat, Being followed, Car trouble — each a
-  large icon filling most of the tile) takes up most of the space; 911 and up to 2 general
-  contacts sit as big round dial buttons below the grid, dead center above the main SOS button,
-  general contacts flanking left/right. Tapping a category tile fires a full alert for that
-  category; each tile also shows up to 3 of its own configured numbers in a fixed-height strip at
-  its bottom (e.g. AAA, insurance, and a non-emergency police line under Car trouble — Settings →
-  Emergency contacts, per category, editable in place) — that strip always renders, even empty,
-  so a tile's icon stays centered in the same spot whether or not it has numbers configured.
-  Phone numbers are validated and normalized server-side
-  (7-15 digits, optional leading `+`; punctuation/spacing stripped before storage) so a typo
-  can't end up as a silently-dead `tel:` link discovered mid-emergency. Every number inside this
-  panel is a single tap — no further triple-tap — since reaching the panel at all already
-  required a deliberate first tap on the bell.
+  above the bottom tab bar (like a camera shutter button, clipped by the screen edge). A single tap
+  opens a full-screen SOS panel — semi-transparent and blurred over the map rather than a fully
+  opaque screen — and the bell itself is replaced by a round **911** button in the exact same spot,
+  since once the panel is open the bell has nothing further to do. Up to 2 general contacts flank
+  911 left/right; a 2×2 grid of category tiles (Medical, Authority threat, Being followed, Car
+  trouble — each a large centered icon, no text label) fills most of the remaining space above.
+  Tapping a category tile fires a full alert for that category; each tile also shows up to 3 of its
+  own configured numbers as pill buttons (icon badge + label) in a fixed-height strip at its
+  bottom (e.g. AAA, insurance, and a non-emergency police line under Car trouble — Settings →
+  Emergency contacts, per category, editable and reorderable in place) — that strip always renders,
+  even empty, so a tile's icon stays centered in the same spot whether or not it has numbers
+  configured. Phone numbers are validated and normalized server-side (7-15 digits, optional
+  leading `+`; punctuation/spacing stripped before storage) so a typo can't end up as a
+  silently-dead `tel:` link discovered mid-emergency. Every number inside the panel is a single
+  tap — no triple-tap — since reaching the panel at all already took a deliberate first tap on the
+  bell; tapping 911 immediately after opening the panel is the fast "tap, tap" path for a real
+  emergency.
   Dialing a category-specific number is treated as a **lighter "help" tier**, not a full SOS: it
   still notifies every household device (so calling AAA doesn't happen silently), but as a small
   self-dismissing toast — no siren, no full-screen takeover, no persistent state to disable,
-  since there's nothing actively wrong to resolve. Triple-tap, a category tile, and 911/general
-  contacts are all full **"sos" tier**: the device's current location is reverse-geocoded to the
+  since there's nothing actively wrong to resolve. A category tile and 911/general contacts are
+  all full **"sos" tier**: the device's current location is reverse-geocoded to the
   nearest street (best-effort — see `backend/app/geocode.py`), the map flashes a pulsing marker at
   that location and flies to it, and every *other* connected household device (identified by a
   per-browser client id, so the triggering device never alarms on itself) gets a full-screen

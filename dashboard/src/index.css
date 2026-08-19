@@ -225,7 +225,7 @@ h3 {
   display: flex;
   flex-direction: column;
   border-radius: 16px;
-  background: rgba(183, 28, 28, 0.88);
+  background: rgba(43, 46, 51, 0.9);
   overflow: hidden;
 }
 
@@ -252,19 +252,12 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0.35;
+  opacity: 0.9;
 }
 
 .sos-panel-category-bgicon svg {
   width: 100%;
   height: 100%;
-}
-
-.sos-panel-category-label {
-  position: relative;
-  font-weight: 700;
-  font-size: 0.95rem;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
 }
 
 /* Fixed height, always rendered even with zero contacts — so a category tile's icon centers
@@ -281,64 +274,114 @@ h3 {
   background: rgba(0, 0, 0, 0.25);
 }
 
+/* Pill: a round icon badge on the left, label to the right — not a plain circle with icon
+   stacked above tiny text. Applies to every dial button except 911, which stays round (it
+   occupies the main SOS button's own spot — see .sos-panel-dial-911 below). */
 .sos-panel-dial {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 0.15rem;
-  width: 62px;
+  gap: 0.5rem;
   height: 62px;
-  border-radius: 50%;
+  padding: 0 1.1rem 0 0.3rem;
+  border-radius: 999px;
   border: none;
   background: #2b2e33;
   color: white;
   font: inherit;
   font-weight: 700;
-  font-size: 0.65rem;
+  font-size: 0.85rem;
   text-decoration: none;
   cursor: pointer;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
-.sos-panel-dial svg {
+.sos-panel-dial-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+}
+
+.sos-panel-dial-icon svg {
   width: 20px;
   height: 20px;
 }
 
 .sos-panel-dial-small {
-  width: 56px;
-  height: 56px;
-  font-size: 0.55rem;
+  height: 52px;
+  padding: 0 0.9rem 0 0.25rem;
+  font-size: 0.7rem;
   background: rgba(255, 255, 255, 0.18);
 }
 
-.sos-panel-dial-small svg {
+.sos-panel-dial-small .sos-panel-dial-icon {
+  width: 38px;
+  height: 38px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.sos-panel-dial-small .sos-panel-dial-icon svg {
   width: 16px;
   height: 16px;
 }
 
-/* 911 + up to 2 general contacts, below the category grid and dead center above the main SOS
-   button — 911 always the middle one, contacts flanking left/right. */
+/* 911 takes over the main SOS bell's exact spot (same fixed position/size/clipping) — once the
+   panel is open the bell has nothing left to do, so 911 replaces it rather than sitting above
+   it. The middle grid column keeps 911 dead center regardless of viewport width; the general
+   contacts sit in the equal side columns, pinned to 911's inner edge. */
 .sos-panel-general {
-  display: flex;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: -30px;
+  height: 104px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: center;
-  gap: 0.9rem;
-  flex-shrink: 0;
-  padding-bottom: 4.5rem;
+  column-gap: 0.75rem;
+  padding: 0 1rem;
+  z-index: 1600;
 }
 
+.sos-panel-general-left {
+  justify-self: end;
+}
+
+.sos-panel-general-right {
+  justify-self: start;
+}
+
+/* Overrides the pill layout — 911 stays a centered circle (icon over label), matching the main
+   SOS bell it's replacing, not the icon-badge-plus-label row every other dial button uses. */
 .sos-panel-dial-911 {
-  width: 78px;
-  height: 78px;
+  grid-column: 2;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.15rem;
+  width: 104px;
+  height: 104px;
+  padding: 0;
+  border-radius: 50%;
+  border: 4px solid var(--surface);
   background: #c62828;
-  font-size: 1rem;
+  font-size: 1.1rem;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
 }
 
-.sos-panel-dial-911 svg {
-  width: 24px;
-  height: 24px;
+.sos-panel-dial-911 .sos-panel-dial-icon {
+  width: auto;
+  height: auto;
+  background: none;
+}
+
+.sos-panel-dial-911 .sos-panel-dial-icon svg {
+  width: 26px;
+  height: 26px;
 }
 
 .tab-button {
@@ -1279,9 +1322,31 @@ h3 {
   font-size: 0.9rem;
 }
 
-.emergency-contact-row button {
+.emergency-contact-row > button {
   flex-shrink: 0;
-  padding: 0.5rem 0.7rem;
+  width: 80px;
+  padding: 0.5rem 0;
+  text-align: center;
+}
+
+.emergency-contact-reorder {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.emergency-contact-reorder button {
+  width: 28px;
+  height: 22px;
+  padding: 0;
+  font-size: 0.6rem;
+  line-height: 1;
+}
+
+.emergency-contact-reorder button:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 
 .setup-wizard .hint,

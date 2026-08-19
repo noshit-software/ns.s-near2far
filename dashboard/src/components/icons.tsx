@@ -77,10 +77,8 @@ export function BellIcon() {
 
 export function MedicalCrossIcon() {
   return (
-    <svg {...common} width="20" height="20" aria-hidden="true">
-      <rect x="3" y="3" width="18" height="18" rx="4" />
-      <line x1="12" y1="7.5" x2="12" y2="16.5" />
-      <line x1="7.5" y1="12" x2="16.5" y2="12" />
+    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor" aria-hidden="true">
+      <path d="M320-120v-200H120v-320h200v-200h320v200h200v320H640v200H320Zm80-80h160v-200h200v-160H560v-200H400v200H200v160h200v200Zm80-280Z" />
     </svg>
   )
 }

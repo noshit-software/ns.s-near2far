@@ -127,6 +127,27 @@ export function SetupWizard() {
     }
   }
 
+  async function moveEmergencyContact(category: string | null, contactId: string, direction: -1 | 1) {
+    if (!household) return
+    const group = household.emergency_contacts.filter((c) => c.category === category)
+    const i = group.findIndex((c) => c.id === contactId)
+    const j = i + direction
+    if (i < 0 || j < 0 || j >= group.length) return
+
+    const reordered = [...group]
+    ;[reordered[i], reordered[j]] = [reordered[j], reordered[i]]
+    const ids = reordered.map((c) => Number(c.id))
+
+    setError(null)
+    try {
+      await apiPost("/setup/emergency-contacts/reorder", { category, ids })
+      const others = household.emergency_contacts.filter((c) => c.category !== category)
+      setHousehold({ ...household, emergency_contacts: [...others, ...reordered] })
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
   async function submitHousehold() {
     if (!homeLocation) return
     setError(null)
@@ -376,8 +397,26 @@ export function SetupWizard() {
               return (
                 <div key={key} className="emergency-contact-group">
                   <h4>{label}</h4>
-                  {existing.map((c) => (
+                  {existing.map((c, i) => (
                     <div key={c.id} className="emergency-contact-row">
+                      <div className="emergency-contact-reorder">
+                        <button
+                          type="button"
+                          disabled={i === 0}
+                          onClick={() => moveEmergencyContact(category, c.id, -1)}
+                          aria-label="Move up"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          disabled={i === existing.length - 1}
+                          onClick={() => moveEmergencyContact(category, c.id, 1)}
+                          aria-label="Move down"
+                        >
+                          ▼
+                        </button>
+                      </div>
                       <input
                         defaultValue={c.name}
                         onBlur={(e) => {

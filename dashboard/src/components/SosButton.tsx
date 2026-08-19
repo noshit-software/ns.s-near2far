@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useState } from "react"
 
 import { apiPost } from "../lib/api"
 import { getClientId } from "../lib/clientId"
@@ -6,9 +6,6 @@ import { BadgeIcon, BellIcon, CarIcon, CloseIcon, MedicalCrossIcon, PhoneIcon, S
 
 type EmergencyContact = { id: string; category: string | null; name: string; phone: string }
 type ContactHousehold = { emergency_contacts: EmergencyContact[] }
-
-const TAP_WINDOW_MS = 600
-const TAPS_TO_TRIGGER = 3
 
 type Category = "general" | "medical" | "security" | "suspicious" | "car"
 
@@ -52,9 +49,7 @@ export function SosButton({
   onTriggered: (alertId: number) => void
 }) {
   const [panelOpen, setPanelOpen] = useState(false)
-  const [mainTaps, setMainTaps] = useState(0)
   const [sending, setSending] = useState(false)
-  const mainTimer = useRef<ReturnType<typeof setTimeout>>()
 
   // `dial`: when firing from inside the full-screen panel (a number was tapped directly), also
   // opens the phone dialer to that number — the panel itself was already reached deliberately
@@ -96,30 +91,12 @@ export function SosButton({
     }
   }
 
+  // A single tap opens the panel — 911 then sits in the bell's exact spot, one more tap away
+  // from actually firing, so the fast path is now "tap, tap" rather than a triple-tap gesture
+  // on an element that no longer exists once the panel is open (911 replaces it).
   function tapMain() {
-    // Only treat this as "close the panel" when it's a fresh tap outside any active triple-tap
-    // sequence (mainTaps === 0) — otherwise taps 2 and 3 of a fast triple-tap (which opened the
-    // panel on tap 1) would each get swallowed as a close instead of counting toward the fire.
-    if (panelOpen && mainTaps === 0) {
-      setPanelOpen(false)
-      return
-    }
-    clearTimeout(mainTimer.current)
-    const next = mainTaps + 1
-
-    if (next >= TAPS_TO_TRIGGER) {
-      setMainTaps(0)
-      fire("general")
-      return
-    }
-
-    setMainTaps(next)
     if (navigator.vibrate) navigator.vibrate(30)
-    mainTimer.current = setTimeout(() => setMainTaps(0), TAP_WINDOW_MS)
-
-    // A single tap (not yet a triple-tap) opens the browsable panel instead of just counting —
-    // if the next two taps land fast enough it still fires the general alert directly.
-    if (next === 1) setPanelOpen(true)
+    setPanelOpen(true)
   }
 
   const allContacts = household?.emergency_contacts ?? []
@@ -148,7 +125,6 @@ export function SosButton({
                     <span className="sos-panel-category-bgicon">
                       <Icon />
                     </span>
-                    <span className="sos-panel-category-label">{c.label}</span>
                   </button>
                   {/* Always rendered (even empty) so a tile's icon doesn't shift position
                       depending on whether it happens to have configured numbers. */}
@@ -160,8 +136,10 @@ export function SosButton({
                         className="sos-panel-dial sos-panel-dial-small"
                         onClick={() => fire(c.key, ct.phone, "help", ct.name)}
                       >
-                        <PhoneIcon />
-                        {ct.name}
+                        <span className="sos-panel-dial-icon">
+                          <PhoneIcon />
+                        </span>
+                        <span className="sos-panel-dial-label">{ct.name}</span>
                       </a>
                     ))}
                   </div>
@@ -175,11 +153,13 @@ export function SosButton({
               <a
                 key={generalContacts[0].id}
                 href={`tel:${generalContacts[0].phone}`}
-                className="sos-panel-dial"
+                className="sos-panel-dial sos-panel-general-left"
                 onClick={() => fire("general", generalContacts[0].phone)}
               >
-                <PhoneIcon />
-                {generalContacts[0].name}
+                <span className="sos-panel-dial-icon">
+                  <PhoneIcon />
+                </span>
+                <span className="sos-panel-dial-label">{generalContacts[0].name}</span>
               </a>
             )}
             <a
@@ -187,18 +167,22 @@ export function SosButton({
               className="sos-panel-dial sos-panel-dial-911"
               onClick={() => fire("general", "911")}
             >
-              <PhoneIcon />
-              911
+              <span className="sos-panel-dial-icon">
+                <PhoneIcon />
+              </span>
+              <span className="sos-panel-dial-label">911</span>
             </a>
             {generalContacts[1] && (
               <a
                 key={generalContacts[1].id}
                 href={`tel:${generalContacts[1].phone}`}
-                className="sos-panel-dial"
+                className="sos-panel-dial sos-panel-general-right"
                 onClick={() => fire("general", generalContacts[1].phone)}
               >
-                <PhoneIcon />
-                {generalContacts[1].name}
+                <span className="sos-panel-dial-icon">
+                  <PhoneIcon />
+                </span>
+                <span className="sos-panel-dial-label">{generalContacts[1].name}</span>
               </a>
             )}
           </div>
@@ -206,15 +190,18 @@ export function SosButton({
       )}
 
       <div className="sos-dock">
-        <button
-          type="button"
-          className={`sos-main-button ${mainTaps > 0 ? "sos-tapping" : ""} ${sending ? "sos-sending" : ""}`}
-          onClick={tapMain}
-          aria-label={`SOS — tap ${TAPS_TO_TRIGGER} times fast to trigger, or once to open the SOS screen`}
-        >
-          <BellIcon />
-          {mainTaps > 0 && <span className="sos-tap-count">{mainTaps}/{TAPS_TO_TRIGGER}</span>}
-        </button>
+        {/* Once the panel is open there's nothing left for the bell to do — replaced in the
+            exact same spot by 911, since you're already "in SOS" at that point. */}
+        {!panelOpen && (
+          <button
+            type="button"
+            className={`sos-main-button ${sending ? "sos-sending" : ""}`}
+            onClick={tapMain}
+            aria-label="SOS — tap to open the SOS screen"
+          >
+            <BellIcon />
+          </button>
+        )}
       </div>
     </>
   )
