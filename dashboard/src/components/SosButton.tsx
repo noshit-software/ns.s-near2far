@@ -193,11 +193,19 @@ export function SosButton({
             href="tel:911"
             className="sos-panel-dial sos-panel-dial-911"
             onClick={() => fire("general", "911")}
+            aria-label="Call 911"
           >
+            <svg className="sos-panel-dial-911-arc" viewBox="0 0 104 104" aria-hidden="true">
+              <path id="sos911arc" d="M 18 42 A 36 36 0 0 1 86 42" fill="none" />
+              <text textAnchor="middle">
+                <textPath href="#sos911arc" startOffset="50%">
+                  911
+                </textPath>
+              </text>
+            </svg>
             <span className="sos-panel-dial-icon">
               <PhoneIcon />
             </span>
-            <span className="sos-panel-dial-label">911</span>
           </a>
           {generalContacts[1] && (
             <a

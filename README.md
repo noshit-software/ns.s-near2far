@@ -37,17 +37,20 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   JS bundle against the server's on every foreground/focus and reloads automatically when they
   differ — no manual close/reopen needed after a rebuild. A round **SOS button** (bell icon) floats
   above the bottom tab bar (like a camera shutter button, clipped by the screen edge). A single tap
-  opens a full-screen SOS panel — semi-transparent and blurred over the map rather than a fully
-  opaque screen — and the bell itself is replaced by a round **911** button in the exact same spot,
-  since once the panel is open the bell has nothing further to do. Up to 2 general contacts flank
-  911 left/right; a 2×2 grid of category tiles (Medical, Authority threat, Being followed, Car
-  trouble — off-white with a large centered dark icon, no text label) fills most of the remaining
-  space above. Tapping a category tile fires a full alert for that category; each tile also shows
-  up to 3 of its own configured numbers as translucent, blurred pill buttons (icon badge + label)
-  floating over the icon rather than a reserved bottom bar — up to 2 stacked along the left edge,
-  a 3rd spilling to the right (e.g. AAA, insurance, and a non-emergency police line under Car
-  trouble — Settings → Emergency contacts, per category, editable and reorderable in place).
-  Phone numbers are validated and normalized server-side (7-15 digits, optional
+  opens a full-screen SOS panel styled as "liquid glass" — heavily blurred, very translucent
+  tiles/buttons with a bright inner-edge highlight and large squircle corners, so the map stays
+  clearly visible underneath instead of being hidden behind a solid screen — and the bell itself
+  is replaced by a round **911** button in the exact same spot, since once the panel is open the
+  bell has nothing further to do; "911" curves in an arc above the phone icon (SVG `textPath`)
+  rather than sitting as flat stacked text. Up to 2 general contacts flank 911 left/right; a 2×2
+  grid of category tiles (Medical, Authority threat, Being followed, Car trouble — a large white
+  icon with a drop-shadow, no text label) fills most of the remaining space above. Tapping a
+  category tile fires a full alert for that category; each tile also shows up to 3 of its own
+  configured numbers as translucent glass pill buttons (icon badge + label) floating directly
+  over the icon rather than a reserved bottom bar — up to 2 stacked along the left edge, a 3rd
+  spilling to the right (e.g. AAA, insurance, and a non-emergency police line under Car trouble —
+  Settings → Emergency contacts, per category, editable and reorderable in place). Phone numbers
+  are validated and normalized server-side (7-15 digits, optional
   leading `+`; punctuation/spacing stripped before storage) so a typo can't end up as a
   silently-dead `tel:` link discovered mid-emergency. Every number inside the panel is a single
   tap — no triple-tap — since reaching the panel at all already took a deliberate first tap on the
