@@ -39,12 +39,17 @@ const ZOOM_SIZE_TIERS: [minZoom: number, fraction: number][] = [
 ]
 const DOT_FRACTION = 0.2
 
+function iconSizePx(zoom: number): number {
+  const tier = ZOOM_SIZE_TIERS.find(([minZoom]) => zoom >= minZoom)
+  return Math.round(BASE_SIZE * (tier ? tier[1] : DOT_FRACTION))
+}
+
 function memberIcon(p: Position, zoom: number): L.DivIcon {
   const color = resolveMemberColor({ id: p.member_id, color: p.color })
   const tier = ZOOM_SIZE_TIERS.find(([minZoom]) => zoom >= minZoom)
+  const size = iconSizePx(zoom)
 
   if (!tier) {
-    const size = Math.round(BASE_SIZE * DOT_FRACTION)
     return L.divIcon({
       className: "member-pin-wrapper",
       html: `<div class="member-pin-dot" style="background:${color}"></div>`,
@@ -54,7 +59,6 @@ function memberIcon(p: Position, zoom: number): L.DivIcon {
     })
   }
 
-  const size = Math.round(BASE_SIZE * tier[1])
   const borderWidth = Math.max(2, Math.round(size * (5 / BASE_SIZE)))
   const imageUrl = p.avatar_filename
     ? `/uploads/avatars/${p.avatar_filename}`
@@ -67,6 +71,55 @@ function memberIcon(p: Position, zoom: number): L.DivIcon {
     iconAnchor: [size / 2, size / 2],
     popupAnchor: [0, -size / 2],
   })
+}
+
+// When two+ members are close enough on screen that their icons would overlap, nudge each
+// one outward from the shared centroid instead of letting them stack directly on top of each
+// other and hide all but the topmost. Pixel-space clustering (via the map's own projection at
+// the current zoom) rather than a fixed lat/lng threshold, so "close enough to overlap" tracks
+// the icon's actual on-screen size at every zoom level instead of being wrong at some of them.
+function spreadOverlapping(
+  positions: Position[],
+  map: L.Map | null,
+  zoom: number,
+): Record<string, L.LatLng> {
+  const result: Record<string, L.LatLng> = {}
+  if (!map) {
+    for (const p of positions) result[p.member_id] = L.latLng(p.lat, p.lng)
+    return result
+  }
+
+  const size = iconSizePx(zoom)
+  const minDist = size * 0.9
+  const projected = positions.map((p) => ({ p, pt: map.project([p.lat, p.lng], zoom) }))
+  const placed = new Set<string>()
+
+  for (const { p, pt } of projected) {
+    if (placed.has(p.member_id)) continue
+
+    const cluster = projected.filter(
+      (o) => !placed.has(o.p.member_id) && Math.hypot(o.pt.x - pt.x, o.pt.y - pt.y) < minDist,
+    )
+
+    if (cluster.length === 1) {
+      result[p.member_id] = L.latLng(p.lat, p.lng)
+      placed.add(p.member_id)
+      continue
+    }
+
+    const cx = cluster.reduce((sum, c) => sum + c.pt.x, 0) / cluster.length
+    const cy = cluster.reduce((sum, c) => sum + c.pt.y, 0) / cluster.length
+    const radius = size * 0.55
+
+    cluster.forEach((c, i) => {
+      const angle = (2 * Math.PI * i) / cluster.length - Math.PI / 2
+      const offsetPt = L.point(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle))
+      result[c.p.member_id] = map.unproject(offsetPt, zoom)
+      placed.add(c.p.member_id)
+    })
+  }
+
+  return result
 }
 
 function haversineM(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -180,6 +233,7 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
   }, [lastEvent])
 
   const positionList = Object.values(positions)
+  const spread = spreadOverlapping(positionList, mapRef.current, zoom)
 
   return (
     <div className="family-map">
@@ -194,7 +248,7 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
         <FitToMarkers positions={positionList} home={household.home_geofence} />
         <ZoomTracker onZoom={setZoom} />
         {positionList.map((p) => (
-          <Marker key={p.member_id} position={{ lat: p.lat, lng: p.lng }} icon={memberIcon(p, zoom)}>
+          <Marker key={p.member_id} position={spread[p.member_id] ?? [p.lat, p.lng]} icon={memberIcon(p, zoom)}>
             <Popup>
               {p.display_name}
               <br />
