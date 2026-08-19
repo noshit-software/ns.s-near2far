@@ -39,12 +39,16 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   above the bottom tab bar (like a camera shutter button, clipped by the screen edge) — there are
   two ways to trigger it. **Triple-tapping it fires a general alert immediately**, no screen to
   navigate — the fast path for "I need this to go out right now." **A single tap instead opens a
-  full-screen SOS panel**: 911 and up to 2 general contacts as big round dial buttons up top, and a
-  2×2 grid of category tiles below (Medical, Authority threat, Being followed, Car trouble — each
-  its own icon) that fill most of the screen. Tapping a category tile fires a full alert for that
-  category; each tile also shows up to 3 of its own configured numbers directly on it (e.g. AAA,
-  insurance, and a non-emergency police line under Car trouble — Settings → Emergency contacts,
-  per category, editable in place). Phone numbers are validated and normalized server-side
+  full-screen SOS panel**, semi-transparent over a blurred map rather than a fully opaque screen.
+  A 2×2 grid of category tiles (Medical, Authority threat, Being followed, Car trouble — each a
+  large icon filling most of the tile) takes up most of the space; 911 and up to 2 general
+  contacts sit as big round dial buttons below the grid, dead center above the main SOS button,
+  general contacts flanking left/right. Tapping a category tile fires a full alert for that
+  category; each tile also shows up to 3 of its own configured numbers in a fixed-height strip at
+  its bottom (e.g. AAA, insurance, and a non-emergency police line under Car trouble — Settings →
+  Emergency contacts, per category, editable in place) — that strip always renders, even empty,
+  so a tile's icon stays centered in the same spot whether or not it has numbers configured.
+  Phone numbers are validated and normalized server-side
   (7-15 digits, optional leading `+`; punctuation/spacing stripped before storage) so a typo
   can't end up as a silently-dead `tel:` link discovered mid-emergency. Every number inside this
   panel is a single tap — no further triple-tap — since reaching the panel at all already

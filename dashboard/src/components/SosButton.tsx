@@ -133,24 +133,6 @@ export function SosButton({
             <CloseIcon />
           </button>
 
-          <div className="sos-panel-general">
-            <a href="tel:911" className="sos-panel-dial sos-panel-dial-911" onClick={() => fire("general", "911")}>
-              <PhoneIcon />
-              911
-            </a>
-            {generalContacts.map((c) => (
-              <a
-                key={c.id}
-                href={`tel:${c.phone}`}
-                className="sos-panel-dial"
-                onClick={() => fire("general", c.phone)}
-              >
-                <PhoneIcon />
-                {c.name}
-              </a>
-            ))}
-          </div>
-
           <div className="sos-panel-categories">
             {CATEGORIES.map((c) => {
               const Icon = c.icon
@@ -163,27 +145,62 @@ export function SosButton({
                     onClick={() => fire(c.key)}
                     aria-label={`${c.label} SOS`}
                   >
-                    <Icon />
-                    {c.label}
+                    <span className="sos-panel-category-bgicon">
+                      <Icon />
+                    </span>
+                    <span className="sos-panel-category-label">{c.label}</span>
                   </button>
-                  {categoryContacts.length > 0 && (
-                    <div className="sos-panel-category-dials">
-                      {categoryContacts.map((ct) => (
-                        <a
-                          key={ct.id}
-                          href={`tel:${ct.phone}`}
-                          className="sos-panel-dial"
-                          onClick={() => fire(c.key, ct.phone, "help", ct.name)}
-                        >
-                          <PhoneIcon />
-                          {ct.name}
-                        </a>
-                      ))}
-                    </div>
-                  )}
+                  {/* Always rendered (even empty) so a tile's icon doesn't shift position
+                      depending on whether it happens to have configured numbers. */}
+                  <div className="sos-panel-category-dials">
+                    {categoryContacts.map((ct) => (
+                      <a
+                        key={ct.id}
+                        href={`tel:${ct.phone}`}
+                        className="sos-panel-dial sos-panel-dial-small"
+                        onClick={() => fire(c.key, ct.phone, "help", ct.name)}
+                      >
+                        <PhoneIcon />
+                        {ct.name}
+                      </a>
+                    ))}
+                  </div>
                 </div>
               )
             })}
+          </div>
+
+          <div className="sos-panel-general">
+            {generalContacts[0] && (
+              <a
+                key={generalContacts[0].id}
+                href={`tel:${generalContacts[0].phone}`}
+                className="sos-panel-dial"
+                onClick={() => fire("general", generalContacts[0].phone)}
+              >
+                <PhoneIcon />
+                {generalContacts[0].name}
+              </a>
+            )}
+            <a
+              href="tel:911"
+              className="sos-panel-dial sos-panel-dial-911"
+              onClick={() => fire("general", "911")}
+            >
+              <PhoneIcon />
+              911
+            </a>
+            {generalContacts[1] && (
+              <a
+                key={generalContacts[1].id}
+                href={`tel:${generalContacts[1].phone}`}
+                className="sos-panel-dial"
+                onClick={() => fire("general", generalContacts[1].phone)}
+              >
+                <PhoneIcon />
+                {generalContacts[1].name}
+              </a>
+            )}
           </div>
         </div>
       )}

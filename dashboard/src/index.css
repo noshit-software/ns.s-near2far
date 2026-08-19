@@ -188,7 +188,12 @@ h3 {
   flex-direction: column;
   gap: 0.75rem;
   padding: calc(env(safe-area-inset-top) + 1rem) 1rem calc(env(safe-area-inset-bottom) + 1rem);
-  background: #14161a;
+  /* Semi-transparent + blurred rather than a solid color — the map underneath doesn't need to
+     be legible here, but fully hiding it made the panel feel like a disconnected separate
+     screen instead of an overlay on top of what you were just looking at. */
+  background: rgba(10, 11, 13, 0.82);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   overflow-y: auto;
 }
 
@@ -201,18 +206,79 @@ h3 {
   height: 36px;
   border-radius: 50%;
   border: none;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
   color: white;
   cursor: pointer;
   flex-shrink: 0;
 }
 
-/* 60% of the 104px main SOS button. */
-.sos-panel-general {
-  display: flex;
-  flex-wrap: wrap;
+.sos-panel-categories {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
   gap: 0.6rem;
+  min-height: 0;
+}
+
+.sos-panel-category {
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  background: rgba(183, 28, 28, 0.88);
+  overflow: hidden;
+}
+
+.sos-panel-category-header {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  border: none;
+  background: none;
+  color: white;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* A large, low-opacity icon filling most of the tile as a backdrop rather than a small icon
+   sitting above a text label — the label becomes an overlay on top of it instead of competing
+   for the tile's limited vertical space. */
+.sos-panel-category-bgicon {
+  position: absolute;
+  inset: 8%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.35;
+}
+
+.sos-panel-category-bgicon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.sos-panel-category-label {
+  position: relative;
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+/* Fixed height, always rendered even with zero contacts — so a category tile's icon centers
+   in the same spot regardless of whether it happens to have configured numbers underneath. */
+.sos-panel-category-dials {
   flex-shrink: 0;
+  height: 76px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.25);
 }
 
 .sos-panel-dial {
@@ -229,75 +295,50 @@ h3 {
   color: white;
   font: inherit;
   font-weight: 700;
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   text-decoration: none;
   cursor: pointer;
   flex-shrink: 0;
 }
 
 .sos-panel-dial svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
+}
+
+.sos-panel-dial-small {
+  width: 56px;
+  height: 56px;
+  font-size: 0.55rem;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.sos-panel-dial-small svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* 911 + up to 2 general contacts, below the category grid and dead center above the main SOS
+   button — 911 always the middle one, contacts flanking left/right. */
+.sos-panel-general {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+  flex-shrink: 0;
+  padding-bottom: 4.5rem;
 }
 
 .sos-panel-dial-911 {
+  width: 78px;
+  height: 78px;
   background: #c62828;
-  font-size: 0.85rem;
+  font-size: 1rem;
 }
 
-.sos-panel-categories {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 0.6rem;
-  min-height: 0;
-}
-
-.sos-panel-category {
-  display: flex;
-  flex-direction: column;
-  border-radius: 16px;
-  background: #b71c1c;
-  overflow: hidden;
-}
-
-.sos-panel-category-header {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  min-height: 0;
-  border: none;
-  background: none;
-  color: white;
-  font: inherit;
-  font-weight: 700;
-  font-size: 0.9rem;
-  cursor: pointer;
-}
-
-.sos-panel-category-header svg {
-  width: 34px;
-  height: 34px;
-}
-
-.sos-panel-category-dials {
-  flex-shrink: 0;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.4rem;
-  padding: 0.5rem;
-  background: rgba(0, 0, 0, 0.2);
-}
-
-.sos-panel-category-dials .sos-panel-dial {
-  width: 52px;
-  height: 52px;
-  background: rgba(255, 255, 255, 0.15);
+.sos-panel-dial-911 svg {
+  width: 24px;
+  height: 24px;
 }
 
 .tab-button {
