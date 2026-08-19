@@ -44,8 +44,11 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   its own icon) that fill most of the screen. Tapping a category tile fires a full alert for that
   category; each tile also shows up to 3 of its own configured numbers directly on it (e.g. AAA,
   insurance, and a non-emergency police line under Car trouble — Settings → Emergency contacts,
-  per category). Every number inside this panel is a single tap — no further triple-tap — since
-  reaching the panel at all already required a deliberate first tap on the bell.
+  per category, editable in place). Phone numbers are validated and normalized server-side
+  (7-15 digits, optional leading `+`; punctuation/spacing stripped before storage) so a typo
+  can't end up as a silently-dead `tel:` link discovered mid-emergency. Every number inside this
+  panel is a single tap — no further triple-tap — since reaching the panel at all already
+  required a deliberate first tap on the bell.
   Dialing a category-specific number is treated as a **lighter "help" tier**, not a full SOS: it
   still notifies every household device (so calling AAA doesn't happen silently), but as a small
   self-dismissing toast — no siren, no full-screen takeover, no persistent state to disable,

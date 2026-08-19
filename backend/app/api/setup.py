@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 import asyncpg
@@ -42,6 +43,20 @@ class HomeGeofence(BaseModel):
     lat: float
     lng: float
     radius_m: float
+
+
+# E.164-ish: optional leading +, 7-15 digits — loose enough for real-world numbers (some
+# countries' numbers run short) but tight enough to catch typos, stray letters, or a name
+# pasted into the wrong field before it ends up silently dead in a tel: link during an actual
+# emergency. Stored normalized (punctuation/spacing stripped) so tel: links are always clean.
+_PHONE_RE = re.compile(r"^\+?\d{7,15}$")
+
+
+def _normalize_phone(phone: str) -> str:
+    cleaned = re.sub(r"[\s().-]", "", phone)
+    if not _PHONE_RE.match(cleaned):
+        raise ValueError("Enter a valid phone number (7-15 digits, optional leading +)")
+    return cleaned
 
 
 class CreateEmergencyContact(BaseModel):
@@ -156,6 +171,11 @@ async def create_emergency_contact(body: CreateEmergencyContact, request: Reques
     if body.category is not None and body.category not in SOS_CATEGORIES:
         raise HTTPException(status_code=400, detail="Unknown category")
 
+    try:
+        phone = _normalize_phone(body.phone)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
     async with request.app.state.db_pool.acquire() as conn:
         household_id = await conn.fetchval(
             "SELECT id FROM substrate.households ORDER BY created_at LIMIT 1"
@@ -179,7 +199,7 @@ async def create_emergency_contact(body: CreateEmergencyContact, request: Reques
             household_id,
             body.category,
             body.name,
-            body.phone,
+            phone,
             count,
         )
 
@@ -190,12 +210,17 @@ async def create_emergency_contact(body: CreateEmergencyContact, request: Reques
 
 @router.post("/api/setup/emergency-contacts/{contact_id}", dependencies=[Depends(require_admin_auth)])
 async def update_emergency_contact(contact_id: int, body: UpdateEmergencyContact, request: Request) -> dict:
+    try:
+        phone = _normalize_phone(body.phone)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
     async with request.app.state.db_pool.acquire() as conn:
         row = await conn.fetchrow(
             "UPDATE substrate.emergency_contacts SET name = $1, phone = $2 "
             "WHERE id = $3 RETURNING id, category, name, phone",
             body.name,
-            body.phone,
+            phone,
             contact_id,
         )
 

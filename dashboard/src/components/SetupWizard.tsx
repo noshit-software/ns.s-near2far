@@ -408,7 +408,7 @@ export function SetupWizard() {
                       <input
                         value={newContactPhone[key] ?? ""}
                         onChange={(e) => setNewContactPhone((prev) => ({ ...prev, [key]: e.target.value }))}
-                        placeholder="Phone number"
+                        placeholder="Phone (e.g. 555-123-4567)"
                         type="tel"
                       />
                       <button type="button" onClick={() => addEmergencyContact(category)}>
