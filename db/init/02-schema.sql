@@ -66,6 +66,13 @@ CREATE TABLE IF NOT EXISTS runtime.sos_alerts (
   lng DOUBLE PRECISION,
   address TEXT,
   category TEXT NOT NULL DEFAULT 'general',
+  -- 'sos' = full alarm (siren, full-screen, stays active until the origin device disables it
+  -- with the admin password). 'help' = a category-specific helper number was dialed (AAA,
+  -- insurance, non-emergency police) — still notifies the household, but as a light heads-up,
+  -- not a siren, and it's auto-resolved (acknowledged_at set immediately) since there's nothing
+  -- to actively disable.
+  kind TEXT NOT NULL DEFAULT 'sos',
+  contact_name TEXT,
   origin_client_id TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   acknowledged_at TIMESTAMPTZ

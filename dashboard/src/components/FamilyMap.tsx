@@ -241,8 +241,8 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
         return { ...prev, [p.member_id]: p }
       })
     } else if (type === "sos.triggered") {
-      const a = payload as { id: number; lat: number | null; lng: number | null; category: string }
-      if (a.lat == null || a.lng == null) return
+      const a = payload as { id: number; lat: number | null; lng: number | null; category: string; kind: string }
+      if (a.lat == null || a.lng == null || a.kind !== "sos") return
       setSosMarker({ id: a.id, lat: a.lat, lng: a.lng, category: a.category })
       mapRef.current?.flyTo([a.lat, a.lng], 17)
     } else if (type === "sos.acknowledged") {

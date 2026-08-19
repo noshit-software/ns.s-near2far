@@ -36,29 +36,33 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   reliably recheck for a new deploy on its own (especially on iOS), the dashboard compares its loaded
   JS bundle against the server's on every foreground/focus and reloads automatically when they
   differ — no manual close/reopen needed after a rebuild. A round **SOS button** (bell icon) floats
-  above the bottom tab bar (like a camera shutter button, clipped by the screen edge) — tapping it
-  3 times fast triggers a general alert. A single tap first reveals a 2×2 grid of category buttons
-  (Medical, Authority threat, Being followed, Car trouble — each its own icon, each also requiring
-  a triple-tap) plus a row of one-tap `tel:` call buttons above it: 911 always, up to 2
-  household-configured general contacts (shown regardless of category), and up to 3 more scoped to
-  whichever category has actually been engaged (e.g. AAA and insurance only appear once Car
-  trouble has at least one tap toward its own triple-tap) — configured in Settings → Emergency
-  contacts, per category. These dial immediately on a single tap since placing a call is already
-  its own confirmation step. The triple-tap gate on the alert buttons themselves is deliberate:
-  easy enough to reach in a real emergency, but not
-  something a phone in a pocket can fire by accident. On trigger, the device's current location is
-  reverse-geocoded to the nearest street (best-effort — see `backend/app/geocode.py`), the map
-  flashes a pulsing marker at that location and flies to it, and every *other* connected household
-  device (identified by a per-browser client id, so the triggering device never alarms on itself)
-  gets a full-screen flashing red overlay — big centered category icon/label, address, siren (Web
-  Audio, no bundled audio file), vibration — plus a Web Push notification if backgrounded/closed.
-  That overlay's "Silence" button is local-only: it stops the sound/vibration on that one device but
-  does **not** resolve the alert anywhere else, so it can't be used to make the alert disappear for
-  everyone. Only the device that triggered the SOS sees a persistent "SOS active" banner with a
-  "Disable" control gated behind re-typing the admin password as a confirmation code — deliberately
-  not a single tap, so whoever the emergency is about can't just grab the nearest phone and cancel
-  it. Disabling broadcasts over the same WebSocket stream to clear every device's alarm and the map
-  marker. The **Settings** tab has household/member
+  above the bottom tab bar (like a camera shutter button, clipped by the screen edge) — there are
+  two ways to trigger it. **Triple-tapping it fires a general alert immediately**, no screen to
+  navigate — the fast path for "I need this to go out right now." **A single tap instead opens a
+  full-screen SOS panel**: 911 and up to 2 general contacts as big round dial buttons up top, and a
+  2×2 grid of category tiles below (Medical, Authority threat, Being followed, Car trouble — each
+  its own icon) that fill most of the screen. Tapping a category tile fires a full alert for that
+  category; each tile also shows up to 3 of its own configured numbers directly on it (e.g. AAA,
+  insurance, and a non-emergency police line under Car trouble — Settings → Emergency contacts,
+  per category). Every number inside this panel is a single tap — no further triple-tap — since
+  reaching the panel at all already required a deliberate first tap on the bell.
+  Dialing a category-specific number is treated as a **lighter "help" tier**, not a full SOS: it
+  still notifies every household device (so calling AAA doesn't happen silently), but as a small
+  self-dismissing toast — no siren, no full-screen takeover, no persistent state to disable,
+  since there's nothing actively wrong to resolve. Triple-tap, a category tile, and 911/general
+  contacts are all full **"sos" tier**: the device's current location is reverse-geocoded to the
+  nearest street (best-effort — see `backend/app/geocode.py`), the map flashes a pulsing marker at
+  that location and flies to it, and every *other* connected household device (identified by a
+  per-browser client id, so the triggering device never alarms on itself) gets a full-screen
+  flashing red overlay — big centered category icon/label, address, siren (Web Audio, no bundled
+  audio file), vibration — plus a Web Push notification if backgrounded/closed. That overlay's
+  "Silence" button is local-only: it stops the sound/vibration on that one device but does **not**
+  resolve the alert anywhere else, so it can't be used to make the alert disappear for everyone.
+  Only the device that triggered it sees a persistent "SOS active" banner with a "Disable" control
+  gated behind re-typing the admin password as a confirmation code — deliberately not a single tap,
+  so whoever the emergency is about can't just grab the nearest phone and cancel it. Disabling
+  broadcasts over the same WebSocket stream to clear every device's alarm and the map marker.
+  The **Settings** tab has household/member
   management (home
   geofence via a Leaflet map you click to place a pin, member list — tapping a member opens a full
   **Edit member** modal: rename, avatar, a map-color picker, Device ID, and remove). No address
@@ -366,11 +370,16 @@ docker compose up -d --build traccar   # only traccar runs in Compose on the VPS
     household_id UUID NOT NULL REFERENCES substrate.households(id),
     lat DOUBLE PRECISION, lng DOUBLE PRECISION, address TEXT,
     category TEXT NOT NULL DEFAULT 'general',
+    kind TEXT NOT NULL DEFAULT 'sos',
+    contact_name TEXT,
     origin_client_id TEXT NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     acknowledged_at TIMESTAMPTZ
   );
   ```
+  If `runtime.sos_alerts` already exists from an earlier deploy without `kind`/`contact_name`:
+  `ALTER TABLE runtime.sos_alerts ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'sos', ADD
+  COLUMN IF NOT EXISTS contact_name TEXT;`
   The one-tap emergency call buttons need `substrate.emergency_contacts` on an existing install
   (category `NULL` = general, shown for every SOS category; a specific category's contacts only
   show once that category is engaged):

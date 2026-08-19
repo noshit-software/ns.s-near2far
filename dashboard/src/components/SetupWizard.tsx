@@ -99,6 +99,20 @@ export function SetupWizard() {
     }
   }
 
+  async function updateEmergencyContact(contactId: string, name: string, phone: string) {
+    if (!household) return
+    setError(null)
+    try {
+      const updated = await apiPost<EmergencyContact>(`/setup/emergency-contacts/${contactId}`, { name, phone })
+      setHousehold({
+        ...household,
+        emergency_contacts: household.emergency_contacts.map((c) => (c.id === contactId ? updated : c)),
+      })
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
   async function removeEmergencyContact(contactId: string) {
     if (!household) return
     setError(null)
@@ -364,9 +378,21 @@ export function SetupWizard() {
                   <h4>{label}</h4>
                   {existing.map((c) => (
                     <div key={c.id} className="emergency-contact-row">
-                      <span className="emergency-contact-name">
-                        {c.name} — {c.phone}
-                      </span>
+                      <input
+                        defaultValue={c.name}
+                        onBlur={(e) => {
+                          const name = e.target.value.trim()
+                          if (name && name !== c.name) updateEmergencyContact(c.id, name, c.phone)
+                        }}
+                      />
+                      <input
+                        defaultValue={c.phone}
+                        type="tel"
+                        onBlur={(e) => {
+                          const phone = e.target.value.trim()
+                          if (phone && phone !== c.phone) updateEmergencyContact(c.id, c.name, phone)
+                        }}
+                      />
                       <button type="button" onClick={() => removeEmergencyContact(c.id)}>
                         Remove
                       </button>

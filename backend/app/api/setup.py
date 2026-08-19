@@ -50,6 +50,11 @@ class CreateEmergencyContact(BaseModel):
     phone: str
 
 
+class UpdateEmergencyContact(BaseModel):
+    name: str
+    phone: str
+
+
 class CreateHousehold(BaseModel):
     name: str
     admin_password: str
@@ -177,6 +182,25 @@ async def create_emergency_contact(body: CreateEmergencyContact, request: Reques
             body.phone,
             count,
         )
+
+    data = {**dict(row), "id": str(row["id"])}
+    await publish("household.updated", None)
+    return {"success": True, "data": data}
+
+
+@router.post("/api/setup/emergency-contacts/{contact_id}", dependencies=[Depends(require_admin_auth)])
+async def update_emergency_contact(contact_id: int, body: UpdateEmergencyContact, request: Request) -> dict:
+    async with request.app.state.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "UPDATE substrate.emergency_contacts SET name = $1, phone = $2 "
+            "WHERE id = $3 RETURNING id, category, name, phone",
+            body.name,
+            body.phone,
+            contact_id,
+        )
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Contact not found")
 
     data = {**dict(row), "id": str(row["id"])}
     await publish("household.updated", None)
