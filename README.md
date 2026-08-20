@@ -35,15 +35,17 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   "Enable trip alerts" banner subscribes the browser to Web Push. Since an installed PWA doesn't
   reliably recheck for a new deploy on its own (especially on iOS), the dashboard compares its loaded
   JS bundle against the server's on every foreground/focus and reloads automatically when they
-  differ — no manual close/reopen needed after a rebuild. A round **SOS button** (bell icon) floats
-  above the bottom tab bar (like a camera shutter button, clipped by the screen edge). A single tap
-  opens a full-screen SOS panel styled as "liquid glass" — heavily blurred, very translucent
-  tiles/buttons with a bright inner-edge highlight and large squircle corners, so the map stays
-  clearly visible underneath instead of being hidden behind a solid screen — and the bell itself
-  is replaced by a round **911** button in the exact same spot, since once the panel is open the
-  bell has nothing further to do; "911" curves in an arc above the phone icon (SVG `textPath`)
-  rather than sitting as flat stacked text, and is tinted the brand orange (see "Branding" below)
-  rather than a stock red. Up to 2 general contacts flank 911 left/right, tinted the logo's light
+  differ — no manual close/reopen needed after a rebuild. The whole app shell — top bar, tab bar,
+  member panel cards, settings/setup cards, and the SOS panel — shares one "liquid glass" look:
+  heavily blurred, translucent surfaces with a bright inner-edge highlight, so whatever's behind
+  (map, page content) stays visible through them instead of a solid card sitting on top. A round
+  **SOS button** (bell icon, watermarked with `homeworld.svg`) floats above the bottom tab bar
+  (like a camera shutter button, clipped by the screen edge). A single tap opens a full-screen SOS
+  panel with large squircle corners — the bell itself is replaced by a round **911** button in the
+  exact same spot (also watermarked with `homeworld.svg`), since once the panel is open the bell
+  has nothing further to do; "911" curves in an arc above the phone icon (SVG `textPath`) rather
+  than sitting as flat stacked text, and is tinted the brand orange (see "Branding" below) rather
+  than a stock red. Up to 2 general contacts flank 911 left/right, tinted the logo's light
   blue-gray with a darker-blue icon badge; a 2×2 grid of category tiles (Medical, Authority
   threat, Being followed, Car trouble — a large faded white icon, no text label) fills most of the
   remaining space above. Tapping a category tile fires a full alert for that category; each tile
@@ -362,6 +364,21 @@ docker compose up -d --build traccar   # only traccar runs in Compose on the VPS
                                         # for local dev only; don't start them here, they'll
                                         # fight pm2/nginx for the same ports
 ```
+
+### CSS gotcha: `backdrop-filter` and `position: fixed` (learned the hard way, twice)
+
+`backdrop-filter` (used everywhere by the "liquid glass" look) makes its element the *containing
+block* for any `position: fixed` descendant — a CSS spec quirk most people don't expect, since
+`fixed` is supposed to mean "relative to the viewport." Bit us twice: `.sos-panel`'s fixed
+911/contacts row collapsed into the panel's own small box, and separately `.tab-bar`'s
+`backdrop-filter` collapsed the entire full-screen `.sos-panel` down to the tab bar's ~60px
+height — because `SosButton` (which renders `.sos-panel`) is mounted as a DOM child of
+`.tab-bar`, and `.setup-wizard` (wrapping `MemberEditModal`, also `position: fixed`) hit the same
+thing. Fix: never put `backdrop-filter` directly on an element that has (or might gain) a
+`position: fixed` descendant anywhere in its subtree — even a component you don't expect to be
+there, like a modal. Put the blur on a `::before`/`::after` pseudo-element instead (see
+`.tab-bar::before`, `.setup-wizard::before` in `dashboard/src/index.css`); a pseudo-element's own
+`backdrop-filter` doesn't change what its *parent* is a containing block for.
 
 ### VPS deploy gotchas (learned the hard way)
 

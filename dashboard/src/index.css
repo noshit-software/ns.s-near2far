@@ -12,6 +12,13 @@
   --accent-hover: #e8873a;
   --danger: #ff6b6b;
   --radius: 10px;
+  /* Shared "liquid glass" tokens — same recipe as the SOS panel (translucent + blurred +
+     bright inner-edge highlight) applied consistently across the top bar, tab bar, member
+     panels, and settings cards, not just the SOS overlay. */
+  --glass-bg: rgba(26, 35, 48, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.16);
+  --glass-highlight: rgba(255, 255, 255, 0.18);
+  --glass-blur: blur(16px) saturate(160%);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
@@ -23,6 +30,9 @@
     --border: #ddd7cd;
     --text: #1a1d23;
     --text-dim: #666d7a;
+    --glass-bg: rgba(255, 255, 255, 0.5);
+    --glass-border: rgba(255, 255, 255, 0.6);
+    --glass-highlight: rgba(255, 255, 255, 0.7);
   }
 }
 
@@ -103,8 +113,11 @@ h3 {
   display: flex;
   align-items: center;
   padding: calc(env(safe-area-inset-top) + 0.75rem) 1.1rem 0.75rem;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: inset 0 -1px 0 var(--glass-highlight);
 }
 
 .app-content {
@@ -119,9 +132,26 @@ h3 {
   display: flex;
   position: relative;
   z-index: 1001;
-  border-top: 1px solid var(--border);
-  background: var(--surface);
+  /* No backdrop-filter directly on .tab-bar: SosButton (which renders the fixed, full-screen
+     .sos-panel) is mounted as a child of this element, and backdrop-filter turns its own
+     element into the containing block for position:fixed descendants — that collapsed the
+     panel down to the tab bar's own ~60px height instead of the viewport. The blur lives on
+     a ::before behind the tab bar's actual content instead, so .tab-bar itself stays a normal
+     (non-filtered) box. */
+  border-top: 1px solid var(--glass-border);
   padding-bottom: env(safe-area-inset-bottom);
+}
+
+.tab-bar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 1px 0 var(--glass-highlight);
+  pointer-events: none;
 }
 
 .sos-dock {
@@ -145,7 +175,7 @@ h3 {
   height: 104px;
   border-radius: 50%;
   border: 4px solid var(--surface);
-  background: var(--accent);
+  background: var(--accent) url("/homeworld.svg") center / 68% no-repeat;
   color: white;
   font: inherit;
   font-weight: 800;
@@ -410,7 +440,11 @@ h3 {
   height: 104px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  background: rgba(217, 113, 16, 0.55);
+  background-color: rgba(217, 113, 16, 0.55);
+  background-image: url("/homeworld.svg");
+  background-position: center;
+  background-size: 62%;
+  background-repeat: no-repeat;
   box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2), 0 4px 14px rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(14px) saturate(160%);
   -webkit-backdrop-filter: blur(14px) saturate(160%);
@@ -668,10 +702,26 @@ h3 {
 }
 
 .setup-wizard {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  /* Same containing-block trap as .tab-bar: MemberEditModal (position:fixed) renders as a
+     descendant of this element, so backdrop-filter directly on .setup-wizard would collapse
+     its full-screen overlay down to this card's own box. Blur lives on a ::before instead. */
+  position: relative;
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
   padding: 1.25rem;
+}
+
+.setup-wizard::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 24px;
+  background: var(--glass-bg);
+  box-shadow: inset 0 1px 1px var(--glass-highlight), 0 8px 24px rgba(0, 0, 0, 0.18);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  pointer-events: none;
 }
 
 /* Map tab: full-bleed under the top bar, no card chrome, fills the scroll container. */
@@ -722,12 +772,14 @@ h3 {
   font-weight: 400;
   text-align: left;
   padding: 0.5rem 0.8rem 0.5rem 0.5rem;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: #2b2e33;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(26, 35, 48, 0.55);
   color: #f2f2f2;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.18), 0 2px 8px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
 }
 
 .family-map .member-panel:hover {

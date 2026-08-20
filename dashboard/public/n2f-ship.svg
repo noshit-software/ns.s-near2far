@@ -2,9 +2,9 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   width="120.55433mm"
-   height="121.86199mm"
-   viewBox="0 0 120.55433 121.86199"
+   width="29.56579mm"
+   height="16.962023mm"
+   viewBox="0 0 29.56579 16.962023"
    version="1.1"
    id="svg1"
    xml:space="preserve"
@@ -12,7 +12,7 @@
    xmlns:svg="http://www.w3.org/2000/svg"><defs
      id="defs1" /><g
      id="layer1"
-     transform="translate(-48.978486,-84.674217)"><g
+     transform="translate(-92.339586,-84.674212)"><g
        id="g5"><g
          id="g3"><path
            id="path1"
@@ -44,16 +44,15 @@
            id="g2-7"
            transform="matrix(1.4326997,0,0,1.4326997,-120.9057,-93.735491)"
            style="fill:#d97110;fill-opacity:1"><g
-             id="g4"><g
-               id="g8"><circle
-                 style="fill:#d97110;fill-opacity:1;stroke:none;stroke-width:4.15615;stroke-dasharray:none;stroke-opacity:1"
-                 id="path2-6"
-                 cx="159.34933"
-                 cy="168.57123"
-                 r="9.8999996" /><path
-                 id="path2-7-7-1"
-                 style="fill:#c75d03;fill-opacity:1;stroke:none;stroke-width:4.15615;stroke-dasharray:none;stroke-opacity:1"
-                 d="m 164.36882,160.06745 a 9.8999996,9.8999996 0 0 1 1.09813,4.5315 9.8999996,9.8999996 0 0 1 -9.90017,9.89966 9.8999996,9.8999996 0 0 1 -5.02605,-1.37046 9.8999996,9.8999996 0 0 0 8.80204,5.36814 9.8999996,9.8999996 0 0 0 9.90017,-9.89965 9.8999996,9.8999996 0 0 0 -4.87412,-8.52919 z" /></g></g></g></g><g
+             id="g4"><circle
+               style="fill:#d97110;fill-opacity:1;stroke:none;stroke-width:4.15615;stroke-dasharray:none;stroke-opacity:1"
+               id="path2-6"
+               cx="159.34933"
+               cy="168.57123"
+               r="9.8999996" /><path
+               id="path2-7-7-1"
+               style="fill:#c75d03;fill-opacity:1;stroke:none;stroke-width:4.15615;stroke-dasharray:none;stroke-opacity:1"
+               d="m 164.36882,160.06745 a 9.8999996,9.8999996 0 0 1 1.09813,4.5315 9.8999996,9.8999996 0 0 1 -9.90017,9.89966 9.8999996,9.8999996 0 0 1 -5.02605,-1.37046 9.8999996,9.8999996 0 0 0 8.80204,5.36814 9.8999996,9.8999996 0 0 0 9.90017,-9.89965 9.8999996,9.8999996 0 0 0 -4.87412,-8.52919 z" /></g></g></g><g
          id="g6"><g
            id="g7"><path
              id="path5"
