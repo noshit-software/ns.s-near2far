@@ -39,21 +39,26 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   member panel cards, settings/setup cards, and the SOS panel — shares one "liquid glass" look:
   heavily blurred, translucent surfaces with a bright inner-edge highlight, so whatever's behind
   (map, page content) stays visible through them instead of a solid card sitting on top. A round
-  **SOS button** (bell icon, watermarked with `homeworld.svg`) floats above the bottom tab bar
-  (like a camera shutter button, clipped by the screen edge). A single tap opens a full-screen SOS
-  panel with large squircle corners — the bell itself is replaced by a round **911** button in the
-  exact same spot (also watermarked with `homeworld.svg`), since once the panel is open the bell
-  has nothing further to do; "911" curves in an arc above the phone icon (SVG `textPath`) rather
-  than sitting as flat stacked text, and is tinted the brand orange (see "Branding" below) rather
-  than a stock red. Up to 2 general contacts flank 911 left/right, tinted the logo's light
-  blue-gray with a darker-blue icon badge; a 2×2 grid of category tiles (Medical, Authority
-  threat, Being followed, Car trouble — a large faded white icon, no text label) fills most of the
-  remaining space above. Tapping a category tile fires a full alert for that category; each tile
-  also shows up to 3 of its own configured numbers as translucent glass pill buttons (icon badge
-  flush against the pill's edge + label) floating directly over the icon rather than a reserved
-  bottom bar — up to 2 stacked along the left edge, a 3rd spilling to the right (e.g. AAA,
-  insurance, and a non-emergency police line under Car trouble — Settings → Emergency contacts,
-  per category, editable and reorderable in place). Phone numbers are validated and normalized
+  **SOS button** (bell icon, watermarked with `homeworld.png`, vertically centered on the tab
+  bar's own icon row rather than its full circle) floats above the bottom tab bar (like a camera
+  shutter button, clipped by the screen edge) — the **Map**/**Settings** tab buttons are icon-only
+  now too, no text labels. A single tap opens a full-screen SOS panel with large squircle corners
+  — the bell itself is replaced by a round **911** button in the exact same spot (also watermarked
+  with `homeworld.png` — a rendered PNG rather than the raw SVG, since nested `<g>` transforms in
+  the source file didn't render consistently as a CSS `background-image`), since once the panel is
+  open the bell has nothing further to do; "911" curves in an arc above the phone icon (SVG
+  `textPath`) rather than sitting as flat stacked text, and is tinted the brand orange (see
+  "Branding" below) rather than a stock red. Up to 2 general contacts flank 911 left/right, tinted
+  the logo's light blue-gray with a darker-blue icon badge; a 2×2 grid of category tiles (Medical,
+  Authority threat, Being followed, Car trouble — a large faded white icon, no text label) fills
+  most of the remaining space above. Tapping a category tile fires a full alert for that category;
+  each tile also shows up to 3 of its own configured numbers as translucent glass pill buttons
+  (icon badge + label, doubled in size from the first pass) floating directly over the icon in a
+  single row that splits the tile's width evenly between however many numbers are configured —
+  labels ellipsis-truncate rather than overflow the tile when space is tight (e.g. AAA, insurance,
+  and a non-emergency police line under Car trouble — Settings → Emergency contacts, per category,
+  editable and reorderable in place, names capped at 18 characters since the display font isn't
+  very legible at the small sizes these buttons allow). Phone numbers are validated and normalized
   server-side (7-15 digits, optional
   leading `+`; punctuation/spacing stripped before storage) so a typo can't end up as a
   silently-dead `tel:` link discovered mid-emergency. Every number inside the panel is a single

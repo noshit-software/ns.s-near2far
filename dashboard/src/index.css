@@ -170,12 +170,12 @@ h3 {
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  padding-top: 2.0em;
+  padding-top: 29px;
   width: 104px;
   height: 104px;
   border-radius: 50%;
   border: 4px solid var(--surface);
-  background: var(--accent) url("/homeworld.svg") center / 68% no-repeat;
+  background: var(--accent) url("/homeworld.png") center / 68% no-repeat;
   color: white;
   font: inherit;
   font-weight: 800;
@@ -310,22 +310,29 @@ h3 {
   height: 100%;
 }
 
-/* Floating pills over the icon rather than a reserved bottom bar — translucent so the icon
-   shows through behind them. First 2 stack up the left edge; a 3rd spills to the right. */
+/* Floating row over the icon rather than a reserved bottom bar — translucent so the icon shows
+   through behind it. A single row spanning the tile's width, each pill an equal share of it
+   (not sized to its own label), gap matching the pills' own internal padding. */
 .sos-panel-category-dials {
   position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
   bottom: 0.5rem;
   display: flex;
-  flex-direction: column-reverse;
-  gap: 0.35rem;
+  gap: 0.5rem;
 }
 
-.sos-panel-category-dials-left {
-  left: 0.5rem;
+.sos-panel-category-dials .sos-panel-dial {
+  flex: 1 1 0;
+  /* Without this, flex:1 can't actually shrink a nowrap-text pill below its content's natural
+     width — with 2-3 contacts in one category the pills blew straight past the tile's edge
+     instead of sharing it evenly. The label truncates with an ellipsis instead. */
+  min-width: 0;
 }
 
-.sos-panel-category-dials-right {
-  right: 0.5rem;
+.sos-panel-category-dials .sos-panel-dial-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Pill: a round icon badge on the left, label to the right — not a plain circle with icon
@@ -373,15 +380,15 @@ h3 {
 }
 
 .sos-panel-dial-icon svg {
-  width: 20px;
-  height: 20px;
+  width: 40px;
+  height: 40px;
 }
 
 .sos-panel-dial-small {
-  height: 52px;
-  padding: 0 1rem 0 0;
+  padding: 0.5rem;
   font-size: 0.72rem;
   background: rgba(139, 166, 193, 0.55);
+  justify-content: center;
 }
 
 .sos-panel-dial-small:active {
@@ -395,8 +402,8 @@ h3 {
 }
 
 .sos-panel-dial-small .sos-panel-dial-icon svg {
-  width: 16px;
-  height: 16px;
+  width: 32px;
+  height: 32px;
 }
 
 /* 911 takes over the main SOS bell's exact spot (same fixed position/size/clipping) — once the
@@ -441,7 +448,7 @@ h3 {
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.3);
   background-color: rgba(217, 113, 16, 0.55);
-  background-image: url("/homeworld.svg");
+  background-image: url("/homeworld.png");
   background-position: center;
   background-size: 62%;
   background-repeat: no-repeat;
@@ -480,16 +487,12 @@ h3 {
 .tab-button {
   flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
-  font: inherit;
-  font-size: 0.7rem;
-  font-weight: 600;
+  justify-content: center;
   color: var(--text-dim);
   background: none;
   border: none;
-  padding: 0.5rem 0 0.6rem;
+  padding: 0.75rem 0;
   cursor: pointer;
 }
 
