@@ -59,12 +59,6 @@ def _normalize_phone(phone: str) -> str:
     return cleaned
 
 
-# The SOS panel's call-button labels have limited horizontal room and a display font that
-# isn't especially legible at small sizes — 18 characters keeps a name from overflowing or
-# getting truncated illegibly on the button itself.
-MAX_CONTACT_NAME_LENGTH = 18
-
-
 class CreateEmergencyContact(BaseModel):
     category: str | None = None
     name: str
@@ -74,12 +68,6 @@ class CreateEmergencyContact(BaseModel):
 class UpdateEmergencyContact(BaseModel):
     name: str
     phone: str
-
-
-def _validate_contact_name(name: str) -> str:
-    if len(name) > MAX_CONTACT_NAME_LENGTH:
-        raise ValueError(f"Name must be {MAX_CONTACT_NAME_LENGTH} characters or fewer")
-    return name
 
 
 class ReorderEmergencyContacts(BaseModel):
@@ -190,7 +178,6 @@ async def create_emergency_contact(body: CreateEmergencyContact, request: Reques
 
     try:
         phone = _normalize_phone(body.phone)
-        name = _validate_contact_name(body.name)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -216,7 +203,7 @@ async def create_emergency_contact(body: CreateEmergencyContact, request: Reques
             "VALUES ($1, $2, $3, $4, $5) RETURNING id, category, name, phone",
             household_id,
             body.category,
-            name,
+            body.name,
             phone,
             count,
         )
@@ -250,7 +237,6 @@ async def reorder_emergency_contacts(body: ReorderEmergencyContacts, request: Re
 async def update_emergency_contact(contact_id: int, body: UpdateEmergencyContact, request: Request) -> dict:
     try:
         phone = _normalize_phone(body.phone)
-        name = _validate_contact_name(body.name)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -258,7 +244,7 @@ async def update_emergency_contact(contact_id: int, body: UpdateEmergencyContact
         row = await conn.fetchrow(
             "UPDATE substrate.emergency_contacts SET name = $1, phone = $2 "
             "WHERE id = $3 RETURNING id, category, name, phone",
-            name,
+            body.name,
             phone,
             contact_id,
         )

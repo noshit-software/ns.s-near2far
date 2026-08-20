@@ -419,7 +419,6 @@ export function SetupWizard() {
                       </div>
                       <input
                         defaultValue={c.name}
-                        maxLength={18}
                         onBlur={(e) => {
                           const name = e.target.value.trim()
                           if (name && name !== c.name) updateEmergencyContact(c.id, name, c.phone)
@@ -444,7 +443,6 @@ export function SetupWizard() {
                         value={newContactName[key] ?? ""}
                         onChange={(e) => setNewContactName((prev) => ({ ...prev, [key]: e.target.value }))}
                         placeholder="Name"
-                        maxLength={18}
                       />
                       <input
                         value={newContactPhone[key] ?? ""}
@@ -471,18 +469,18 @@ export function SetupWizard() {
           type="button"
           className={`tab-button ${!showSettings ? "active" : ""}`}
           onClick={() => setShowSettings(false)}
-          aria-label="Map"
         >
           <MapIcon />
+          Map
         </button>
         <SosButton household={household} onTriggered={setActiveSosId} />
         <button
           type="button"
           className={`tab-button ${showSettings ? "active" : ""}`}
           onClick={() => setShowSettings(true)}
-          aria-label="Settings"
         >
           <SettingsIcon />
+          Settings
         </button>
       </nav>
     </div>

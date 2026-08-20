@@ -127,11 +127,26 @@ export function SosButton({
                     </span>
                   </button>
                   {/* Floating on the tile itself (translucent, so the big icon shows through)
-                      instead of a bottom bar — a single row, each pill filling an equal share
-                      of the width rather than sizing to its own text. */}
-                  {categoryContacts.length > 0 && (
-                    <div className="sos-panel-category-dials">
-                      {categoryContacts.map((ct) => (
+                      instead of a bottom bar — first 2 stack up the left edge, any 3rd spills
+                      to the right, rather than reserving fixed space whether or not it's used. */}
+                  <div className="sos-panel-category-dials sos-panel-category-dials-left">
+                    {categoryContacts.slice(0, 2).map((ct) => (
+                      <a
+                        key={ct.id}
+                        href={`tel:${ct.phone}`}
+                        className="sos-panel-dial sos-panel-dial-small"
+                        onClick={() => fire(c.key, ct.phone, "help", ct.name)}
+                      >
+                        <span className="sos-panel-dial-icon">
+                          <PhoneIcon />
+                        </span>
+                        <span className="sos-panel-dial-label">{ct.name}</span>
+                      </a>
+                    ))}
+                  </div>
+                  {categoryContacts.length > 2 && (
+                    <div className="sos-panel-category-dials sos-panel-category-dials-right">
+                      {categoryContacts.slice(2).map((ct) => (
                         <a
                           key={ct.id}
                           href={`tel:${ct.phone}`}
