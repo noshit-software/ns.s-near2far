@@ -42,15 +42,17 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   clearly visible underneath instead of being hidden behind a solid screen — and the bell itself
   is replaced by a round **911** button in the exact same spot, since once the panel is open the
   bell has nothing further to do; "911" curves in an arc above the phone icon (SVG `textPath`)
-  rather than sitting as flat stacked text. Up to 2 general contacts flank 911 left/right; a 2×2
-  grid of category tiles (Medical, Authority threat, Being followed, Car trouble — a large white
-  icon with a drop-shadow, no text label) fills most of the remaining space above. Tapping a
-  category tile fires a full alert for that category; each tile also shows up to 3 of its own
-  configured numbers as translucent glass pill buttons (icon badge + label) floating directly
-  over the icon rather than a reserved bottom bar — up to 2 stacked along the left edge, a 3rd
-  spilling to the right (e.g. AAA, insurance, and a non-emergency police line under Car trouble —
-  Settings → Emergency contacts, per category, editable and reorderable in place). Phone numbers
-  are validated and normalized server-side (7-15 digits, optional
+  rather than sitting as flat stacked text, and is tinted the brand orange (see "Branding" below)
+  rather than a stock red. Up to 2 general contacts flank 911 left/right, tinted the logo's light
+  blue-gray with a darker-blue icon badge; a 2×2 grid of category tiles (Medical, Authority
+  threat, Being followed, Car trouble — a large faded white icon, no text label) fills most of the
+  remaining space above. Tapping a category tile fires a full alert for that category; each tile
+  also shows up to 3 of its own configured numbers as translucent glass pill buttons (icon badge
+  flush against the pill's edge + label) floating directly over the icon rather than a reserved
+  bottom bar — up to 2 stacked along the left edge, a 3rd spilling to the right (e.g. AAA,
+  insurance, and a non-emergency police line under Car trouble — Settings → Emergency contacts,
+  per category, editable and reorderable in place). Phone numbers are validated and normalized
+  server-side (7-15 digits, optional
   leading `+`; punctuation/spacing stripped before storage) so a typo can't end up as a
   silently-dead `tel:` link discovered mid-emergency. Every number inside the panel is a single
   tap — no triple-tap — since reaching the panel at all already took a deliberate first tap on the
@@ -309,6 +311,16 @@ custom color (`color` column; falls back to a color hashed from the member's id 
 (`DELETE /api/setup/members/{id}`, behind a confirm step) — which also deletes their uploaded
 avatar file and cascades their position
 history (`positions.member_id` has `ON DELETE CASCADE`).
+
+## Branding
+
+App icons, favicon, and the color palette (`dashboard/src/index.css` `:root`/light-mode
+variables) are derived from `dashboard/public/n2f-logo.svg` — navy `#293a4e`, orange `#d97110`
+(the `--accent` used for buttons/CTAs and the SOS/911 buttons), and blue-gray `#8ba6c1`/`#5980a6`
+(used for the SOS panel's general-contact pills/icon badges). `icon-192.png`, `icon-512.png`, and
+`favicon.ico` are generated from `n2f-logo.png` (PIL, resized/padded to square, `favicon.ico`
+bundling 16/32/48/64px). Regenerate them if the logo changes — there's no build step wired up for
+this, it was a one-off script.
 
 ## Member avatars
 

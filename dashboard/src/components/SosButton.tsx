@@ -196,7 +196,7 @@ export function SosButton({
             aria-label="Call 911"
           >
             <svg className="sos-panel-dial-911-arc" viewBox="0 0 104 104" aria-hidden="true">
-              <path id="sos911arc" d="M 18 42 A 36 36 0 0 1 86 42" fill="none" />
+              <path id="sos911arc" d="M 18 47 A 36 36 0 0 1 86 47" fill="none" />
               <text textAnchor="middle">
                 <textPath href="#sos911arc" startOffset="50%">
                   911
