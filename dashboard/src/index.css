@@ -317,7 +317,12 @@ h3 {
   bottom: 0.5rem;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.5rem;
+  /* Fixed, not just capped — every pill in the tile (long label or short) renders the same
+     width instead of shrinking to its own content, so "AAA" isn't a stubby little pill next to
+     a full-width "WA Rapid Response" one. Long labels truncate with an ellipsis to fit instead
+     of being hard-clipped by the tile's own overflow:hidden. */
+  width: min(180px, calc(100% - 1rem));
 }
 
 .sos-panel-category-dials-left {
@@ -326,6 +331,20 @@ h3 {
 
 .sos-panel-category-dials-right {
   right: 0.5rem;
+}
+
+.sos-panel-category-dials .sos-panel-dial {
+  width: 100%;
+  min-width: 0;
+}
+
+.sos-panel-category-dials .sos-panel-dial-label {
+  /* No ellipsis here — the 18-char cap on contact names (enforced at entry, see
+     MAX_CONTACT_NAME_LENGTH in backend/app/api/setup.py) is sized to always fit this pill's
+     width, so truncation should never actually trigger; overflow:hidden alone is a safety net
+     rather than a scheme depending on ellipsis dots eating into the label. */
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* Pill: a round icon badge on the left, label to the right — not a plain circle with icon

@@ -51,12 +51,21 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   than a stock red. Up to 2 general contacts flank 911 left/right, tinted the logo's light
   blue-gray with a darker-blue icon badge; a 2×2 grid of category tiles (Medical, Authority
   threat, Being followed, Car trouble — a large faded white icon, no text label) fills most of the
-  remaining space above. Tapping a category tile fires a full alert for that category; each tile
+  remaining space above. All icons in `dashboard/src/components/icons.tsx` (bell, phone, medical
+  cross, authority/shield, being-followed/domino-mask, car) are exact Google Material Symbols
+  glyphs (`fill="currentColor"`, `viewBox="0 -960 960 960"`), inlined as plain `<svg>` per
+  component rather than hand-drawn approximations. Tapping a category tile fires a full alert for that category; each tile
   also shows up to 3 of its own configured numbers as translucent glass pill buttons (icon badge
   flush against the pill's edge + label) floating directly over the icon rather than a reserved
   bottom bar — up to 2 stacked along the left edge, a 3rd spilling to the right (e.g. AAA,
   insurance, and a non-emergency police line under Car trouble — Settings → Emergency contacts,
-  per category, editable and reorderable in place). Phone numbers are validated and normalized
+  per category, editable and reorderable in place). Every pill in a tile renders at the same
+  fixed width (not shrunk to its own content) so a short name like "AAA" isn't a stubby little
+  pill next to a full-width one; contact names are capped at 18 characters both client-side
+  (`maxLength`) and server-side (`MAX_CONTACT_NAME_LENGTH` in `backend/app/api/setup.py`) so a
+  label is guaranteed to fit the pill without truncating — deliberately not solved with CSS
+  ellipsis, since dropping a name mid-word into "…" during an actual emergency call is worse than
+  just not allowing the long name in the first place. Phone numbers are validated and normalized
   server-side (7-15 digits, optional
   leading `+`; punctuation/spacing stripped before storage) so a typo can't end up as a
   silently-dead `tel:` link discovered mid-emergency. Every number inside the panel is a single

@@ -84,9 +84,8 @@ export function MedicalCrossIcon() {
 
 export function BadgeIcon() {
   return (
-    <svg {...common} width="20" height="20" aria-hidden="true">
-      <path d="M12 2l2.5 2.5H18v3.5L20.5 10.5 18 13v3.5h-3.5L12 19l-2.5-2.5H6V13L3.5 10.5 6 8V4.5h3.5z" />
-      <circle cx="12" cy="11" r="3" />
+    <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor" aria-hidden="true">
+      <path d="M480-80q-139-35-229.5-159.5T160-516v-244l320-120 320 120v244q0 152-90.5 276.5T480-80Zm0-84q104-33 172-132t68-220v-189l-240-90-240 90v189q0 121 68 220t172 132Zm0-316Z" />
     </svg>
   )
 }
@@ -110,21 +109,16 @@ export function PhoneIcon() {
 
 export function CarIcon() {
   return (
-    <svg {...common} width="20" height="20" aria-hidden="true">
-      <path d="M3 13l1.5-5A2 2 0 0 1 6.4 6.5h11.2A2 2 0 0 1 19.5 8L21 13" />
-      <rect x="2" y="13" width="20" height="6" rx="2" />
-      <circle cx="7" cy="19" r="1.6" fill="currentColor" stroke="none" />
-      <circle cx="17" cy="19" r="1.6" fill="currentColor" stroke="none" />
+    <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor" aria-hidden="true">
+      <path d="M240-200v40q0 17-11.5 28.5T200-120h-40q-17 0-28.5-11.5T120-160v-320l84-240q6-18 21.5-29t34.5-11h440q19 0 34.5 11t21.5 29l84 240v320q0 17-11.5 28.5T800-120h-40q-17 0-28.5-11.5T720-160v-40H240Zm-8-360h496l-42-120H274l-42 120Zm-32 80v200-200Zm100 160q25 0 42.5-17.5T360-380q0-25-17.5-42.5T300-440q-25 0-42.5 17.5T240-380q0 25 17.5 42.5T300-320Zm360 0q25 0 42.5-17.5T720-380q0-25-17.5-42.5T660-440q-25 0-42.5 17.5T600-380q0 25 17.5 42.5T660-320Zm-460 40h560v-200H200v200Z" />
     </svg>
   )
 }
 
 export function SuspiciousIcon() {
   return (
-    <svg {...common} width="20" height="20" aria-hidden="true">
-      <path d="M2 10c1.5-2.5 4-4 6-4s3.5 1.5 4 2c.5-.5 2-2 4-2s4.5 1.5 6 4c-1.5 2.5-4 4-6 4s-3.5-1.5-4-2c-.5.5-2 2-4 2s-4.5-1.5-6-4Z" />
-      <circle cx="8" cy="10" r="1.4" fill="currentColor" stroke="none" />
-      <circle cx="16" cy="10" r="1.4" fill="currentColor" stroke="none" />
+    <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor" aria-hidden="true">
+      <path d="M312-240q-51 0-97.5-18T131-311q-48-45-69.5-106.5T40-545q0-78 38-126.5T189-720q14 0 26.5 2.5T241-710l239 89 239-89q13-5 25.5-7.5T771-720q73 0 111 48.5T920-545q0 66-21.5 127.5T829-311q-37 35-83.5 53T648-240q-66 0-112-30l-46-30h-20l-46 30q-46 30-112 30Zm0-80q37 0 69-17.5t59-42.5h80q27 25 59 42.5t69 17.5q36 0 69.5-12.5T777-371q34-34 48.5-80t14.5-94q0-41-17-68.5T769-640q-3 0-22 4L480-536 213-636q-5-2-10.5-3t-11.5-1q-37 0-54 27t-17 68q0 49 14.5 95t49.5 80q26 25 59 37.5t69 12.5Zm49-60q37 0 58-16.5t21-45.5q0-49-64.5-93.5T239-580q-37 0-58 16.5T160-518q0 49 64.5 93.5T361-380Zm-6-60q-38 0-82.5-25T220-516q5-2 11.5-3.5T245-521q38 0 82.5 25.5T380-444q-5 2-11.5 3t-13.5 1Zm244 61q72 0 136.5-45t64.5-94q0-29-20.5-46T721-581q-72 0-136.5 45T520-442q0 29 21 46t58 17Zm6-61q-7 0-13-1t-11-3q8-26 52.5-51t82.5-25q7 0 13 1t11 3q-8 26-52.5 51T605-440Zm-125-40Z" />
     </svg>
   )
 }

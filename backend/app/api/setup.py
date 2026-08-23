@@ -59,6 +59,21 @@ def _normalize_phone(phone: str) -> str:
     return cleaned
 
 
+# Caps contact names at a length the SOS panel's pill can always render on one line without
+# truncating — the pill's fixed width has no room for an ellipsis-worthy name, so the limit is
+# enforced at entry instead of clipped visually later.
+MAX_CONTACT_NAME_LENGTH = 18
+
+
+def _validate_contact_name(name: str) -> str:
+    trimmed = name.strip()
+    if not trimmed:
+        raise ValueError("Name is required")
+    if len(trimmed) > MAX_CONTACT_NAME_LENGTH:
+        raise ValueError(f"Name must be {MAX_CONTACT_NAME_LENGTH} characters or fewer")
+    return trimmed
+
+
 class CreateEmergencyContact(BaseModel):
     category: str | None = None
     name: str
@@ -178,6 +193,7 @@ async def create_emergency_contact(body: CreateEmergencyContact, request: Reques
 
     try:
         phone = _normalize_phone(body.phone)
+        name = _validate_contact_name(body.name)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -203,7 +219,7 @@ async def create_emergency_contact(body: CreateEmergencyContact, request: Reques
             "VALUES ($1, $2, $3, $4, $5) RETURNING id, category, name, phone",
             household_id,
             body.category,
-            body.name,
+            name,
             phone,
             count,
         )
@@ -237,6 +253,7 @@ async def reorder_emergency_contacts(body: ReorderEmergencyContacts, request: Re
 async def update_emergency_contact(contact_id: int, body: UpdateEmergencyContact, request: Request) -> dict:
     try:
         phone = _normalize_phone(body.phone)
+        name = _validate_contact_name(body.name)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
@@ -244,7 +261,7 @@ async def update_emergency_contact(contact_id: int, body: UpdateEmergencyContact
         row = await conn.fetchrow(
             "UPDATE substrate.emergency_contacts SET name = $1, phone = $2 "
             "WHERE id = $3 RETURNING id, category, name, phone",
-            body.name,
+            name,
             phone,
             contact_id,
         )
