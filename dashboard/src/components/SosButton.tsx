@@ -134,7 +134,7 @@ export function SosButton({
                       <a
                         key={ct.id}
                         href={`tel:${ct.phone}`}
-                        className="sos-panel-dial sos-panel-dial-small"
+                        className="sos-panel-dial"
                         onClick={() => fire(c.key, ct.phone, "help", ct.name)}
                       >
                         <span className="sos-panel-dial-icon">
@@ -150,7 +150,7 @@ export function SosButton({
                         <a
                           key={ct.id}
                           href={`tel:${ct.phone}`}
-                          className="sos-panel-dial sos-panel-dial-small"
+                          className="sos-panel-dial"
                           onClick={() => fire(c.key, ct.phone, "help", ct.name)}
                         >
                           <span className="sos-panel-dial-icon">

@@ -27,11 +27,14 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   renders as a circular avatar marker (their uploaded photo, or a generated placeholder — see
   "Member avatars"),
   shrinking through 80/60/40% size tiers and finally to a plain colored dot (20%) as you zoom out
-  past neighborhood level, live-updated over the existing WebSocket event stream, with a bottom
-  panel grid (one card per member: avatar, name, moving/stationary status with speed, and relative
-  last-seen time) that flex-wraps along the bottom on wide/desktop viewports and stacks on portrait
-  mobile — tapping a card centers the map on that member, snapping to a zoom level chosen from their
-  last-known speed (closer for stationary/walking, wider for driving) rather than a fixed zoom. An
+  past neighborhood level, live-updated over the existing WebSocket event stream. A one-click
+  quick-select strip of thumbnail avatars sits along the bottom — thumb-sized so a typical
+  household's members all fit on one row with no scrolling — with a single expanded detail card
+  below it (avatar, name, moving/stationary status with speed, relative last-seen time) for
+  whichever member is currently selected; tapping an avatar in the strip selects that member and
+  centers the map on them, snapping to a zoom level chosen from their last-known speed (closer for
+  stationary/walking, wider for driving) rather than a fixed zoom — the already-selected avatar
+  renders disabled/dimmed rather than disappearing, since re-tapping it would be a no-op. An
   "Enable trip alerts" banner subscribes the browser to Web Push. Since an installed PWA doesn't
   reliably recheck for a new deploy on its own (especially on iOS), the dashboard compares its loaded
   JS bundle against the server's on every foreground/focus and reloads automatically when they
@@ -330,7 +333,13 @@ Every member gets a randomly-assigned placeholder avatar at creation (`avatar_se
 token — the dashboard turns it into an image via `@dicebear/collection`'s `funEmoji` style,
 rendered **fully client-side, no network calls** — consistent with near2far's self-hosted/
 private-by-default stance; no third-party avatar CDN is ever contacted). In Settings, tap a
-member's avatar to open a picker: 6 fresh random options plus a **Shuffle** button for more, or
+member's avatar to open a picker — rendered as a fixed, centered viewport overlay (not positioned
+relative to the avatar button) since it's nested inside the **Edit member** bottom sheet, which is
+itself a scrollable/height-constrained container; an absolutely-positioned dropdown there got
+clipped by the sheet's own bounds instead of just fitting itself to the screen (same class of bug
+as the `backdrop-filter`/`position:fixed` containing-block trap below, different root cause). Its
+6 candidate options wrap as flex rows sized to fill the panel rather than a fixed grid, so it never
+needs to scroll for the fixed candidate count. 6 fresh random options plus a **Shuffle** button, or
 **Upload photo** to use a real picture instead — an uploaded photo always takes priority over the
 generated one. Photos are stored server-side under `backend/uploads/avatars/` (a docker volume
 locally; just a directory on the VPS since the backend runs bare via pm2) and served at

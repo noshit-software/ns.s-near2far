@@ -469,18 +469,18 @@ export function SetupWizard() {
           type="button"
           className={`tab-button ${!showSettings ? "active" : ""}`}
           onClick={() => setShowSettings(false)}
+          aria-label="Map"
         >
           <MapIcon />
-          Map
         </button>
         <SosButton household={household} onTriggered={setActiveSosId} />
         <button
           type="button"
           className={`tab-button ${showSettings ? "active" : ""}`}
           onClick={() => setShowSettings(true)}
+          aria-label="Settings"
         >
           <SettingsIcon />
-          Settings
         </button>
       </nav>
     </div>

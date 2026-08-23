@@ -316,7 +316,7 @@ h3 {
   position: absolute;
   bottom: 0.5rem;
   display: flex;
-  flex-direction: column-reverse;
+  flex-direction: column;
   gap: 0.35rem;
 }
 
@@ -344,9 +344,9 @@ h3 {
   backdrop-filter: blur(14px) saturate(160%);
   -webkit-backdrop-filter: blur(14px) saturate(160%);
   color: white;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 1);
   font: inherit;
-  font-weight: 700;
+  font-weight: 400;
   font-size: 0.85rem;
   line-height: 1;
   text-decoration: none;
@@ -480,16 +480,13 @@ h3 {
 .tab-button {
   flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0.15rem;
-  font: inherit;
-  font-size: 0.7rem;
-  font-weight: 600;
+  justify-content: center;
+  height: 60px;
   color: var(--text-dim);
   background: none;
   border: none;
-  padding: 0.5rem 0 0.6rem;
+  padding: 0;
   cursor: pointer;
 }
 
@@ -757,52 +754,74 @@ h3 {
   pointer-events: auto;
 }
 
-.member-panel-grid {
+/* One-click select strip: every member's avatar fits in one row, no scrolling — shrinks via
+   flex rather than overflowing, since thumb-size avatars comfortably fit 7-8 across a phone
+   width. */
+.member-strip {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
 }
 
-.family-map .member-panel {
+.member-strip-avatar {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 52px;
+  aspect-ratio: 1;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: none;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.member-strip-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--surface-2);
+  display: block;
+}
+
+.member-strip-avatar.active {
+  border-color: var(--accent);
+  opacity: 0.45;
+  cursor: default;
+}
+
+.member-detail {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  flex: 1 1 calc(50% - 0.25rem);
-  font: inherit;
-  font-weight: 400;
-  text-align: left;
   padding: 0.5rem 0.8rem 0.5rem 0.5rem;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(26, 35, 48, 0.55);
   color: #f2f2f2;
-  cursor: pointer;
   box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.18), 0 2px 8px rgba(0, 0, 0, 0.25);
   backdrop-filter: blur(16px) saturate(160%);
   -webkit-backdrop-filter: blur(16px) saturate(160%);
 }
 
-.family-map .member-panel:hover {
-  background: #383b41;
-}
-
-.member-panel-avatar {
-  width: 44px;
-  height: 44px;
+.member-detail-avatar {
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   object-fit: cover;
   background: var(--surface-2);
   flex-shrink: 0;
 }
 
-.member-panel-info {
+.member-detail-info {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
   min-width: 0;
 }
 
-.member-panel-name {
+.member-detail-name {
   font-weight: 600;
   font-size: 0.9rem;
   overflow: hidden;
@@ -810,7 +829,7 @@ h3 {
   white-space: nowrap;
 }
 
-.member-panel-meta {
+.member-detail-meta {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -1218,26 +1237,36 @@ h3 {
   display: block;
 }
 
+/* Fixed to the viewport, not absolutely positioned off .avatar-picker-current — that dropdown
+   approach got clipped by .member-edit-modal's own overflow-y/height constraints since this
+   panel is a descendant of that scrollable sheet. Centering it as its own overlay gives it the
+   full viewport to size against instead of whatever space happened to be left in the parent. */
 .avatar-picker-panel {
-  position: absolute;
-  z-index: 10;
-  top: calc(100% + 0.4rem);
-  left: 0;
-  width: 260px;
-  max-height: min(70vh, 480px);
+  position: fixed;
+  z-index: 1002;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(90vw, 340px);
+  max-height: 85vh;
   overflow-y: auto;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 0.75rem;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
 }
 
 .avatar-picker-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 0.65rem;
+}
+
+.avatar-picker .avatar-picker-option {
+  flex: 1 1 calc(33.333% - 0.34rem);
+  min-width: 64px;
 }
 
 .avatar-picker .avatar-picker-option {
@@ -1257,6 +1286,7 @@ h3 {
 .avatar-picker-option img {
   width: 100%;
   height: 100%;
+  border-radius: 50%;
   object-fit: cover;
   display: block;
 }
@@ -1380,8 +1410,8 @@ h3 {
 .avatar-picker .avatar-picker-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 5;
-  background: transparent;
+  z-index: 1001;
+  background: rgba(0, 0, 0, 0.4);
   border: none;
   padding: 0;
 }
@@ -1483,6 +1513,7 @@ h3 {
 
 .location-picker {
   margin-bottom: 1rem;
+  padding: 0 0.5rem;
 }
 
 .location-picker .leaflet-container {

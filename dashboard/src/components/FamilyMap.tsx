@@ -201,6 +201,7 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
   const [sosMarker, setSosMarker] = useState<{ id: number; lat: number; lng: number; category: string } | null>(
     null,
   )
+  const [activeMemberId, setActiveMemberId] = useState<string | null>(null)
   const [, forceTick] = useState(0)
 
   useEffect(() => {
@@ -254,6 +255,16 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
   const positionList = Object.values(positions)
   const spread = spreadOverlapping(positionList, mapRef.current, zoom)
 
+  useEffect(() => {
+    if (activeMemberId && positions[activeMemberId]) return
+    const first = positionList[0]
+    setActiveMemberId(first ? first.member_id : null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [positionList.map((p) => p.member_id).join(",")])
+
+  const activeMember = activeMemberId ? positions[activeMemberId] : undefined
+  const activeStatus = activeMember ? statusForSpeed(speedsRef.current[activeMember.member_id]) : undefined
+
   return (
     <div className="family-map">
       <MapContainer
@@ -279,35 +290,49 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
       </MapContainer>
       <div className="map-overlay-bottom">
         {positionList.length > 0 && (
-          <div className="member-panel-grid">
-            {positionList.map((p) => {
-              const status = statusForSpeed(speedsRef.current[p.member_id])
-              return (
-                <button
-                  key={p.member_id}
-                  type="button"
-                  className="member-panel"
-                  onClick={() => snapTo(p)}
-                >
-                  <img
-                    className="member-panel-avatar"
-                    src={
-                      p.avatar_filename
-                        ? `/uploads/avatars/${p.avatar_filename}`
-                        : generatedAvatarDataUri(p.avatar_seed)
-                    }
-                    alt=""
-                  />
-                  <div className="member-panel-info">
-                    <span className="member-panel-name">{p.display_name}</span>
-                    <span className="member-panel-meta">
-                      {status && <span className="member-panel-status">{status}</span>}
-                      <span className="member-panel-time">{relativeTime(p.recorded_at)}</span>
-                    </span>
-                  </div>
-                </button>
-              )
-            })}
+          <div className="member-strip">
+            {positionList.map((p) => (
+              <button
+                key={p.member_id}
+                type="button"
+                className={`member-strip-avatar ${p.member_id === activeMemberId ? "active" : ""}`}
+                disabled={p.member_id === activeMemberId}
+                onClick={() => {
+                  setActiveMemberId(p.member_id)
+                  snapTo(p)
+                }}
+                aria-label={p.display_name}
+              >
+                <img
+                  src={
+                    p.avatar_filename
+                      ? `/uploads/avatars/${p.avatar_filename}`
+                      : generatedAvatarDataUri(p.avatar_seed)
+                  }
+                  alt=""
+                />
+              </button>
+            ))}
+          </div>
+        )}
+        {activeMember && (
+          <div className="member-detail">
+            <img
+              className="member-detail-avatar"
+              src={
+                activeMember.avatar_filename
+                  ? `/uploads/avatars/${activeMember.avatar_filename}`
+                  : generatedAvatarDataUri(activeMember.avatar_seed)
+              }
+              alt=""
+            />
+            <div className="member-detail-info">
+              <span className="member-detail-name">{activeMember.display_name}</span>
+              <span className="member-detail-meta">
+                {activeStatus && <span className="member-panel-status">{activeStatus}</span>}
+                <span className="member-panel-time">{relativeTime(activeMember.recorded_at)}</span>
+              </span>
+            </div>
           </div>
         )}
         <p className="map-attribution">
