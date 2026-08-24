@@ -2,10 +2,23 @@ import { useState } from "react"
 
 import { apiPost } from "../lib/api"
 import { getClientId } from "../lib/clientId"
-import { BadgeIcon, BellIcon, CarIcon, CloseIcon, MedicalCrossIcon, PhoneIcon, SuspiciousIcon } from "./icons"
+import {
+  BadgeIcon,
+  BellIcon,
+  CarIcon,
+  CloseIcon,
+  InfoIcon,
+  MedicalCrossIcon,
+  PhoneIcon,
+  SuspiciousIcon,
+} from "./icons"
 
-type EmergencyContact = { id: string; category: string | null; name: string; phone: string }
-type ContactHousehold = { emergency_contacts: EmergencyContact[] }
+type EmergencyContact = { id: string; category: string | null; name: string; phone: string; notes: string | null }
+type ContactHousehold = {
+  emergency_number: string
+  emergency_label: string
+  emergency_contacts: EmergencyContact[]
+}
 
 type Category = "general" | "medical" | "security" | "suspicious" | "car"
 
@@ -101,6 +114,8 @@ export function SosButton({
 
   const allContacts = household?.emergency_contacts ?? []
   const generalContacts = allContacts.filter((c) => c.category === null)
+  const emergencyNumber = household?.emergency_number ?? "911"
+  const emergencyLabel = household?.emergency_label ?? "911"
 
   return (
     <>
@@ -114,6 +129,7 @@ export function SosButton({
             {CATEGORIES.map((c) => {
               const Icon = c.icon
               const categoryContacts = allContacts.filter((ct) => ct.category === c.key)
+              const notedContacts = categoryContacts.filter((ct) => ct.notes)
               return (
                 <div key={c.key} className="sos-panel-category">
                   <button
@@ -127,40 +143,44 @@ export function SosButton({
                     </span>
                   </button>
                   {/* Floating on the tile itself (translucent, so the big icon shows through)
-                      instead of a bottom bar — first 2 stack up the left edge, any 3rd spills
-                      to the right, rather than reserving fixed space whether or not it's used. */}
-                  <div className="sos-panel-category-dials sos-panel-category-dials-left">
-                    {categoryContacts.slice(0, 2).map((ct) => (
-                      <a
-                        key={ct.id}
-                        href={`tel:${ct.phone}`}
-                        className="sos-panel-dial"
-                        onClick={() => fire(c.key, ct.phone, "help", ct.name)}
-                      >
-                        <span className="sos-panel-dial-icon">
+                      instead of a bottom bar. Two labeled sections, each collapsed away entirely
+                      when it has nothing to show, rather than a per-number icon repeated on
+                      every pill — the section header carries the icon once instead. */}
+                  <div className="sos-panel-tile-sections">
+                    {categoryContacts.length > 0 && (
+                      <div className="sos-panel-section sos-panel-quick-dial">
+                        <span className="sos-panel-section-icon">
                           <PhoneIcon />
                         </span>
-                        <span className="sos-panel-dial-label">{ct.name}</span>
-                      </a>
-                    ))}
+                        <div className="sos-panel-quick-dial-list">
+                          {categoryContacts.map((ct) => (
+                            <a
+                              key={ct.id}
+                              href={`tel:${ct.phone}`}
+                              className="sos-panel-quick-dial-item"
+                              onClick={() => fire(c.key, ct.phone, "help", ct.name)}
+                            >
+                              {ct.name}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {notedContacts.length > 0 && (
+                      <div className="sos-panel-section sos-panel-notes-section">
+                        <span className="sos-panel-section-icon">
+                          <InfoIcon />
+                        </span>
+                        <div className="sos-panel-notes-text">
+                          {notedContacts.map((ct) => (
+                            <div key={ct.id}>
+                              <strong>{ct.name}:</strong> {ct.notes}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  {categoryContacts.length > 2 && (
-                    <div className="sos-panel-category-dials sos-panel-category-dials-right">
-                      {categoryContacts.slice(2).map((ct) => (
-                        <a
-                          key={ct.id}
-                          href={`tel:${ct.phone}`}
-                          className="sos-panel-dial"
-                          onClick={() => fire(c.key, ct.phone, "help", ct.name)}
-                        >
-                          <span className="sos-panel-dial-icon">
-                            <PhoneIcon />
-                          </span>
-                          <span className="sos-panel-dial-label">{ct.name}</span>
-                        </a>
-                      ))}
-                    </div>
-                  )}
                 </div>
               )
             })}
@@ -190,16 +210,16 @@ export function SosButton({
             </a>
           )}
           <a
-            href="tel:911"
+            href={`tel:${emergencyNumber}`}
             className="sos-panel-dial sos-panel-dial-911"
-            onClick={() => fire("general", "911")}
-            aria-label="Call 911"
+            onClick={() => fire("general", emergencyNumber)}
+            aria-label={`Call ${emergencyLabel}`}
           >
             <svg className="sos-panel-dial-911-arc" viewBox="0 0 104 104" aria-hidden="true">
               <path id="sos911arc" d="M 18 47 A 36 36 0 0 1 86 47" fill="none" />
               <text textAnchor="middle">
                 <textPath href="#sos911arc" startOffset="50%">
-                  911
+                  {emergencyLabel}
                 </textPath>
               </text>
             </svg>

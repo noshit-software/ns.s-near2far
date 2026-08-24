@@ -11,6 +11,10 @@ CREATE TABLE IF NOT EXISTS substrate.households (
   name TEXT NOT NULL,
   home_geofence JSONB,
   admin_password_hash TEXT NOT NULL,
+  -- The number/label the 911 button dials and displays — configurable per household since not
+  -- every region's emergency number is 911 (e.g. 112, 999).
+  emergency_number TEXT NOT NULL DEFAULT '911',
+  emergency_label TEXT NOT NULL DEFAULT '911',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

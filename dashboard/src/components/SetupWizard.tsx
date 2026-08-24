@@ -34,6 +34,8 @@ type Household = {
   id: string
   name: string
   home_geofence: { lat: number; lng: number; radius_m: number }
+  emergency_number: string
+  emergency_label: string
   members: Member[]
   emergency_contacts: EmergencyContact[]
 }
@@ -204,6 +206,24 @@ export function SetupWizard() {
     }
   }
 
+  async function updateEmergencyNumber(emergency_number: string, emergency_label: string) {
+    if (!household) return
+    setError(null)
+    try {
+      const updated = await apiPost<Household>("/setup/household/emergency-number", {
+        emergency_number,
+        emergency_label,
+      })
+      setHousehold({
+        ...household,
+        emergency_number: updated.emergency_number,
+        emergency_label: updated.emergency_label,
+      })
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+
   function updateMember(updated: Member) {
     if (!household) return
     setHousehold({
@@ -305,12 +325,10 @@ export function SetupWizard() {
 
       <main className={`app-content ${!showSettings ? "app-content-map" : ""}`}>
         {!showSettings ? (
-          <>
-            <NotificationSetup />
-            <FamilyMap household={household} lastEvent={lastEvent} />
-          </>
+          <FamilyMap household={household} lastEvent={lastEvent} />
         ) : (
           <div className="setup-wizard settings-panel">
+            <NotificationSetup />
             <h3>Home</h3>
             <LocationPicker
               value={household.home_geofence}
@@ -389,6 +407,36 @@ export function SetupWizard() {
               <button onClick={submitMember} disabled={!memberName}>
                 Add member
               </button>
+            </div>
+
+            <h3>Emergency number</h3>
+            <p className="hint">
+              The number and label the round SOS button dials — 911 by default, but not every
+              region uses 911 (e.g. 112, 999).
+            </p>
+            <div className="emergency-contact-row">
+              <input
+                defaultValue={household.emergency_label}
+                maxLength={18}
+                placeholder="Label"
+                onBlur={(e) => {
+                  const label = e.target.value.trim()
+                  if (label && label !== household.emergency_label) {
+                    updateEmergencyNumber(household.emergency_number, label)
+                  }
+                }}
+              />
+              <input
+                defaultValue={household.emergency_number}
+                type="tel"
+                placeholder="Number"
+                onBlur={(e) => {
+                  const number = e.target.value.trim()
+                  if (number && number !== household.emergency_number) {
+                    updateEmergencyNumber(number, household.emergency_label)
+                  }
+                }}
+              />
             </div>
 
             <h3>Emergency contacts</h3>

@@ -35,47 +35,44 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   centers the map on them, snapping to a zoom level chosen from their last-known speed (closer for
   stationary/walking, wider for driving) rather than a fixed zoom — the already-selected avatar
   renders disabled/dimmed rather than disappearing, since re-tapping it would be a no-op. An
-  "Enable trip alerts" banner subscribes the browser to Web Push. Since an installed PWA doesn't
+  An "Enable trip alerts" button (Settings, above "Home" — not on the map itself) subscribes
+  the browser to Web Push; it renders nothing once already subscribed. Since an installed PWA doesn't
   reliably recheck for a new deploy on its own (especially on iOS), the dashboard compares its loaded
   JS bundle against the server's on every foreground/focus and reloads automatically when they
   differ — no manual close/reopen needed after a rebuild. The whole app shell — top bar, tab bar,
   member panel cards, settings/setup cards, and the SOS panel — shares one "liquid glass" look:
   heavily blurred, translucent surfaces with a bright inner-edge highlight, so whatever's behind
   (map, page content) stays visible through them instead of a solid card sitting on top. A round
-  **SOS button** (bell icon, watermarked with `homeworld.svg`) floats above the bottom tab bar
+  **SOS button** (bell icon, watermarked with `homeworld.png`) floats above the bottom tab bar
   (like a camera shutter button, clipped by the screen edge). A single tap opens a full-screen SOS
-  panel with large squircle corners — the bell itself is replaced by a round **911** button in the
-  exact same spot (also watermarked with `homeworld.svg`), since once the panel is open the bell
-  has nothing further to do; "911" curves in an arc above the phone icon (SVG `textPath`) rather
-  than sitting as flat stacked text, and is tinted the brand orange (see "Branding" below) rather
-  than a stock red. Up to 2 general contacts flank 911 left/right, tinted the logo's light
-  blue-gray with a darker-blue icon badge; a 2×2 grid of category tiles (Medical, Authority
-  threat, Being followed, Car trouble — a large faded white icon at 38.5% opacity, no text label)
-  fills most of the remaining space above. All icons in `dashboard/src/components/icons.tsx`
-  (bell, phone, medical cross, authority/shield, being-followed/domino-mask, car) are exact
-  Google Material Symbols glyphs (`fill="currentColor"`, `viewBox="0 -960 960 960"`), inlined as
-  plain `<svg>` per component rather than hand-drawn approximations. Tapping a category tile
-  fires a full alert for that category; each tile also shows up to 3 of its own configured
-  numbers as translucent glass pill buttons (a 40px phone-icon badge — double the icon's
-  original size, since it read too small against the pill — flush against the pill's edge, plus
-  label) floating directly over the icon rather than a reserved
-  bottom bar — up to 2 stacked along the left edge, a 3rd spilling to the right (e.g. AAA,
-  insurance, and a non-emergency police line under Car trouble — Settings → Emergency contacts,
-  per category, editable and reorderable in place, each with an optional free-text `notes`
-  field — e.g. a policy number — shown in Settings only, never on the SOS panel pill itself).
-  Every pill in a tile renders at the same
-  fixed width (not shrunk to its own content) so a short name like "AAA" isn't a stubby little
-  pill next to a full-width one; contact names are capped at 18 characters both client-side
-  (`maxLength`) and server-side (`MAX_CONTACT_NAME_LENGTH` in `backend/app/api/setup.py`) so a
-  label is guaranteed to fit the pill without truncating — deliberately not solved with CSS
-  ellipsis, since dropping a name mid-word into "…" during an actual emergency call is worse than
-  just not allowing the long name in the first place. Phone numbers are validated and normalized
-  server-side (7-15 digits, optional
-  leading `+`; punctuation/spacing stripped before storage) so a typo can't end up as a
-  silently-dead `tel:` link discovered mid-emergency. Every number inside the panel is a single
-  tap — no triple-tap — since reaching the panel at all already took a deliberate first tap on the
-  bell; tapping 911 immediately after opening the panel is the fast "tap, tap" path for a real
-  emergency.
+  panel with large squircle corners — the bell itself is replaced by a round button in the exact
+  same spot (also watermarked with `homeworld.png`), since once the panel is open the bell has
+  nothing further to do; that button dials whatever household emergency number is configured in
+  Settings → "Emergency number" (911 by default, but not every region uses 911 — e.g. 112, 999),
+  with a phone icon and the configured label curving in an arc above it (SVG `textPath`) rather
+  than sitting as flat stacked text, tinted the brand orange (see "Branding" below) rather than a
+  stock red. Up to 2 general contacts flank it left/right, tinted the logo's light blue-gray. A
+  2×2 grid of category tiles (Medical, Authority threat, Being followed, Car trouble) fills most
+  of the remaining space above — each tile carries a small 40px circular badge icon (gray on
+  orange) in its upper-left corner rather than a large centered/watermark icon, since a bigger
+  icon kept getting covered as the tile's content below it grew. All icons in
+  `dashboard/src/components/icons.tsx` (bell, phone, medical cross, authority/shield,
+  being-followed/domino-mask, car) are exact Google Material Symbols glyphs
+  (`fill="currentColor"`, `viewBox="0 -960 960 960"`), inlined as plain `<svg>` per component
+  rather than hand-drawn approximations. Tapping a category tile's icon fires a full alert for
+  that category; below the icon, up to two collapsed-glass **sections** — each omitted entirely
+  when it has nothing to show — hold that category's configured numbers: **quick dial** (small
+  phone-icon badge labeling the section once, each number a full-width plain-label chip rather
+  than repeating an icon per number) and **notes** (small info-icon badge, one line per contact
+  with notes, e.g. a policy number — rolled up panel-wide rather than squeezed under each
+  individual number). Configured per category in Settings → Emergency contacts (editable and
+  reorderable in place); contact names are capped at 18 characters both client-side (`maxLength`)
+  and server-side (`MAX_CONTACT_NAME_LENGTH` in `backend/app/api/setup.py`). Phone numbers are
+  validated and normalized server-side (7-15 digits, optional leading `+`; punctuation/spacing
+  stripped before storage) so a typo can't end up as a silently-dead `tel:` link discovered
+  mid-emergency. Every number inside the panel is a single tap — no triple-tap — since reaching
+  the panel at all already took a deliberate first tap on the bell; tapping the emergency number
+  immediately after opening the panel is the fast "tap, tap" path for a real emergency.
   Dialing a category-specific number is treated as a **lighter "help" tier**, not a full SOS: it
   still notifies every household device (so calling AAA doesn't happen silently), but as a small
   self-dismissing toast — no siren, no full-screen takeover, no persistent state to disable,
@@ -308,8 +305,8 @@ backend restart mid-trip just costs one missed alert, not persisted history.
    `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` in `.env`.
 3. Restart the backend so it picks up the keys (`pm2 restart near2far` on the VPS, `docker compose up
    -d backend` locally).
-4. In the dashboard, click **Enable trip alerts** (appears above the map once a household exists) and
-   accept the browser's notification permission prompt. This POSTs the browser's push subscription to
+4. In the dashboard, go to Settings and click **Enable trip alerts** (at the top, once a household
+   exists) and accept the browser's notification permission prompt. This POSTs the browser's push subscription to
    `/api/push/subscribe`, authenticated with the admin password like every other settings write.
 5. Dead subscriptions (uninstalled PWA, revoked permission) are pruned automatically the next time a
    push to them 404s/410s.
@@ -424,7 +421,10 @@ there, like a modal. Put the blur on a `::before`/`::after` pseudo-element inste
   TABLE runtime.positions DROP CONSTRAINT positions_member_id_fkey, ADD CONSTRAINT
   positions_member_id_fkey FOREIGN KEY (member_id) REFERENCES substrate.members(id) ON DELETE
   CASCADE;` (dropping/re-adding is the only way to change an existing FK's delete behavior). The
-  SOS button needs `runtime.sos_alerts` on an existing install:
+  configurable emergency number needs `ALTER TABLE substrate.households ADD COLUMN IF NOT EXISTS
+  emergency_number TEXT NOT NULL DEFAULT '911', ADD COLUMN IF NOT EXISTS emergency_label TEXT NOT
+  NULL DEFAULT '911';` on an existing install. The SOS button needs `runtime.sos_alerts` on an
+  existing install:
   ```sql
   CREATE TABLE IF NOT EXISTS runtime.sos_alerts (
     id BIGSERIAL PRIMARY KEY,

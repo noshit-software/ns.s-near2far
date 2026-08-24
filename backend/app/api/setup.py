@@ -14,7 +14,7 @@ from app.middleware.auth import require_admin_auth
 
 router = APIRouter()
 
-HOUSEHOLD_COLUMNS = "id, name, home_geofence"
+HOUSEHOLD_COLUMNS = "id, name, home_geofence, emergency_number, emergency_label"
 
 # App-enforced caps, not DB constraints — keeps the SOS quick-dial row from growing unbounded.
 # 2 general (shown for every category) + 3 per specific category.
@@ -43,6 +43,11 @@ class HomeGeofence(BaseModel):
     lat: float
     lng: float
     radius_m: float
+
+
+class UpdateEmergencyNumber(BaseModel):
+    emergency_number: str
+    emergency_label: str
 
 
 # E.164-ish: optional leading +, 7-15 digits — loose enough for real-world numbers (some
@@ -178,6 +183,36 @@ async def update_geofence(body: HomeGeofence, request: Request) -> dict:
             "WHERE id = (SELECT id FROM substrate.households ORDER BY created_at LIMIT 1) "
             "RETURNING id, name, home_geofence",
             body.model_dump_json(),
+        )
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Household not found")
+
+    data = _household_dict(row)
+    await publish("household.updated", data)
+    return {"success": True, "data": data}
+
+
+@router.post("/api/setup/household/emergency-number", dependencies=[Depends(require_admin_auth)])
+async def update_emergency_number(body: UpdateEmergencyNumber, request: Request) -> dict:
+    try:
+        number = _normalize_phone(body.emergency_number)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+    label = body.emergency_label.strip()
+    if not label:
+        raise HTTPException(status_code=400, detail="Label is required")
+    if len(label) > MAX_CONTACT_NAME_LENGTH:
+        raise HTTPException(status_code=400, detail=f"Label must be {MAX_CONTACT_NAME_LENGTH} characters or fewer")
+
+    async with request.app.state.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "UPDATE substrate.households SET emergency_number = $1, emergency_label = $2 "
+            "WHERE id = (SELECT id FROM substrate.households ORDER BY created_at LIMIT 1) "
+            f"RETURNING {HOUSEHOLD_COLUMNS}",
+            number,
+            label,
         )
 
     if row is None:
