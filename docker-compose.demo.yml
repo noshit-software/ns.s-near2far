@@ -1,0 +1,58 @@
+# Standalone demo stack — isolated data, its own containers/volumes/ports, no Traccar (no real
+# GPS devices in a demo). Run alongside the real stack with:
+#   docker compose -p nss-near2far-demo -f docker-compose.demo.yml --env-file .env.demo up -d
+# Seed it with fake household/members/positions: ./scripts/seed-demo.sh
+# Wipe and start over: docker compose -p nss-near2far-demo -f docker-compose.demo.yml down -v
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "${BACKEND_PORT}:8000"
+    env_file: .env.demo
+    volumes:
+      - backend_uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [app-net]
+    restart: unless-stopped
+
+  dashboard:
+    build: ./dashboard
+    ports:
+      - "${DASHBOARD_PORT}:80"
+    depends_on:
+      - backend
+    networks: [app-net]
+    restart: unless-stopped
+
+  db:
+    build: ./db
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASS}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      # Hardcoded (not ${POSTGRES_PORT}) — that var is also used internally for the backend's
+      # db:5432 connection inside the docker network, so it can't double as this stack's
+      # externally-exposed port without breaking that.
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [app-net]
+    restart: unless-stopped
+
+volumes:
+  pg_data:
+  backend_uploads:
+
+networks:
+  app-net:
+    driver: bridge

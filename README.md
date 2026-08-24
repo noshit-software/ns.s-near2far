@@ -122,6 +122,25 @@ newest that day. To add or upgrade a backend dependency: edit `pyproject.toml`, 
 `backend/`, and commit the updated `uv.lock` alongside it — `--frozen` fails the build loudly if
 the two ever drift apart instead of silently re-resolving.
 
+## Demo stack (for showing this off without exposing real family data)
+
+A second, fully isolated stack — its own containers, Postgres volume, and ports — seeded with a
+fake household ("The Petersons", 3 members, 2 emergency contacts, 3 live-looking positions
+around downtown Seattle). No Traccar (a demo doesn't need real GPS devices).
+
+```bash
+cp .env.demo.example .env.demo   # fill in a Postgres password, same as .env/.env.example
+docker compose -p nss-near2far-demo -f docker-compose.demo.yml --env-file .env.demo up -d --build
+./scripts/seed-demo.sh   # safe to re-run — wipes and reseeds the demo household each time
+```
+
+- Dashboard: http://localhost:5120 (admin password printed by the seed script: `demo-admin-pass`)
+- API: http://localhost:5121/health
+
+Wipe it entirely: `docker compose -p nss-near2far-demo -f docker-compose.demo.yml down -v`.
+`.env.demo` uses its own random Postgres password and ports (5120/5121, Postgres exposed on
+5434) so it can run alongside the real stack (`.env`, ports 5100/5101) without colliding.
+
 ## Tests
 
 Backend unit tests (`backend/tests/`) cover the security-critical logic: password hashing,
