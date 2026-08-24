@@ -78,11 +78,13 @@ class CreateEmergencyContact(BaseModel):
     category: str | None = None
     name: str
     phone: str
+    notes: str | None = None
 
 
 class UpdateEmergencyContact(BaseModel):
     name: str
     phone: str
+    notes: str | None = None
 
 
 class ReorderEmergencyContacts(BaseModel):
@@ -133,7 +135,7 @@ async def get_household(request: Request) -> dict:
             household["id"],
         )
         contacts = await conn.fetch(
-            "SELECT id, category, name, phone FROM substrate.emergency_contacts "
+            "SELECT id, category, name, phone, notes FROM substrate.emergency_contacts "
             "WHERE household_id = $1 ORDER BY sort_order, id",
             household["id"],
         )
@@ -215,13 +217,14 @@ async def create_emergency_contact(body: CreateEmergencyContact, request: Reques
             raise HTTPException(status_code=400, detail=f"Limit of {cap} contacts reached for this category")
 
         row = await conn.fetchrow(
-            "INSERT INTO substrate.emergency_contacts (household_id, category, name, phone, sort_order) "
-            "VALUES ($1, $2, $3, $4, $5) RETURNING id, category, name, phone",
+            "INSERT INTO substrate.emergency_contacts (household_id, category, name, phone, sort_order, notes) "
+            "VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, category, name, phone, notes",
             household_id,
             body.category,
             name,
             phone,
             count,
+            (body.notes or "").strip() or None,
         )
 
     data = {**dict(row), "id": str(row["id"])}
@@ -259,10 +262,11 @@ async def update_emergency_contact(contact_id: int, body: UpdateEmergencyContact
 
     async with request.app.state.db_pool.acquire() as conn:
         row = await conn.fetchrow(
-            "UPDATE substrate.emergency_contacts SET name = $1, phone = $2 "
-            "WHERE id = $3 RETURNING id, category, name, phone",
+            "UPDATE substrate.emergency_contacts SET name = $1, phone = $2, notes = $3 "
+            "WHERE id = $4 RETURNING id, category, name, phone, notes",
             name,
             phone,
+            (body.notes or "").strip() or None,
             contact_id,
         )
 

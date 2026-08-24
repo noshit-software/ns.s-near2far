@@ -50,16 +50,20 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   than sitting as flat stacked text, and is tinted the brand orange (see "Branding" below) rather
   than a stock red. Up to 2 general contacts flank 911 left/right, tinted the logo's light
   blue-gray with a darker-blue icon badge; a 2×2 grid of category tiles (Medical, Authority
-  threat, Being followed, Car trouble — a large faded white icon, no text label) fills most of the
-  remaining space above. All icons in `dashboard/src/components/icons.tsx` (bell, phone, medical
-  cross, authority/shield, being-followed/domino-mask, car) are exact Google Material Symbols
-  glyphs (`fill="currentColor"`, `viewBox="0 -960 960 960"`), inlined as plain `<svg>` per
-  component rather than hand-drawn approximations. Tapping a category tile fires a full alert for that category; each tile
-  also shows up to 3 of its own configured numbers as translucent glass pill buttons (icon badge
-  flush against the pill's edge + label) floating directly over the icon rather than a reserved
+  threat, Being followed, Car trouble — a large faded white icon at 38.5% opacity, no text label)
+  fills most of the remaining space above. All icons in `dashboard/src/components/icons.tsx`
+  (bell, phone, medical cross, authority/shield, being-followed/domino-mask, car) are exact
+  Google Material Symbols glyphs (`fill="currentColor"`, `viewBox="0 -960 960 960"`), inlined as
+  plain `<svg>` per component rather than hand-drawn approximations. Tapping a category tile
+  fires a full alert for that category; each tile also shows up to 3 of its own configured
+  numbers as translucent glass pill buttons (a 40px phone-icon badge — double the icon's
+  original size, since it read too small against the pill — flush against the pill's edge, plus
+  label) floating directly over the icon rather than a reserved
   bottom bar — up to 2 stacked along the left edge, a 3rd spilling to the right (e.g. AAA,
   insurance, and a non-emergency police line under Car trouble — Settings → Emergency contacts,
-  per category, editable and reorderable in place). Every pill in a tile renders at the same
+  per category, editable and reorderable in place, each with an optional free-text `notes`
+  field — e.g. a policy number — shown in Settings only, never on the SOS panel pill itself).
+  Every pill in a tile renders at the same
   fixed width (not shrunk to its own content) so a short name like "AAA" isn't a stubby little
   pill next to a full-width one; contact names are capped at 18 characters both client-side
   (`maxLength`) and server-side (`MAX_CONTACT_NAME_LENGTH` in `backend/app/api/setup.py`) so a
@@ -447,9 +451,12 @@ there, like a modal. Put the blur on a `::before`/`::after` pseudo-element inste
     category TEXT,
     name TEXT NOT NULL,
     phone TEXT NOT NULL,
-    sort_order INT NOT NULL DEFAULT 0
+    sort_order INT NOT NULL DEFAULT 0,
+    notes TEXT
   );
   ```
+  If `substrate.emergency_contacts` already exists from before `notes` was added:
+  `ALTER TABLE substrate.emergency_contacts ADD COLUMN IF NOT EXISTS notes TEXT;`
 - **Member photo uploads need `backend/uploads/` to persist and be writable.** Locally that's the
   `backend_uploads` docker volume; on the VPS (bare pm2, no container) it's just a directory next to
   the app code — make sure it survives deploys (it's not in git) and that the pm2 process can write

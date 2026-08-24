@@ -27,6 +27,7 @@ export type EmergencyContact = {
   category: string | null
   name: string
   phone: string
+  notes: string | null
 }
 
 type Household = {
@@ -63,6 +64,7 @@ export function SetupWizard() {
 
   const [newContactName, setNewContactName] = useState<Record<string, string>>({})
   const [newContactPhone, setNewContactPhone] = useState<Record<string, string>>({})
+  const [newContactNotes, setNewContactNotes] = useState<Record<string, string>>({})
 
   const lastEvent = useEventStream()
   const [activeSosId, setActiveSosId] = useState<number | null>(null)
@@ -87,23 +89,34 @@ export function SetupWizard() {
     const key = category ?? "general"
     const name = (newContactName[key] ?? "").trim()
     const phone = (newContactPhone[key] ?? "").trim()
+    const notes = (newContactNotes[key] ?? "").trim() || null
     if (!name || !phone) return
     setError(null)
     try {
-      const created = await apiPost<EmergencyContact>("/setup/emergency-contacts", { category, name, phone })
+      const created = await apiPost<EmergencyContact>("/setup/emergency-contacts", {
+        category,
+        name,
+        phone,
+        notes,
+      })
       setHousehold({ ...household, emergency_contacts: [...household.emergency_contacts, created] })
       setNewContactName((prev) => ({ ...prev, [key]: "" }))
       setNewContactPhone((prev) => ({ ...prev, [key]: "" }))
+      setNewContactNotes((prev) => ({ ...prev, [key]: "" }))
     } catch (e) {
       setError((e as Error).message)
     }
   }
 
-  async function updateEmergencyContact(contactId: string, name: string, phone: string) {
+  async function updateEmergencyContact(contactId: string, name: string, phone: string, notes: string | null) {
     if (!household) return
     setError(null)
     try {
-      const updated = await apiPost<EmergencyContact>(`/setup/emergency-contacts/${contactId}`, { name, phone })
+      const updated = await apiPost<EmergencyContact>(`/setup/emergency-contacts/${contactId}`, {
+        name,
+        phone,
+        notes,
+      })
       setHousehold({
         ...household,
         emergency_contacts: household.emergency_contacts.map((c) => (c.id === contactId ? updated : c)),
@@ -398,63 +411,84 @@ export function SetupWizard() {
                 <div key={key} className="emergency-contact-group">
                   <h4>{label}</h4>
                   {existing.map((c, i) => (
-                    <div key={c.id} className="emergency-contact-row">
-                      <div className="emergency-contact-reorder">
-                        <button
-                          type="button"
-                          disabled={i === 0}
-                          onClick={() => moveEmergencyContact(category, c.id, -1)}
-                          aria-label="Move up"
-                        >
-                          ▲
-                        </button>
-                        <button
-                          type="button"
-                          disabled={i === existing.length - 1}
-                          onClick={() => moveEmergencyContact(category, c.id, 1)}
-                          aria-label="Move down"
-                        >
-                          ▼
+                    <div key={c.id} className="emergency-contact-item">
+                      <div className="emergency-contact-row">
+                        <div className="emergency-contact-reorder">
+                          <button
+                            type="button"
+                            disabled={i === 0}
+                            onClick={() => moveEmergencyContact(category, c.id, -1)}
+                            aria-label="Move up"
+                          >
+                            ▲
+                          </button>
+                          <button
+                            type="button"
+                            disabled={i === existing.length - 1}
+                            onClick={() => moveEmergencyContact(category, c.id, 1)}
+                            aria-label="Move down"
+                          >
+                            ▼
+                          </button>
+                        </div>
+                        <input
+                          defaultValue={c.name}
+                          maxLength={18}
+                          onBlur={(e) => {
+                            const name = e.target.value.trim()
+                            if (name && name !== c.name) updateEmergencyContact(c.id, name, c.phone, c.notes)
+                          }}
+                        />
+                        <input
+                          defaultValue={c.phone}
+                          type="tel"
+                          onBlur={(e) => {
+                            const phone = e.target.value.trim()
+                            if (phone && phone !== c.phone) updateEmergencyContact(c.id, c.name, phone, c.notes)
+                          }}
+                        />
+                        <button type="button" onClick={() => removeEmergencyContact(c.id)}>
+                          Remove
                         </button>
                       </div>
-                      <input
-                        defaultValue={c.name}
-                        maxLength={18}
+                      <textarea
+                        className="emergency-contact-notes"
+                        defaultValue={c.notes ?? ""}
+                        placeholder="Notes (e.g. policy #) — optional"
+                        rows={2}
                         onBlur={(e) => {
-                          const name = e.target.value.trim()
-                          if (name && name !== c.name) updateEmergencyContact(c.id, name, c.phone)
+                          const notes = e.target.value.trim() || null
+                          if (notes !== c.notes) updateEmergencyContact(c.id, c.name, c.phone, notes)
                         }}
                       />
-                      <input
-                        defaultValue={c.phone}
-                        type="tel"
-                        onBlur={(e) => {
-                          const phone = e.target.value.trim()
-                          if (phone && phone !== c.phone) updateEmergencyContact(c.id, c.name, phone)
-                        }}
-                      />
-                      <button type="button" onClick={() => removeEmergencyContact(c.id)}>
-                        Remove
-                      </button>
                     </div>
                   ))}
                   {existing.length < cap && (
-                    <div className="emergency-contact-row">
-                      <input
-                        value={newContactName[key] ?? ""}
-                        onChange={(e) => setNewContactName((prev) => ({ ...prev, [key]: e.target.value }))}
-                        placeholder="Name"
-                        maxLength={18}
+                    <div className="emergency-contact-item">
+                      <div className="emergency-contact-row">
+                        <input
+                          value={newContactName[key] ?? ""}
+                          onChange={(e) => setNewContactName((prev) => ({ ...prev, [key]: e.target.value }))}
+                          placeholder="Name"
+                          maxLength={18}
+                        />
+                        <input
+                          value={newContactPhone[key] ?? ""}
+                          onChange={(e) => setNewContactPhone((prev) => ({ ...prev, [key]: e.target.value }))}
+                          placeholder="Phone (e.g. 555-123-4567)"
+                          type="tel"
+                        />
+                        <button type="button" onClick={() => addEmergencyContact(category)}>
+                          Add
+                        </button>
+                      </div>
+                      <textarea
+                        className="emergency-contact-notes"
+                        value={newContactNotes[key] ?? ""}
+                        onChange={(e) => setNewContactNotes((prev) => ({ ...prev, [key]: e.target.value }))}
+                        placeholder="Notes (e.g. policy #) — optional"
+                        rows={2}
                       />
-                      <input
-                        value={newContactPhone[key] ?? ""}
-                        onChange={(e) => setNewContactPhone((prev) => ({ ...prev, [key]: e.target.value }))}
-                        placeholder="Phone (e.g. 555-123-4567)"
-                        type="tel"
-                      />
-                      <button type="button" onClick={() => addEmergencyContact(category)}>
-                        Add
-                      </button>
                     </div>
                   )}
                 </div>

@@ -301,7 +301,7 @@ h3 {
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0.55;
+  opacity: 0.385;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
 }
 
@@ -392,8 +392,8 @@ h3 {
 }
 
 .sos-panel-dial-icon svg {
-  width: 20px;
-  height: 20px;
+  width: 40px;
+  height: 40px;
 }
 
 .sos-panel-dial-small {
@@ -492,8 +492,8 @@ h3 {
 }
 
 .sos-panel-dial-911 .sos-panel-dial-icon svg {
-  width: 26px;
-  height: 26px;
+  width: 52px;
+  height: 52px;
 }
 
 .tab-button {
@@ -920,6 +920,7 @@ h3 {
 
 .setup-wizard input,
 .setup-wizard select,
+.setup-wizard textarea,
 .family-map input,
 .family-map select {
   font: inherit;
@@ -1464,11 +1465,22 @@ h3 {
   font-weight: 600;
 }
 
+.emergency-contact-item {
+  margin-bottom: 0.75rem;
+}
+
 .emergency-contact-row {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.emergency-contact-notes {
+  width: 100%;
+  font: inherit;
+  font-size: 0.8rem;
+  resize: vertical;
 }
 
 .emergency-contact-row input {

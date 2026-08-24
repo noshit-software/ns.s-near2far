@@ -89,5 +89,9 @@ CREATE TABLE IF NOT EXISTS substrate.emergency_contacts (
   category TEXT,
   name TEXT NOT NULL,
   phone TEXT NOT NULL,
-  sort_order INT NOT NULL DEFAULT 0
+  sort_order INT NOT NULL DEFAULT 0,
+  -- Free-text, optional — a policy number, gate code, or anything else worth having on hand
+  -- next to the number but not part of the dial target itself. Not shown on the SOS panel's
+  -- pill (no room, and it's not needed mid-tap); only visible in Settings.
+  notes TEXT
 );
