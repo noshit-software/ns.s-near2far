@@ -11,6 +11,7 @@ from app.auth import hash_password, verify_password
 from app.config import settings
 from app.events import publish
 from app.middleware.auth import require_admin_auth
+from app.traccar_admin import ensure_traccar_device
 
 router = APIRouter()
 
@@ -381,6 +382,9 @@ async def set_member_device(member_id: str, body: SetMemberDevice, request: Requ
 
     if row is None:
         raise HTTPException(status_code=404, detail="Member not found")
+
+    if body.device_id:
+        await ensure_traccar_device(body.device_id)
 
     data = {**dict(row), "id": str(row["id"])}
     await publish("member.updated", data)

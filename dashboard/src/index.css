@@ -1268,6 +1268,14 @@ h3 {
   flex-shrink: 0;
 }
 
+.member-edit-owntracks-link {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
 .member-edit-color-row {
   display: flex;
   gap: 0.5rem;

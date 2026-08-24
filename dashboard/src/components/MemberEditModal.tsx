@@ -1,6 +1,6 @@
 import { useState } from "react"
 
-import { apiDelete, apiPost } from "../lib/api"
+import { apiDelete, apiPost, getAdminPassword } from "../lib/api"
 import { COLOR_PRESETS, resolveMemberColor } from "../lib/avatar"
 import { AvatarPicker } from "./AvatarPicker"
 import { CloseIcon } from "./icons"
@@ -65,6 +65,27 @@ export function MemberEditModal({
     } catch (e) {
       setError((e as Error).message)
     }
+  }
+
+  // OwnTracks' HTTP endpoint auth is username=device_id, password=admin password (see
+  // _verify_owntracks_auth in backend/app/api/positions.py) — this deep link pre-fills all of
+  // that in the app itself (server URL, auth mode, credentials) instead of the member typing
+  // four fields into OwnTracks by hand. Meant to be tapped directly on the phone being set up —
+  // open this dashboard in that phone's browser, not scanned from another device.
+  function ownTracksConfigUrl(): string | null {
+    const trimmed = deviceId.trim()
+    const password = getAdminPassword()
+    if (!trimmed || !password) return null
+    const config = {
+      _type: "configuration",
+      mode: 3,
+      auth: true,
+      username: trimmed,
+      password,
+      url: `${window.location.origin}/api/owntracks/forward`,
+      tls: window.location.protocol === "https:",
+    }
+    return `owntracks:///config?inline=${btoa(JSON.stringify(config))}`
   }
 
   async function remove() {
@@ -146,6 +167,11 @@ export function MemberEditModal({
               Save
             </button>
           </div>
+          {ownTracksConfigUrl() && (
+            <a className="member-edit-owntracks-link" href={ownTracksConfigUrl() ?? undefined}>
+              Configure OwnTracks app with this Device ID
+            </a>
+          )}
         </label>
 
         {error && <p className="error">{error}</p>}

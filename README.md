@@ -179,9 +179,14 @@ through an nginx-proxied subdomain instead (e.g. `traccar.near2far.family`, same
 record for that subdomain).
 
 1. Open the Traccar web UI at `https://traccar.near2far.family` (first visit lets you create the admin
-   account).
-2. For each family member, create a device (Settings → Devices → Add) with any identifier you want
-   (e.g. `alex-phone`).
+   account — there's no default, and this account is what `TRACCAR_ADMIN_EMAIL`/`TRACCAR_ADMIN_PASS`
+   below need to match).
+2. **Either** create a device by hand (Settings → Devices → Add, any identifier you want, e.g.
+   `alex-phone`), **or** set `TRACCAR_API_URL`/`TRACCAR_ADMIN_EMAIL`/`TRACCAR_ADMIN_PASS` in `.env`
+   (see `.env.example`) and skip straight to step 4 — saving a member's Device ID in near2far's own
+   Settings then auto-creates the matching Traccar device via its API
+   (`backend/app/traccar_admin.py`), best-effort (silently falls back to "do it by hand" if the
+   call fails or those env vars aren't set).
 3. Install the **Traccar Client** app on that member's phone, set the identifier to match, and set the
    server URL to `http://<server>:5055` (this port stays exposed directly — phones talk to it, not
    through nginx/Cloudflare).
@@ -229,6 +234,12 @@ OwnTracks has a "Tracker ID" (`tid`) setting that looks like the natural device 
 app caps it at **2 characters** by design (it's meant as a short map-pin label, not a real ID) —
 useless as a real `device_id`. The Basic-auth **username** has no such limit and is sent with every
 request anyway, so that's what `/api/owntracks/forward` actually matches members on.
+
+**Shortcut**: after setting a member's Device ID (step 1 below), the Edit member modal shows a
+**"Configure OwnTracks app with this Device ID"** link — tap it *on the phone being set up* (i.e.
+open the near2far dashboard in that phone's own browser, not from another device) and it deep-links
+into OwnTracks with steps 2-5 below already filled in. Falls back to manual entry if OwnTracks
+isn't installed yet or the link doesn't fire — the steps below always work regardless.
 
 1. In near2far's dashboard, open the member's **Edit member** modal (tap their row in Settings) and
    set **Device ID** to something meaningful, e.g. `alex-iphone`.

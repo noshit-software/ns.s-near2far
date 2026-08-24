@@ -16,6 +16,13 @@ class Settings(BaseSettings):
 
     upload_dir: str = "uploads"
 
+    # Optional — when set, saving a member's Device ID also auto-creates the matching device in
+    # Traccar via its own REST API, skipping the manual "Settings → Devices → Add" step there.
+    # Blank (the default) just skips that call silently; existing installs aren't affected.
+    traccar_api_url: str = ""
+    traccar_admin_email: str = ""
+    traccar_admin_pass: str = ""
+
     # Shared secret for /api/traccar/forward. Traccar's forward.type=json can't send custom
     # headers, but FORWARD_URL is entirely ours to configure — so the token travels as a query
     # param baked into that URL instead. Blank disables the check (matches this endpoint's
