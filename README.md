@@ -145,7 +145,8 @@ Wipe it entirely: `docker compose -p nss-near2far-demo -f docker-compose.demo.ym
 
 Backend unit tests (`backend/tests/`) cover the security-critical logic: password hashing,
 `require_admin_auth`, OwnTracks' Basic-auth handling, the null-island rejection and
-explicit-timestamp behavior in `_record_position`, and the trip-detection state machine. They run
+explicit-timestamp behavior in `_record_position`, the trip-detection state machine, and phone/
+contact-name validation (`_normalize_phone`/`_validate_contact_name` in `setup.py`). They run
 against fake asyncpg-shaped connection objects (`tests/conftest.py`'s `FakeConn`), not a real
 Postgres — fast, no Docker needed, safe to run in CI.
 
@@ -155,8 +156,14 @@ uv sync
 uv run pytest -v
 ```
 
-Runs automatically on every push/PR via `.github/workflows/backend-tests.yml`. No frontend test
-framework is set up yet (dashboard has no Vitest/Jest).
+Runs automatically on every push/PR via `.github/workflows/backend-tests.yml`.
+
+**Known coverage gaps**: `setup.py`'s route handlers themselves (household/member/emergency-contact
+CRUD, the cap-enforcement transaction, avatar upload) and all of `sos.py` (trigger/acknowledge) have
+no tests — only the pure validation helpers pulled out of `setup.py` are covered. Testing the routes
+would mean either a `FakeConn` with a working `.transaction()` context manager or spinning up a real
+Postgres in CI; neither is done yet. No frontend test framework is set up either (dashboard has no
+Vitest/Jest) — both are open follow-ups, not silently skipped.
 
 ## Traccar (real phone GPS)
 
