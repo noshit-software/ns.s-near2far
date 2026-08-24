@@ -54,14 +54,16 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   with a phone icon and the configured label curving in an arc above it (SVG `textPath`) rather
   than sitting as flat stacked text, tinted the brand orange (see "Branding" below) rather than a
   stock red. Up to 2 general contacts flank it left/right, tinted the logo's light blue-gray. A
-  2×2 grid of category tiles (Medical, Authority threat, Being followed, Car trouble) fills most
+  2×2 grid of category tiles (Medical, Authorities, Followed, Car trouble) fills most
   of the remaining space above — each tile carries a small 40px circular badge icon (gray on
   orange) in its upper-left corner rather than a large centered/watermark icon, since a bigger
-  icon kept getting covered as the tile's content below it grew. All icons in
-  `dashboard/src/components/icons.tsx` (bell, phone, medical cross, authority/shield,
-  being-followed/domino-mask, car) are exact Google Material Symbols glyphs
-  (`fill="currentColor"`, `viewBox="0 -960 960 960"`), inlined as plain `<svg>` per component
-  rather than hand-drawn approximations. Tapping a category tile's icon fires a full alert for
+  icon kept getting covered as the tile's content below it grew. The SOS-relevant icons in
+  `dashboard/src/components/icons.tsx` — `BellIcon`, `PhoneIcon`, `MedicalCrossIcon`,
+  `BadgeIcon` (Authorities), `SuspiciousIcon` (Followed — a domino mask glyph), `CarIcon` — are
+  exact Google Material Symbols glyphs (`fill="currentColor"`, `viewBox="0 -960 960 960"`),
+  inlined as plain `<svg>` per component rather than hand-drawn approximations; the rest of that
+  file's icons (`MapIcon`, `SettingsIcon`, `CloseIcon`, etc.) are simpler hand-drawn stroke icons.
+  Tapping a category tile's icon fires a full alert for
   that category; below the icon, up to two collapsed-glass **sections** — each omitted entirely
   when it has nothing to show — hold that category's configured numbers: **quick dial** (small
   phone-icon badge labeling the section once, each number a full-width plain-label chip rather
@@ -127,8 +129,10 @@ the two ever drift apart instead of silently re-resolving.
 ## Demo stack (for showing this off without exposing real family data)
 
 A second, fully isolated stack — its own containers, Postgres volume, and ports — seeded with a
-fake household ("The Petersons", 3 members, 2 emergency contacts, 3 live-looking positions
-around downtown Seattle). No Traccar (a demo doesn't need real GPS devices).
+fake household ("The Petersons", 5 members, 12 emergency contacts spread across every SOS
+category, live-looking positions around downtown Seattle). No Traccar (a demo doesn't need real
+GPS devices). See `scripts/seed-demo.sh` for the exact seeded data — deliberately not enumerated
+here in detail, since that script is what actually stays in sync when it changes.
 
 ```bash
 cp .env.demo.example .env.demo   # fill in a Postgres password, same as .env/.env.example
@@ -185,8 +189,10 @@ record for that subdomain).
    and Save.
 
 From then on, Traccar forwards every position update to the backend (`TRACCAR_FORWARD_URL`, see
-`.env.example`), which maps it to that member and pushes it to the family map over the same WebSocket
-stream the browser-geolocation reporting uses — both sources land in the same place.
+`.env.example`), which maps it to that member and pushes it to the family map over the same
+`/ws/events` WebSocket stream OwnTracks/Overland positions use — every source lands in the same
+place. (There's no browser self-geolocation reporting anymore — removed in favor of the
+snap-to-member map controls; every position comes from a real GPS source.)
 
 `TRACCAR_FORWARD_URL` differs by deployment:
 - Local all-in-one docker-compose dev: `http://backend:8000/api/traccar/forward`
@@ -350,7 +356,9 @@ for everything about that member: avatar (see below), rename (`POST /api/setup/m
 partial update via `COALESCE` — also handles color, since both are optional fields on the same
 row), a color picker for their map marker — 8 presets plus a native color-input swatch for any
 custom color (`color` column; falls back to a color hashed from the member's id when unset, see
-`resolveMemberColor` in `dashboard/src/lib/avatar.ts`), Device ID, and **Remove member**
+`resolveMemberColor` in `dashboard/src/lib/avatar.ts`), Device ID (its own endpoint,
+`POST /api/setup/members/{id}/device`, separate from the rename/color one — returns 409 if
+that device ID is already linked to another member), and **Remove member**
 (`DELETE /api/setup/members/{id}`, behind a confirm step) — which also deletes their uploaded
 avatar file and cascades their position
 history (`positions.member_id` has `ON DELETE CASCADE`).
@@ -535,7 +543,8 @@ Most endpoints raise `HTTPException(400, str(e))` for validation failures — a 
 array of `{msg, loc, ...}` objects, not a string — `unwrap()` detects and flattens that case too,
 rather than throwing an unreadable stringified object.
 
-The WebSocket handshake (`/ws`) and `/api/traccar/forward` both carry a secret as a `?token=`
+The WebSocket handshake (`/ws/events`, proxied by nginx's `/ws` prefix match) and
+`/api/traccar/forward` both carry a secret as a `?token=`
 query param rather than a header — a WS upgrade can't send custom headers, and Traccar's
 `forward.type=json` can't either. `dashboard/nginx.conf` disables `access_log` on both locations
 specifically because nginx's default log format records the full request line (query string
