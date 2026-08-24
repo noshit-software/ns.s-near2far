@@ -7,9 +7,12 @@ _subscribers: dict[str, list[asyncio.Queue]] = defaultdict(list)
 
 
 async def publish(event_type: str, payload: Any) -> None:
-    for queue in _subscribers[event_type]:
+    # Snapshot copies — `await queue.put(...)` yields control back to the event loop, and a
+    # concurrently-running subscriber's `finally: .remove(queue)` mutating the live list
+    # mid-iteration could otherwise skip a subscriber.
+    for queue in list(_subscribers[event_type]):
         await queue.put({"type": event_type, "payload": payload})
-    for queue in _subscribers["*"]:
+    for queue in list(_subscribers["*"]):
         await queue.put({"type": event_type, "payload": payload})
 
 

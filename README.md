@@ -520,6 +520,12 @@ still broader than a single-domain PWA needs. Set `CORS_ORIGINS` in `.env` (comm
 restrict it in production; left unset so this doesn't silently change behavior for existing
 installs that haven't set it.
 
+Most endpoints raise `HTTPException(400, str(e))` for validation failures — a plain string in
+`detail`, which `dashboard/src/lib/api.ts`'s `unwrap()` surfaces directly. FastAPI's own built-in
+422 responses (malformed request body, wrong field type) are the exception: `detail` there is an
+array of `{msg, loc, ...}` objects, not a string — `unwrap()` detects and flattens that case too,
+rather than throwing an unreadable stringified object.
+
 ## Spec
 
 Full product spec lives in the Knightsrook MCP knowledge base (`project:near2far:spec`, `project:near2far:funding`). See also [docs/architecture/overview.md](docs/architecture/overview.md) for the service-level architecture.

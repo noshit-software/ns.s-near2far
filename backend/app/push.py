@@ -40,11 +40,12 @@ async def send_push_to_household(
         exclude_endpoint,
     )
 
-    dead_ids = []
-    for row in rows:
-        status = await asyncio.to_thread(_send_one, row["endpoint"], row["p256dh"], row["auth"], payload)
-        if status in (404, 410):
-            dead_ids.append(row["id"])
+    # Concurrent, not sequential — an SOS alert is time-critical, and a household with several
+    # subscribed devices shouldn't have that fan-out latency scale with subscriber count.
+    statuses = await asyncio.gather(
+        *(asyncio.to_thread(_send_one, row["endpoint"], row["p256dh"], row["auth"], payload) for row in rows)
+    )
+    dead_ids = [row["id"] for row, status in zip(rows, statuses) if status in (404, 410)]
 
     if dead_ids:
         await conn.execute("DELETE FROM substrate.push_subscriptions WHERE id = ANY($1::bigint[])", dead_ids)

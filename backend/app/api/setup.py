@@ -234,9 +234,11 @@ async def create_emergency_contact(body: CreateEmergencyContact, request: Reques
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
 
-    async with request.app.state.db_pool.acquire() as conn:
+    async with request.app.state.db_pool.acquire() as conn, conn.transaction():
+        # FOR UPDATE serializes concurrent adds against this household — without it, two
+        # requests can both read the same under-cap count and both insert, exceeding the cap.
         household_id = await conn.fetchval(
-            "SELECT id FROM substrate.households ORDER BY created_at LIMIT 1"
+            "SELECT id FROM substrate.households ORDER BY created_at LIMIT 1 FOR UPDATE"
         )
         if household_id is None:
             raise HTTPException(status_code=404, detail="Household not found")
@@ -457,12 +459,20 @@ async def upload_member_avatar(member_id: str, file: UploadFile, request: Reques
         raise HTTPException(status_code=400, detail="Photo must be under 5MB")
 
     async with request.app.state.db_pool.acquire() as conn:
-        exists = await conn.fetchval("SELECT id FROM substrate.members WHERE id = $1", member_id)
-        if exists is None:
+        existing = await conn.fetchrow(
+            "SELECT avatar_filename FROM substrate.members WHERE id = $1", member_id
+        )
+        if existing is None:
             raise HTTPException(status_code=404, detail="Member not found")
 
         filename = f"{member_id}.{ext}"
         AVATAR_DIR.mkdir(parents=True, exist_ok=True)
+        # A re-upload with a different content type (e.g. PNG replacing an earlier JPEG) writes
+        # to a different filename than the one being replaced — without this, the old file is
+        # never cleaned up and just accumulates in AVATAR_DIR indefinitely.
+        old_filename = existing["avatar_filename"]
+        if old_filename and old_filename != filename:
+            (AVATAR_DIR / old_filename).unlink(missing_ok=True)
         (AVATAR_DIR / filename).write_bytes(body)
 
         row = await conn.fetchrow(

@@ -22,12 +22,23 @@ async function unwrap<T>(res: Response): Promise<T> {
     throw new Error(`Request failed (${res.status} ${res.statusText})`)
   }
 
-  const body = (await res.json()) as ApiResponse<T> | { detail: string }
+  const body = (await res.json()) as ApiResponse<T> | { detail: unknown }
   if ("success" in body) {
     if (!body.success) throw new Error(body.error)
     return body.data
   }
-  throw new Error(body.detail)
+  // FastAPI's own 422 validation-error responses (as opposed to this app's manual
+  // HTTPException(400, str(...)) pattern used elsewhere) put `detail` as an array of
+  // {msg, loc, ...} objects rather than a plain string — stringify those into something
+  // actually readable instead of the default "[object Object]"-ish message.
+  const detail = body.detail
+  const message =
+    typeof detail === "string"
+      ? detail
+      : Array.isArray(detail)
+        ? detail.map((d) => (d && typeof d === "object" && "msg" in d ? String(d.msg) : String(d))).join(", ")
+        : JSON.stringify(detail)
+  throw new Error(message)
 }
 
 export async function apiGet<T>(path: string): Promise<T> {
