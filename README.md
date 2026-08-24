@@ -9,8 +9,8 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
 - **backend/** — FastAPI, event bus, WebSocket stream to dashboard, setup API (household + members),
   `GET /api/positions/latest` for current per-member position, `POST /api/traccar/forward` — receives
   Traccar's position-forwarding webhook and maps it to a member via the source-agnostic `device_id`
-  column — `POST /api/overland/forward` (deprecated in practice, see "iOS GPS" below — kept working
-  but not recommended), and `POST /api/owntracks/forward`, the recommended iOS GPS source. Every
+  column — `POST /api/overland/forward` (not the default path, see "Alternative GPS sources"
+  below), and `POST /api/owntracks/forward`, the recommended GPS source for every platform. Every
   recorded position also runs through `app/trips.py`'s in-memory per-member trip detector (speed-based:
   moving/stationary thresholds, walking vs driving by average speed over the trip) — on trip end it
   sends a Web Push notification ("Alex stopped — finished driving, 4.2 km in 9 min, avg 28 km/h") to
@@ -25,7 +25,7 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   chromeless standalone install on both platforms). The tab bar's Map/Settings buttons are
   icon-only (no text label), both sized and vertically centered to match the SOS bell/notification
   icon between them. The **Map** tab is a full-bleed live family map:
-  every member's latest reported position (Traccar, OwnTracks, or Overland — see "iOS GPS" below)
+  every member's latest reported position (OwnTracks, Traccar, or Overland — see "GPS setup" below)
   renders as a circular avatar marker (their uploaded photo, or a generated placeholder — see
   "Member avatars"),
   shrinking through 80/60/40% size tiers and finally to a plain colored dot (20%) as you zoom out
@@ -171,57 +171,15 @@ would mean either a `FakeConn` with a working `.transaction()` context manager o
 Postgres in CI; neither is done yet. No frontend test framework is set up either (dashboard has no
 Vitest/Jest) — both are open follow-ups, not silently skipped.
 
-## Traccar (real phone GPS)
+## GPS setup: OwnTracks (recommended, iOS and Android)
 
-The web UI (:8082) is bound to `127.0.0.1` in `docker-compose.yml`, not exposed publicly — reach it
-through an nginx-proxied subdomain instead (e.g. `traccar.near2far.family`, same pattern as
-`near2far.family` itself: an nginx site block proxying to `127.0.0.1:8082`, plus a Cloudflare DNS
-record for that subdomain).
-
-1. Open the Traccar web UI at `https://traccar.near2far.family` (first visit lets you create the admin
-   account — there's no default, and this account is what `TRACCAR_ADMIN_EMAIL`/`TRACCAR_ADMIN_PASS`
-   below need to match).
-2. **Either** create a device by hand (Settings → Devices → Add, any identifier you want, e.g.
-   `alex-phone`), **or** set `TRACCAR_API_URL`/`TRACCAR_ADMIN_EMAIL`/`TRACCAR_ADMIN_PASS` in `.env`
-   (see `.env.example`) and skip straight to step 4 — saving a member's Device ID in near2far's own
-   Settings then auto-creates the matching Traccar device via its API
-   (`backend/app/traccar_admin.py`), best-effort (silently falls back to "do it by hand" if the
-   call fails or those env vars aren't set).
-3. Install the **Traccar Client** app on that member's phone, set the identifier to match, and set the
-   server URL to `http://<server>:5055` (this port stays exposed directly — phones talk to it, not
-   through nginx/Cloudflare).
-4. In near2far's dashboard Settings, paste that same identifier into the member's "Device ID" field
-   and Save.
-
-From then on, Traccar forwards every position update to the backend (`TRACCAR_FORWARD_URL`, see
-`.env.example`), which maps it to that member and pushes it to the family map over the same
-`/ws/events` WebSocket stream OwnTracks/Overland positions use — every source lands in the same
-place. (There's no browser self-geolocation reporting anymore — removed in favor of the
-snap-to-member map controls; every position comes from a real GPS source.)
-
-`TRACCAR_FORWARD_URL` differs by deployment:
-- Local all-in-one docker-compose dev: `http://backend:8000/api/traccar/forward`
-- VPS (backend runs via pm2, not in this compose file): `http://host.docker.internal:5101/api/traccar/forward`
-
-This endpoint originally had no auth of its own at all, relying entirely on `ufw` never exposing
-it publicly — a single misconfigured firewall rule away from accepting fake position data from
-anyone. Set `TRACCAR_FORWARD_TOKEN` in `.env` to a random secret and append `?token=<same value>`
-to `TRACCAR_FORWARD_URL` (Traccar can't send custom headers, so the token has to live in the URL)
-to close that gap. Leave both blank to keep the old network-only behavior.
-
-## iOS GPS: use OwnTracks, not Overland
-
-**Short version: don't use Overland.** A full night was burned chasing it — correct config
-(Server URL, Access Token, Device ID all verified right), correct location permissions ("Always" +
-Precise Location on), reachable network (confirmed via Safari and via an iOS Shortcuts POST to the
-same endpoint) — and it still never reliably transmitted. `POST /api/overland/forward` still exists
-in the backend (harmless to leave; it's a real, tested endpoint) in case a future Overland version
-fixes whatever was wrong, but don't start a new install with it. Use **OwnTracks** instead — see
-below. (If you do try Overland anyway: its **batch size floor is 50 with no way to set it lower**,
-meaning up to a ~4 minute delay between map updates by design, not a bug — one more reason to skip
-it.)
-
-### OwnTracks (recommended)
+**Default recommendation for every install, either platform.** Earlier revisions of this README
+scoped OwnTracks as "the iOS option" (with Traccar Client for Android) — that was never actually a
+platform limitation, OwnTracks has real apps for both iOS and Android (plus F-Droid), it just hadn't
+been tried on Android yet at the time. Reports over plain HTTPS, no separate server-side service to
+run, no phone-reachable UDP port to expose — genuinely simpler to set up than Traccar on any
+platform. Traccar and the (likely now-fixable) Overland option are documented below under
+"Alternative GPS sources" for anyone who wants them, but they're not the default path anymore.
 
 [OwnTracks](https://owntracks.org/) is a free, open-source location tracker built specifically for
 self-hosted setups like this one — no forced batch minimum, reports on its own time/distance
@@ -242,21 +200,23 @@ into OwnTracks with steps 2-5 below already filled in. Falls back to manual entr
 isn't installed yet or the link doesn't fire — the steps below always work regardless.
 
 1. In near2far's dashboard, open the member's **Edit member** modal (tap their row in Settings) and
-   set **Device ID** to something meaningful, e.g. `alex-iphone`.
-2. Install **OwnTracks** from the App Store. Open its settings (tap the **"i" icon**, top-left on
-   the main map screen) → set **Mode** to **HTTP** (it defaults to MQTT, which is a different
+   set **Device ID** to something meaningful, e.g. `alex-phone`.
+2. Install **OwnTracks** from the App Store (iOS) or Google Play/F-Droid (Android). Open its
+   settings (iOS: tap the **"i" icon**, top-left on the main map screen; Android: hamburger menu →
+   Preferences → Connection) → set **Mode** to **HTTP** (it defaults to MQTT, which is a different
    protocol entirely and won't work here).
 3. Depending on the app version, the HTTP settings are either a single **URL** field, or split
    **Host** + **Path**:
    - Single field: **URL** = `https://near2far.family/api/owntracks/forward`
    - Split fields: **Host** = `near2far.family`, **Path** = `/api/owntracks/forward`
 4. Turn **Auth** on. **Username** (sometimes labeled **UserID**) = the *exact same* string you set
-   as Device ID in step 1 (e.g. `alex-iphone`). **Password** = the household admin password.
+   as Device ID in step 1 (e.g. `alex-phone`). **Password** = the household admin password.
 5. Leave **Tracker ID** as whatever default — it's unused for matching, only shows on OwnTracks'
    own internal map.
 6. Turn on **Tracking Enabled**.
 
-From then on it reports location to the family map over the same WebSocket stream Traccar uses.
+From then on it reports location to the family map over `/ws/events`, the same WebSocket stream
+every GPS source (Traccar, Overland) uses regardless of which one sent it.
 
 **If it doesn't show up:** the single most likely cause on a real deploy is the Cloudflare issue
 below, not anything in this list. Verify OwnTracks is actually configured right first (steps
@@ -332,6 +292,66 @@ know about:
   batch (Overland, OwnTracks) can deliver a stale `(0, 0)` point *after* a real one in the same
   batch; ordering by server-receipt time would have let the stale point win as "latest" purely by
   delivery order. Ordering by the device's own timestamp avoids that.
+
+## Alternative GPS sources (Traccar, Overland)
+
+Not the default — OwnTracks above covers iOS and Android with less setup and no phone-reachable
+port to expose. These exist for anyone who's already using one of them or wants a self-hosted
+server-side option instead of a phone-app-only one.
+
+### Traccar
+
+The web UI (:8082) is bound to `127.0.0.1` in `docker-compose.yml`, not exposed publicly — reach it
+through an nginx-proxied subdomain instead (e.g. `traccar.near2far.family`, same pattern as
+`near2far.family` itself: an nginx site block proxying to `127.0.0.1:8082`, plus a Cloudflare DNS
+record for that subdomain).
+
+1. Open the Traccar web UI at `https://traccar.near2far.family` (first visit lets you create the admin
+   account — there's no default, and this account is what `TRACCAR_ADMIN_EMAIL`/`TRACCAR_ADMIN_PASS`
+   below need to match).
+2. **Either** create a device by hand (Settings → Devices → Add, any identifier you want, e.g.
+   `alex-phone`), **or** set `TRACCAR_API_URL`/`TRACCAR_ADMIN_EMAIL`/`TRACCAR_ADMIN_PASS` in `.env`
+   (see `.env.example`) and skip straight to step 4 — saving a member's Device ID in near2far's own
+   Settings then auto-creates the matching Traccar device via its API
+   (`backend/app/traccar_admin.py`), best-effort (silently falls back to "do it by hand" if the
+   call fails or those env vars aren't set).
+3. Install the **Traccar Client** app on that member's phone, set the identifier to match, and set the
+   server URL to `http://<server>:5055` (this port stays exposed directly — phones talk to it, not
+   through nginx/Cloudflare; on a PaaS deploy without raw port exposure, this option isn't viable —
+   use OwnTracks instead).
+4. In near2far's dashboard Settings, paste that same identifier into the member's "Device ID" field
+   and Save.
+
+From then on, Traccar forwards every position update to the backend (`TRACCAR_FORWARD_URL`, see
+`.env.example`), which maps it to that member and pushes it to the family map over the same
+`/ws/events` stream every source uses. (There's no browser self-geolocation reporting anymore —
+removed in favor of the snap-to-member map controls; every position comes from a real GPS source.)
+
+`TRACCAR_FORWARD_URL` differs by deployment:
+- Local all-in-one docker-compose dev: `http://backend:8000/api/traccar/forward`
+- VPS (backend runs via pm2, not in this compose file): `http://host.docker.internal:5101/api/traccar/forward`
+
+This endpoint originally had no auth of its own at all, relying entirely on `ufw` never exposing
+it publicly — a single misconfigured firewall rule away from accepting fake position data from
+anyone. Set `TRACCAR_FORWARD_TOKEN` in `.env` to a random secret and append `?token=<same value>`
+to `TRACCAR_FORWARD_URL` (Traccar can't send custom headers, so the token has to live in the URL)
+to close that gap. Leave both blank to keep the old network-only behavior.
+
+### Overland (iOS) — probably fine now, wasn't tested against the real root cause
+
+A full night was once burned chasing Overland never reliably transmitting — correct config, correct
+"Always" + Precise Location permissions, reachable network (confirmed via Safari and an iOS
+Shortcuts POST to the same endpoint) — and it still silently failed. At the time this got written
+off as "something wrong with Overland." In hindsight, the actual root cause found later (see
+"Cloudflare 'Flexible' SSL can silently block background location apps" above) fully explains that
+exact symptom — a correctly-configured non-browser HTTP client silently failing against a
+Cloudflare Flexible-SSL domain, while Safari and Shortcuts (different HTTP client behavior) worked
+fine against the same URL. Overland was never re-tested against a DNS-only ("grey cloud") subdomain
+after that fix, so it's plausible it actually works fine now. `POST /api/overland/forward` still
+exists in the backend (a real, tested endpoint) — worth retrying if you specifically want it, just
+point it at the grey-cloud subdomain from the start rather than repeating the original debugging
+session. One real downside either way: its **batch size floor is 50 with no way to set it lower**,
+meaning up to a ~4 minute delay between map updates by design, not a bug.
 
 ## Trip alerts (Web Push)
 
