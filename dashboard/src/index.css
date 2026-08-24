@@ -1187,23 +1187,27 @@ h3 {
   inset: 0;
   /* Leaflet's own panes/controls use z-index values up to ~1000 (the Home geofence map in
      this same Settings screen is a Leaflet map) — must clear that or the modal renders
-     underneath it. */
-  z-index: 1000;
+     underneath it. Also above .tab-bar (also 1001, previously the same value as this modal —
+     since .tab-bar comes later in the DOM, equal z-index meant it silently won and covered the
+     bottom of the modal on mobile, hiding whatever button/link happened to land under the bar). */
+  z-index: 1700;
   background: rgba(0, 0, 0, 0.5);
 }
 
 .member-edit-modal {
+  /* Full-height, not a short bottom sheet — but still framed as the SAME kind of card
+     .settings-panel/.setup-wizard is (1rem outer margin, 24px rounded border), not a flat
+     edge-to-edge fill with no visible border. That card look, just taller, is the actual "same
+     margins as the settings container" ask — inset:0 alone only added inner content padding,
+     the outer card treatment was still missing. */
   position: fixed;
-  z-index: 1001;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  max-height: 85vh;
+  z-index: 1701;
+  inset: calc(env(safe-area-inset-top) + 1rem) 1rem calc(env(safe-area-inset-bottom) + 1rem) 1rem;
   overflow-y: auto;
   background: var(--surface);
-  border-radius: 16px 16px 0 0;
-  padding: 1rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom));
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  padding: 1.25rem;
 }
 
 .member-edit-header {
@@ -1266,6 +1270,8 @@ h3 {
 
 .member-edit-modal .member-edit-inline-field button {
   flex-shrink: 0;
+  padding: 0.6rem 1.1rem;
+  background: var(--accent);
 }
 
 .member-edit-owntracks-link {
@@ -1279,7 +1285,7 @@ h3 {
 }
 
 .member-edit-owntracks-hint {
-  margin: 0.25rem 0 0;
+  margin: 0.25rem 0 5px;
   font-size: 0.72rem;
   font-weight: 400;
   color: var(--text-dim);
@@ -1343,12 +1349,16 @@ h3 {
 }
 
 .member-edit-modal .member-edit-danger-button {
-  background: var(--danger);
+  /* A deeper red than --danger (#ff6b6b) specifically for this filled button — that color
+     reads fine as subtle error text elsewhere in the app, but as a solid background it comes
+     across as bright pink rather than "this is a serious, destructive action." */
+  padding: 0.6rem 1.1rem;
+  background: #c0392b;
   color: white;
 }
 
 .member-edit-modal .member-edit-danger-button:hover:not(:disabled) {
-  background: #ff8787;
+  background: #d84a3a;
 }
 
 .member-edit-confirm-row {
@@ -1366,6 +1376,9 @@ h3 {
 
 .member-edit-confirm-actions button {
   flex: 1;
+  padding: 0.6rem 1.1rem;
+  background: var(--surface-2);
+  color: var(--text);
 }
 
 .avatar-picker {
