@@ -1274,6 +1274,15 @@ h3 {
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--accent);
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.member-edit-owntracks-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--text-dim);
 }
 
 .member-edit-color-row {

@@ -168,9 +168,15 @@ export function MemberEditModal({
             </button>
           </div>
           {ownTracksConfigUrl() && (
-            <a className="member-edit-owntracks-link" href={ownTracksConfigUrl() ?? undefined}>
-              Configure OwnTracks app with this Device ID
-            </a>
+            <>
+              <a className="member-edit-owntracks-link" href={ownTracksConfigUrl() ?? undefined}>
+                Configure OwnTracks app with this Device ID
+              </a>
+              <p className="member-edit-owntracks-hint">
+                Only works tapped on the phone that has OwnTracks installed — open this page in
+                that phone's own browser first.
+              </p>
+            </>
           )}
         </label>
 
