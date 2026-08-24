@@ -526,6 +526,23 @@ Most endpoints raise `HTTPException(400, str(e))` for validation failures — a 
 array of `{msg, loc, ...}` objects, not a string — `unwrap()` detects and flattens that case too,
 rather than throwing an unreadable stringified object.
 
+The WebSocket handshake (`/ws`) and `/api/traccar/forward` both carry a secret as a `?token=`
+query param rather than a header — a WS upgrade can't send custom headers, and Traccar's
+`forward.type=json` can't either. `dashboard/nginx.conf` disables `access_log` on both locations
+specifically because nginx's default log format records the full request line (query string
+included), which would otherwise write the admin password and `TRACCAR_FORWARD_TOKEN` into
+container logs in plaintext on every request.
+
+**Known gaps, not yet addressed** (security audit, 2026-08-24): the admin password has no
+rate-limiting/lockout on repeated failed attempts, so it's brute-forceable at network-RTT speed
+(PBKDF2 iteration cost is the only friction) by anything that can reach the API; there's no
+password-rotation endpoint, so a suspected-compromised password can only be changed via direct
+DB access; and the dashboard stores it in `localStorage` (not `sessionStorage`), so any future
+XSS on the dashboard origin would yield a durable, silently-persisted credential leak. All three
+are deliberately left as open design questions rather than a quick patch, since a real fix (rate
+limiter, rotation flow, WS ticket scheme instead of a raw password in the URL) is a genuine
+tradeoff discussion, not a mechanical change.
+
 ## Spec
 
 Full product spec lives in the Knightsrook MCP knowledge base (`project:near2far:spec`, `project:near2far:funding`). See also [docs/architecture/overview.md](docs/architecture/overview.md) for the service-level architecture.
