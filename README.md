@@ -22,7 +22,9 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
 - **dashboard/** — React+Vite PWA styled as a native-feeling app shell (fixed top bar + bottom tab
   bar around a scrollable content area, `100dvh` height, `env(safe-area-inset-*)` padding for iOS/
   Android notches and home indicators, `viewport-fit=cover` + `apple-mobile-web-app-*` meta tags for a
-  chromeless standalone install on both platforms). The **Map** tab is a full-bleed live family map:
+  chromeless standalone install on both platforms). The tab bar's Map/Settings buttons are
+  icon-only (no text label), both sized and vertically centered to match the SOS bell/notification
+  icon between them. The **Map** tab is a full-bleed live family map:
   every member's latest reported position (Traccar, OwnTracks, or Overland — see "iOS GPS" below)
   renders as a circular avatar marker (their uploaded photo, or a generated placeholder — see
   "Member avatars"),
@@ -35,7 +37,7 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   centers the map on them, snapping to a zoom level chosen from their last-known speed (closer for
   stationary/walking, wider for driving) rather than a fixed zoom — the already-selected avatar
   renders disabled/dimmed rather than disappearing, since re-tapping it would be a no-op. An
-  An "Enable trip alerts" button (Settings, above "Home" — not on the map itself) subscribes
+  "Enable trip alerts" button (Settings, above "Home" — not on the map itself) subscribes
   the browser to Web Push; it renders nothing once already subscribed. Since an installed PWA doesn't
   reliably recheck for a new deploy on its own (especially on iOS), the dashboard compares its loaded
   JS bundle against the server's on every foreground/focus and reloads automatically when they
