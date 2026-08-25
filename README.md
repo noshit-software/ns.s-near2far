@@ -431,9 +431,13 @@ App icons, favicon, and the color palette (`dashboard/src/index.css` `:root`/lig
 variables) are derived from `dashboard/public/n2f-logo.svg` — navy `#293a4e`, orange `#d97110`
 (the `--accent` used for buttons/CTAs and the SOS/911 buttons), and blue-gray `#8ba6c1`/`#5980a6`
 (used for the SOS panel's general-contact pills/icon badges). `icon-192.png`, `icon-512.png`, and
-`favicon.ico` are generated from `n2f-logo.png` (PIL, resized/padded to square, `favicon.ico`
-bundling 16/32/48/64px). Regenerate them if the logo changes — there's no build step wired up for
-this, it was a one-off script.
+`favicon.ico` are generated from `n2f-logo.png` (PIL, `favicon.ico` bundling 16/32/48/64px). The
+logo content only fills ~70% of each icon's canvas, not edge-to-edge — the original generation
+had it flush with the canvas border, which meant Android/iOS's circular/squircle home-screen
+icon mask (which crops well inside the square canvas, not just at its edges) sliced right
+through the outer ring and the rocket poking above it. Regenerate them if the logo changes —
+there's no build step wired up for this, it was a one-off script; keep the ~70%-content/~30%-
+padding ratio so a fresh logo doesn't reintroduce the same clipping.
 
 ## Member avatars
 
