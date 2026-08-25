@@ -249,6 +249,15 @@ processes each report in the array in order (same handler, see
 `backend/app/api/positions.py`'s `owntracks_forward`), so a queued backlog flushes cleanly
 instead of failing outright.
 
+A related follow-up: OwnTracks' HTTP endpoint delivers more than plain locations through this
+same endpoint — `waypoints`, `transition`, and `card` message types get queued and flushed
+alongside `location` reports, and none of those other types carry a top-level `lat`/`lon` at
+all. `OwnTracksLocation` originally required both fields unconditionally, so a batch containing
+even one non-location message 422'd the *whole* request before the handler's own
+`type_ != "location"` skip ever ran. `lat`/`lon` are now optional on the model (only read when
+`type_ == "location"` and both are actually present), so a mixed batch — locations, waypoints,
+whatever else — processes cleanly instead of failing on the first non-location item it hits.
+
 ### Cloudflare "Flexible" SSL can silently block background location apps
 
 This is the root cause that actually explains the whole Overland/OwnTracks saga, and will bite any

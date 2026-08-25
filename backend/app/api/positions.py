@@ -48,9 +48,15 @@ class OverlandForward(BaseModel):
 
 
 class OwnTracksLocation(BaseModel):
+    # lat/lon are only actually present on `_type: "location"` reports — OwnTracks' HTTP
+    # endpoint also delivers "waypoints", "transition", and "card" message types through this
+    # same endpoint (batched in the same queue-flush array as plain locations), and those
+    # don't have top-level lat/lon at all. Requiring them unconditionally 422'd the *entire*
+    # request/array the moment one of those other types was mixed in, well before the
+    # `type_ != "location"` skip below ever got a chance to run.
     type_: str = Field(alias="_type")
-    lat: float
-    lon: float
+    lat: float | None = None
+    lon: float | None = None
     tst: int | None = None  # unix seconds
     tid: str | None = None  # tracker ID — used as our device_id
 
@@ -273,7 +279,7 @@ async def owntracks_forward(body: OwnTracksLocation | list[OwnTracksLocation], r
             return []
 
         for report in reports:
-            if report.type_ != "location":
+            if report.type_ != "location" or report.lat is None or report.lon is None:
                 continue
             recorded_at = datetime.fromtimestamp(report.tst, tz=timezone.utc) if report.tst else None
             await _record_position(
