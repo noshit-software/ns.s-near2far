@@ -240,6 +240,15 @@ this commit; if it happens on an older deploy, `git pull` + redeploy the backend
 phone force-stop OwnTracks and clear its app storage (Android: Settings → Apps → OwnTracks →
 Storage → Clear Data) to flush whatever's stuck in its local queue before re-configuring it.
 
+**If OwnTracks' own log shows `HTTP request failed. Status: 422`** after clearing a backed-up
+queue and re-publishing: OwnTracks batches its whole local queue into a single JSON **array**
+POST when flushing a backlog (rather than one request per point), and `/api/owntracks/forward`
+originally only accepted a single location object — a batch flush 422'd the entire array at
+once against that shape. The endpoint now accepts either a single object or an array and
+processes each report in the array in order (same handler, see
+`backend/app/api/positions.py`'s `owntracks_forward`), so a queued backlog flushes cleanly
+instead of failing outright.
+
 ### Cloudflare "Flexible" SSL can silently block background location apps
 
 This is the root cause that actually explains the whole Overland/OwnTracks saga, and will bite any
