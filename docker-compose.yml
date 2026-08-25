@@ -42,6 +42,11 @@ services:
     restart: unless-stopped
 
   traccar:
+    # Opt-in example, not part of the default stack — OwnTracks (see README "GPS setup") is the
+    # recommended GPS source for every platform now, and doesn't need a separate service running
+    # at all. `docker compose up -d` alone never starts this; explicitly request it with
+    # `docker compose --profile traccar up -d` if you actually want Traccar/Traccar Client.
+    profiles: ["traccar"]
     # Pinned rather than :latest — an unpinned tag means every `docker compose pull`/rebuild
     # can silently change what's running, with no way to know what changed. This is the exact
     # version already deployed as of 2026-08 (from the image's own

@@ -328,6 +328,10 @@ server-side option instead of a phone-app-only one.
 
 ### Traccar
 
+Not started by default — it's an opt-in Compose profile (`profiles: ["traccar"]` in
+`docker-compose.yml`), so `docker compose up -d` alone never runs it. Start it explicitly with
+`docker compose --profile traccar up -d traccar` if you actually want it.
+
 The web UI (:8082) is bound to `127.0.0.1` in `docker-compose.yml`, not exposed publicly — reach it
 through an nginx-proxied subdomain instead (e.g. `traccar.near2far.family`, same pattern as
 `near2far.family` itself: an nginx site block proxying to `127.0.0.1:8082`, plus a Cloudflare DNS
@@ -464,7 +468,7 @@ a neighborhood.
 
 ### VPS deploy sequence
 
-Run the same four steps every time, in this order, regardless of which files changed — the
+Run the same three steps every time, in this order, regardless of which files changed — the
 gotchas below are all cases of skipping one because "only the frontend changed" or "only the
 backend changed" seemed true at the time:
 
@@ -472,11 +476,14 @@ backend changed" seemed true at the time:
 git pull
 cd dashboard && npm run build && cd ..
 pm2 restart near2far
-docker compose up -d --build traccar   # only traccar runs in Compose on the VPS — the
-                                        # backend/dashboard services in this compose file are
-                                        # for local dev only; don't start them here, they'll
-                                        # fight pm2/nginx for the same ports
 ```
+
+Nothing runs via Docker Compose on the VPS by default — the backend/dashboard services in
+`docker-compose.yml` are for local dev only (they'd fight pm2/nginx for the same ports on the
+VPS), and `traccar` is now profile-gated (`profiles: ["traccar"]`) and opt-in, not part of the
+default stack — see "GPS setup" above for why (OwnTracks doesn't need a separate service at
+all). Only run `docker compose --profile traccar up -d --build traccar` if you're actually using
+Traccar.
 
 ### CSS gotcha: `backdrop-filter` and `position: fixed` (learned the hard way, twice)
 
