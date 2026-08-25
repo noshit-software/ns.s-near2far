@@ -414,29 +414,33 @@ export function SetupWizard() {
               The number and label the round SOS button dials — 911 by default, but not every
               region uses 911 (e.g. 112, 999).
             </p>
-            <div className="emergency-contact-row">
-              <input
-                defaultValue={household.emergency_label}
-                maxLength={18}
-                placeholder="Label"
-                onBlur={(e) => {
-                  const label = e.target.value.trim()
-                  if (label && label !== household.emergency_label) {
-                    updateEmergencyNumber(household.emergency_number, label)
-                  }
-                }}
-              />
-              <input
-                defaultValue={household.emergency_number}
-                type="tel"
-                placeholder="Number"
-                onBlur={(e) => {
-                  const number = e.target.value.trim()
-                  if (number && number !== household.emergency_number) {
-                    updateEmergencyNumber(number, household.emergency_label)
-                  }
-                }}
-              />
+            <div className="emergency-contact-row emergency-number-row">
+              <label className="emergency-number-field">
+                Label
+                <input
+                  defaultValue={household.emergency_label}
+                  maxLength={18}
+                  onBlur={(e) => {
+                    const label = e.target.value.trim()
+                    if (label && label !== household.emergency_label) {
+                      updateEmergencyNumber(household.emergency_number, label)
+                    }
+                  }}
+                />
+              </label>
+              <label className="emergency-number-field">
+                Number
+                <input
+                  defaultValue={household.emergency_number}
+                  type="tel"
+                  onBlur={(e) => {
+                    const number = e.target.value.trim()
+                    if (number && number !== household.emergency_number) {
+                      updateEmergencyNumber(number, household.emergency_label)
+                    }
+                  }}
+                />
+              </label>
             </div>
 
             <h3>Emergency contacts</h3>

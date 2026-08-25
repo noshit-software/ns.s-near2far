@@ -55,9 +55,13 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   than sitting as flat stacked text, tinted the brand orange (see "Branding" below) rather than a
   stock red. Up to 2 general contacts flank it left/right, tinted the logo's light blue-gray. A
   2×2 grid of category tiles (Medical, Authorities, Followed, Car trouble) fills most
-  of the remaining space above — each tile carries a small 40px circular badge icon (gray on
-  orange) in its upper-left corner rather than a large centered/watermark icon, since a bigger
-  icon kept getting covered as the tile's content below it grew. The SOS-relevant icons in
+  of the remaining space above — each tile carries a small (30px) badge icon flush in its
+  top-left corner (gray on orange, matching the corner's curve rather than a full circle)
+  followed by a centered label bar spanning the rest of that top edge (e.g. "MEDICAL",
+  "AUTHORITIES") — both are `clamp()`-sized, not a large fixed centered/watermark icon, since a
+  bigger fixed icon kept getting covered as the tile's content below it grew, and fixed sizing in
+  general didn't adapt below the ~390px+ viewport this had only ever been checked at. The
+  SOS-relevant icons in
   `dashboard/src/components/icons.tsx` — `BellIcon`, `PhoneIcon`, `MedicalCrossIcon`,
   `BadgeIcon` (Authorities), `SuspiciousIcon` (Followed — a domino mask glyph), `CarIcon` — are
   exact Google Material Symbols glyphs (`fill="currentColor"`, `viewBox="0 -960 960 960"`),

@@ -141,6 +141,7 @@ export function SosButton({
                     <span className="sos-panel-category-bgicon">
                       <Icon />
                     </span>
+                    <span className="sos-panel-category-label">{c.label.toUpperCase()}</span>
                   </button>
                   {/* Floating on the tile itself (translucent, so the big icon shows through)
                       instead of a bottom bar. Two labeled sections, each collapsed away entirely
