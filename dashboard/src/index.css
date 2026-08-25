@@ -373,11 +373,10 @@ h3 {
 }
 
 .sos-panel-section {
-  /* Icon is no longer an inline flex column reserving its own width + gap — it's an absolutely
-     positioned badge overlapping the top-left corner instead, so the full width goes to the
-     actual content. */
-  position: relative;
-  padding: 0.4rem 0.4rem 0.4rem 1.4rem;
+  /* No more corner icon/clearance to make room for — the phone icon moved onto each individual
+     chip instead of labeling the whole section once, and notes lost its icon badge entirely.
+     Both freed this box back down to plain uniform padding. */
+  padding: 0.5rem;
   /* Same radius family as the tile itself (32px) and .member-detail elsewhere (16px) — half the
      tile's, not an unrelated 12px that read as a mismatched third curve. */
   border-radius: 16px;
@@ -387,34 +386,18 @@ h3 {
   -webkit-backdrop-filter: blur(14px) saturate(160%);
 }
 
-.sos-panel-section-icon {
-  position: absolute;
-  top: -6px;
-  left: -6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--bg);
-  background: #5980a6;
-  border-radius: 50%;
-  padding: 0.3em;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-}
-
-.sos-panel-section-icon svg {
-  width: clamp(11px, 3.2vw, 14px);
-  height: clamp(11px, 3.2vw, 14px);
-}
-
 .sos-panel-quick-dial-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.3rem;
+  /* Extra top gap so the per-chip icon badges (overlapping each chip's top edge) have room
+     between rows instead of touching the row above. */
+  gap: 0.6rem 0.3rem;
   flex: 1;
   min-width: 0;
 }
 
 .sos-panel-quick-dial-item {
+  position: relative;
   display: flex;
   align-items: center;
   min-height: 44px;
@@ -440,6 +423,31 @@ h3 {
 
 .sos-panel-quick-dial-item:active {
   background: rgba(255, 255, 255, 0.6);
+}
+
+/* Small badge overlapping each chip's top edge, centered — replaces the old single icon
+   labeling the whole section. Reads as a row of "chain links" between the buttons rather than
+   one icon eating space that only that one chip actually needed. */
+.sos-panel-quick-dial-item-icon {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  background: #5980a6;
+  border-radius: 50%;
+  color: var(--bg);
+  padding: 3px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.sos-panel-quick-dial-item-icon svg {
+  width: 100%;
+  height: 100%;
 }
 
 /* Panel-wide, not per-number — every noted contact in the category rolls up into this block

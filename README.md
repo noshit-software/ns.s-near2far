@@ -69,11 +69,13 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   file's icons (`MapIcon`, `SettingsIcon`, `CloseIcon`, etc.) are simpler hand-drawn stroke icons.
   Tapping a category tile's icon fires a full alert for
   that category; below the icon, up to two collapsed-glass **sections** — each omitted entirely
-  when it has nothing to show — hold that category's configured numbers: **quick dial** (small
-  phone-icon badge labeling the section once, each number a full-width plain-label chip rather
-  than repeating an icon per number) and **notes** (small info-icon badge, one line per contact
-  with notes, e.g. a policy number — rolled up panel-wide rather than squeezed under each
-  individual number). Configured per category in Settings → Emergency contacts (editable and
+  when it has nothing to show — hold that category's configured numbers: **quick dial** (each
+  number its own chip with a small phone-icon badge overlapping the chip's own top edge, centered
+  — reads as a row of "chain links" between the buttons rather than one icon labeling the whole
+  section and eating space every chip didn't need) and **notes** (no icon at all — just the text,
+  one line per contact with notes, e.g. a policy number — rolled up panel-wide rather than
+  squeezed under each individual number). Configured per category in Settings → Emergency
+  contacts (editable and
   reorderable in place); contact names are capped at 18 characters both client-side (`maxLength`)
   and server-side (`MAX_CONTACT_NAME_LENGTH` in `backend/app/api/setup.py`). Phone numbers are
   validated and normalized server-side (7-15 digits, optional leading `+`; punctuation/spacing

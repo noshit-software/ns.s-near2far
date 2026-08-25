@@ -2,16 +2,7 @@ import { useState } from "react"
 
 import { apiPost } from "../lib/api"
 import { getClientId } from "../lib/clientId"
-import {
-  BadgeIcon,
-  BellIcon,
-  CarIcon,
-  CloseIcon,
-  InfoIcon,
-  MedicalCrossIcon,
-  PhoneIcon,
-  SuspiciousIcon,
-} from "./icons"
+import { BadgeIcon, BellIcon, CarIcon, CloseIcon, MedicalCrossIcon, PhoneIcon, SuspiciousIcon } from "./icons"
 
 type EmergencyContact = { id: string; category: string | null; name: string; phone: string; notes: string | null }
 type ContactHousehold = {
@@ -150,9 +141,6 @@ export function SosButton({
                   <div className="sos-panel-tile-sections">
                     {categoryContacts.length > 0 && (
                       <div className="sos-panel-section sos-panel-quick-dial">
-                        <span className="sos-panel-section-icon">
-                          <PhoneIcon />
-                        </span>
                         <div className="sos-panel-quick-dial-list">
                           {categoryContacts.map((ct) => (
                             <a
@@ -161,6 +149,9 @@ export function SosButton({
                               className="sos-panel-quick-dial-item"
                               onClick={() => fire(c.key, ct.phone, "help", ct.name)}
                             >
+                              <span className="sos-panel-quick-dial-item-icon">
+                                <PhoneIcon />
+                              </span>
                               {ct.name}
                             </a>
                           ))}
@@ -169,9 +160,6 @@ export function SosButton({
                     )}
                     {notedContacts.length > 0 && (
                       <div className="sos-panel-section sos-panel-notes-section">
-                        <span className="sos-panel-section-icon">
-                          <InfoIcon />
-                        </span>
                         <div className="sos-panel-notes-text">
                           {notedContacts.map((ct) => (
                             <div key={ct.id}>
