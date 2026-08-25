@@ -222,6 +222,18 @@ every GPS source (Traccar, Overland) uses regardless of which one sent it.
 below, not anything in this list. Verify OwnTracks is actually configured right first (steps
 above), then read on.
 
+**If OwnTracks itself shows a "malformed JSON"/serialization error and then goes silent
+entirely** (nothing further reaches the server, even after re-saving the config): `/api/owntracks/forward`
+must always respond with a JSON **array** (`[]` on success — OwnTracks' HTTP mode parses the
+response body as a list of waypoints/cards to display), never `{}`. This endpoint returned `{}`
+for a while, which at least some Android client versions parse strictly enough to throw a
+serialization exception on — and that failure can jam the app's own local report queue
+indefinitely, not just drop the one bad request. Symptom: the map shows a real but stale
+position that never advances, even though the phone's tracking is nominally "on." Fixed as of
+this commit; if it happens on an older deploy, `git pull` + redeploy the backend, then on the
+phone force-stop OwnTracks and clear its app storage (Android: Settings → Apps → OwnTracks →
+Storage → Clear Data) to flush whatever's stuck in its local queue before re-configuring it.
+
 ### Cloudflare "Flexible" SSL can silently block background location apps
 
 This is the root cause that actually explains the whole Overland/OwnTracks saga, and will bite any

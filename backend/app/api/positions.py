@@ -240,17 +240,23 @@ async def _verify_owntracks_auth(conn, request: Request) -> str:
 
 
 @router.post("/api/owntracks/forward")
-async def owntracks_forward(body: OwnTracksLocation, request: Request) -> dict:
+async def owntracks_forward(body: OwnTracksLocation, request: Request) -> list:
     """Receives OwnTracks' HTTP-mode location report — an alternative iOS/Android GPS client
     to Overland, no forced batch-size floor. Maps to a member via the Basic auth username
     (see _verify_owntracks_auth), not `tid` — OwnTracks' 2-character Tracker ID field is too
     short to be a meaningful device_id. Ignores non-location report types (OwnTracks also
-    posts 'transition'/'waypoint' events through the same endpoint)."""
+    posts 'transition'/'waypoint' events through the same endpoint).
+
+    Always returns a JSON array, never `{}` — OwnTracks' HTTP mode parses the response body as a
+    list of waypoint/card objects to display, and at least some client versions throw a
+    (Kotlin/JSON) serialization error on anything else, which can jam that client's own local
+    report queue until its app data is cleared. An empty array is the documented "nothing to
+    push back" response."""
     async with request.app.state.db_pool.acquire() as conn:
         username = await _verify_owntracks_auth(conn, request)
 
         if body.type_ != "location":
-            return {}
+            return []
 
         member = await conn.fetchrow(
             "SELECT id, household_id, display_name, avatar_filename, avatar_seed, color FROM substrate.members "
@@ -259,7 +265,7 @@ async def owntracks_forward(body: OwnTracksLocation, request: Request) -> dict:
         )
         if member is None:
             log.info("owntracks_forward_unmapped_device", username=username)
-            return {}
+            return []
 
         recorded_at = datetime.fromtimestamp(body.tst, tz=timezone.utc) if body.tst else None
         await _record_position(
@@ -275,4 +281,4 @@ async def owntracks_forward(body: OwnTracksLocation, request: Request) -> dict:
             recorded_at=recorded_at,
         )
 
-    return {}
+    return []
