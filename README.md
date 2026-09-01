@@ -80,9 +80,15 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   and server-side (`MAX_CONTACT_NAME_LENGTH` in `backend/app/api/setup.py`). Phone numbers are
   validated and normalized server-side (7-15 digits, optional leading `+`; punctuation/spacing
   stripped before storage) so a typo can't end up as a silently-dead `tel:` link discovered
-  mid-emergency. Every number inside the panel is a single tap — no triple-tap — since reaching
-  the panel at all already took a deliberate first tap on the bell; tapping the emergency number
-  immediately after opening the panel is the fast "tap, tap" path for a real emergency.
+  mid-emergency. Opening the panel itself takes **3 taps on the bell within ~1.2s of each
+  other** (a "N more" counter shows on each intermediate tap) — deliberate friction so a
+  pocket-press or accidental brush can't trigger it, without needing a modal confirmation once
+  you're actually in an emergency. Every number *inside* the panel is a single tap once you're
+  there — reaching the panel at all was already the deliberate step.
+  If the browser triggering it has no GPS of its own (e.g. a desktop), the alert falls back to
+  the household's most recently reported position from any tracked member rather than sending
+  "Location unavailable" — not guaranteed to be the specific person triggering it (there's no
+  per-device member identity), but a recent real position beats nothing.
   Dialing a category-specific number is treated as a **lighter "help" tier**, not a full SOS: it
   still notifies every household device (so calling AAA doesn't happen silently), but as a small
   self-dismissing toast — no siren, no full-screen takeover, no persistent state to disable,

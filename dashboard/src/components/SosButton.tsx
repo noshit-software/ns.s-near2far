@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 
 import { apiPost } from "../lib/api"
 import { getClientId } from "../lib/clientId"
@@ -95,12 +95,32 @@ export function SosButton({
     }
   }
 
-  // A single tap opens the panel — 911 then sits in the bell's exact spot, one more tap away
-  // from actually firing, so the fast path is now "tap, tap" rather than a triple-tap gesture
-  // on an element that no longer exists once the panel is open (911 replaces it).
+  // Getting INTO the panel requires 3 taps on the bell within ~1.2s of each other — deliberate
+  // friction so the bell can't be triggered by an accidental brush/pocket-press. Once inside,
+  // every number is still a single tap (no further confirmation) — reaching the panel at all
+  // already took the deliberate action; a real emergency shouldn't need multiple taps per call.
+  const tapCountRef = useRef(0)
+  const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [tapProgress, setTapProgress] = useState(0)
+
   function tapMain() {
-    if (navigator.vibrate) navigator.vibrate(30)
-    setPanelOpen(true)
+    tapCountRef.current += 1
+    setTapProgress(tapCountRef.current)
+    if (tapTimerRef.current) clearTimeout(tapTimerRef.current)
+
+    if (tapCountRef.current >= 3) {
+      tapCountRef.current = 0
+      setTapProgress(0)
+      if (navigator.vibrate) navigator.vibrate(30)
+      setPanelOpen(true)
+      return
+    }
+
+    if (navigator.vibrate) navigator.vibrate(15)
+    tapTimerRef.current = setTimeout(() => {
+      tapCountRef.current = 0
+      setTapProgress(0)
+    }, 1200)
   }
 
   const allContacts = household?.emergency_contacts ?? []
@@ -240,8 +260,9 @@ export function SosButton({
             type="button"
             className={`sos-main-button ${sending ? "sos-sending" : ""}`}
             onClick={tapMain}
-            aria-label="SOS — tap to open the SOS screen"
+            aria-label="SOS — tap 3 times to open the SOS screen"
           >
+            {tapProgress > 0 && <span className="sos-tap-count">{3 - tapProgress} more</span>}
             <BellIcon />
           </button>
         )}

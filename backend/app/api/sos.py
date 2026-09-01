@@ -53,9 +53,25 @@ async def trigger_sos(body: SosTriggerBody, request: Request) -> dict:
             "SELECT id FROM substrate.households ORDER BY created_at LIMIT 1"
         )
 
+        lat, lng = body.lat, body.lng
+        if lat is None or lng is None:
+            # The triggering browser has no GPS of its own (e.g. a desktop) — fall back to
+            # the household's most recently reported position from any tracked member, rather
+            # than sending an alert with no location at all. Not guaranteed to be the specific
+            # person who triggered it (there's no per-device member identity in this app), but
+            # a recent real position is far more useful during an emergency than nothing.
+            fallback = await conn.fetchrow(
+                "SELECT lat, lng FROM runtime.positions WHERE member_id IN "
+                "(SELECT id FROM substrate.members WHERE household_id = $1) "
+                "ORDER BY recorded_at DESC LIMIT 1",
+                household_id,
+            )
+            if fallback is not None:
+                lat, lng = fallback["lat"], fallback["lng"]
+
         address = None
-        if body.lat is not None and body.lng is not None:
-            address = await nearest_address(body.lat, body.lng)
+        if lat is not None and lng is not None:
+            address = await nearest_address(lat, lng)
 
         # 'help' alerts (a category helper number like AAA was dialed) have nothing to
         # actively disable — auto-resolve them immediately so they never show up as an
@@ -67,8 +83,8 @@ async def trigger_sos(body: SosTriggerBody, request: Request) -> dict:
             "VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CASE WHEN $6 = 'help' THEN now() ELSE NULL END) "
             "RETURNING id, lat, lng, address, category, kind, contact_name, origin_client_id, created_at",
             household_id,
-            body.lat,
-            body.lng,
+            lat,
+            lng,
             address,
             category,
             kind,
