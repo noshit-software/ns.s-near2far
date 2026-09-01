@@ -4,6 +4,13 @@ services:
     ports:
       - "${BACKEND_PORT}:8000"
     env_file: .env
+    environment:
+      # Overrides .env's own POSTGRES_HOST — that file's value is 127.0.0.1 (correct for the
+      # VPS's bare pm2-run backend, which isn't on this Docker network at all), but a backend
+      # running *in* this compose stack reaches Postgres via the "db" service name instead.
+      # `environment:` here takes priority over the same key in env_file, so this is the one
+      # and only place this differs — not a second .env file that can silently drift.
+      POSTGRES_HOST: db
     volumes:
       - backend_uploads:/app/uploads
     depends_on:

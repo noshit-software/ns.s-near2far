@@ -515,6 +515,17 @@ there, like a modal. Put the blur on a `::before`/`::after` pseudo-element inste
 
 ### VPS deploy gotchas (learned the hard way)
 
+- **There is exactly one `.env` file — the repo root one.** `backend/app/config.py` resolves it
+  by an absolute path derived from the config module's own location, specifically so this can
+  never happen again: a second `backend/.env` used to exist (pm2 runs the bare backend with
+  `cwd=backend/`, and pydantic-settings' `env_file` used to be the relative string `".env"`,
+  which silently resolved against that cwd instead of the repo root). That let the two files
+  drift for weeks — anything added to the root `.env` (like the VAPID push keys) was invisible
+  to the actual running process, with no error, just a value that looked "set" but wasn't. If
+  you ever find a `backend/.env`, delete it — it shouldn't exist. The one value that's genuinely
+  different between the bare VPS process and the local Docker stack (`POSTGRES_HOST`: `127.0.0.1`
+  vs the Docker service name `db`) is handled as an explicit `environment:` override on the
+  `backend` service in `docker-compose.yml`, not a second file.
 - **`git pull` alone does nothing for the running backend.** `pm2` doesn't hot-reload — after
   pulling backend changes, you must `pm2 restart near2far` or the old code keeps running silently
   (symptom: a route that clearly exists in the code 404s with FastAPI's generic `{"detail":"Not

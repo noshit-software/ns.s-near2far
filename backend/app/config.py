@@ -1,8 +1,17 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Always the repo-root .env, regardless of the process's own working directory — a relative
+# "env_file=.env" resolves against cwd, which silently pointed at a second, different
+# backend/.env on the VPS (bare pm2 runs the backend with cwd=backend/) instead of the same
+# root .env used everywhere else (docker-compose, this repo's own docs). That let the two files
+# drift for weeks with no error, just settings that looked "set" but were never actually loaded.
+_REPO_ROOT_ENV = Path(__file__).resolve().parent.parent.parent / ".env"
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=_REPO_ROOT_ENV, extra="ignore")
 
     postgres_host: str
     postgres_port: int
