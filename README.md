@@ -105,6 +105,11 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   gated behind re-typing the admin password as a confirmation code — deliberately not a single tap,
   so whoever the emergency is about can't just grab the nearest phone and cancel it. Disabling
   broadcasts over the same WebSocket stream to clear every device's alarm and the map marker.
+  Every tap that happens during an active alert — a category tile fired, a number called —
+  gets appended to `runtime.sos_alert_actions` (`POST /api/sos/{id}/actions`) and broadcast live
+  over the same WebSocket stream (`sos.action_logged`), so both the triggering device's "SOS
+  active" banner and every other device's full-screen overlay show a live-updating trail of
+  what's happening, not just the original trigger.
   The **Settings** tab has household/member
   management (home
   geofence via a Leaflet map you click to place a pin, member list — tapping a member opens a full
@@ -572,6 +577,16 @@ there, like a modal. Put the blur on a `::before`/`::after` pseudo-element inste
   If `runtime.sos_alerts` already exists from an earlier deploy without `kind`/`contact_name`:
   `ALTER TABLE runtime.sos_alerts ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'sos', ADD
   COLUMN IF NOT EXISTS contact_name TEXT;`
+  The live/persisted action trail needs `runtime.sos_alert_actions` on an existing install:
+  ```sql
+  CREATE TABLE IF NOT EXISTS runtime.sos_alert_actions (
+    id BIGSERIAL PRIMARY KEY,
+    alert_id BIGINT NOT NULL REFERENCES runtime.sos_alerts(id) ON DELETE CASCADE,
+    action_type TEXT NOT NULL,
+    detail TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  );
+  ```
   The one-tap emergency call buttons need `substrate.emergency_contacts` on an existing install
   (category `NULL` = general, shown for every SOS category; a specific category's contacts only
   show once that category is engaged):

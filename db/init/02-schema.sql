@@ -82,6 +82,21 @@ CREATE TABLE IF NOT EXISTS runtime.sos_alerts (
   acknowledged_at TIMESTAMPTZ
 );
 
+-- Activity trail for an active/past SOS incident — which category tile was tapped, which
+-- numbers were called, in what order. Broadcast live over the WebSocket stream while an alert
+-- is active (see app/api/sos.py) so any household device watching the "SOS active" banner sees
+-- what the triggering device is doing in real time, and persisted here so the trail survives
+-- past the live moment.
+CREATE TABLE IF NOT EXISTS runtime.sos_alert_actions (
+  id BIGSERIAL PRIMARY KEY,
+  alert_id BIGINT NOT NULL REFERENCES runtime.sos_alerts(id) ON DELETE CASCADE,
+  -- 'category' (a category tile was tapped), 'call' (a number was dialed).
+  action_type TEXT NOT NULL,
+  -- Human-readable detail, e.g. the category label or "Called AAA".
+  detail TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- One-tap emergency dial targets shown on the SOS button alongside 911. `category` NULL means
 -- "general" — shown regardless of which SOS category is selected (e.g. a spouse, a lawyer).
 -- A non-null category (matching sos_alerts.category) only shows once that category is engaged

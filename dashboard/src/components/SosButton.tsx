@@ -47,13 +47,25 @@ function currentPosition(): Promise<GeolocationPosition | null> {
 
 export function SosButton({
   household,
+  activeSosId,
   onTriggered,
 }: {
   household: ContactHousehold | null | undefined
+  activeSosId: number | null
   onTriggered: (alertId: number) => void
 }) {
   const [panelOpen, setPanelOpen] = useState(false)
   const [sending, setSending] = useState(false)
+
+  // Best-effort, fire-and-forget — logging a note about what happened during an alert should
+  // never itself introduce a failure mode. Logs against a brand-new "sos" alert's own id (it's
+  // the incident this action started), or against whatever SOS is already active for a "help"
+  // tier action (a quick-dial call made mid-incident) — skipped entirely if neither applies,
+  // e.g. dialing a category number with no SOS currently active to attach the note to.
+  function logAction(alertId: number | null, actionType: "category" | "call", detail: string) {
+    if (alertId == null) return
+    apiPost(`/sos/${alertId}/actions`, { action_type: actionType, detail }).catch(() => {})
+  }
 
   // `dial`: when firing from inside the full-screen panel (a number was tapped directly), also
   // opens the phone dialer to that number — the panel itself was already reached deliberately
@@ -69,6 +81,7 @@ export function SosButton({
     dial?: string,
     kind: "sos" | "help" = "sos",
     contactName?: string,
+    logDetail?: string,
   ) {
     setSending(true)
     setPanelOpen(false)
@@ -85,7 +98,12 @@ export function SosButton({
       })
       if (dial) window.location.href = `tel:${dial}`
       const alert = await alertPromise
-      if (alert.kind === "sos") onTriggered(alert.id)
+      if (alert.kind === "sos") {
+        onTriggered(alert.id)
+        if (logDetail) logAction(alert.id, dial ? "call" : "category", logDetail)
+      } else if (logDetail) {
+        logAction(activeSosId, "call", logDetail)
+      }
       if (navigator.vibrate) navigator.vibrate([200, 100, 200])
     } catch {
       // Best-effort — the button itself has no error UI; a failed trigger is silent rather
@@ -146,7 +164,7 @@ export function SosButton({
                   <button
                     type="button"
                     className="sos-panel-category-header"
-                    onClick={() => fire(c.key)}
+                    onClick={() => fire(c.key, undefined, "sos", undefined, c.label)}
                     aria-label={`${c.label} SOS`}
                   >
                     <span className="sos-panel-category-bgicon">
@@ -167,7 +185,7 @@ export function SosButton({
                               key={ct.id}
                               href={`tel:${ct.phone}`}
                               className="sos-panel-quick-dial-item"
-                              onClick={() => fire(c.key, ct.phone, "help", ct.name)}
+                              onClick={() => fire(c.key, ct.phone, "help", ct.name, `Called ${ct.name}`)}
                             >
                               <span className="sos-panel-quick-dial-item-icon">
                                 <PhoneIcon />
@@ -210,7 +228,9 @@ export function SosButton({
               key={generalContacts[0].id}
               href={`tel:${generalContacts[0].phone}`}
               className="sos-panel-dial sos-panel-general-left"
-              onClick={() => fire("general", generalContacts[0].phone)}
+              onClick={() =>
+                fire("general", generalContacts[0].phone, "sos", undefined, `Called ${generalContacts[0].name}`)
+              }
             >
               <span className="sos-panel-dial-icon">
                 <PhoneIcon />
@@ -221,7 +241,7 @@ export function SosButton({
           <a
             href={`tel:${emergencyNumber}`}
             className="sos-panel-dial sos-panel-dial-911"
-            onClick={() => fire("general", emergencyNumber)}
+            onClick={() => fire("general", emergencyNumber, "sos", undefined, `Called ${emergencyLabel}`)}
             aria-label={`Call ${emergencyLabel}`}
           >
             <svg className="sos-panel-dial-911-arc" viewBox="0 0 104 104" aria-hidden="true">
@@ -241,7 +261,9 @@ export function SosButton({
               key={generalContacts[1].id}
               href={`tel:${generalContacts[1].phone}`}
               className="sos-panel-dial sos-panel-general-right"
-              onClick={() => fire("general", generalContacts[1].phone)}
+              onClick={() =>
+                fire("general", generalContacts[1].phone, "sos", undefined, `Called ${generalContacts[1].name}`)
+              }
             >
               <span className="sos-panel-dial-icon">
                 <PhoneIcon />

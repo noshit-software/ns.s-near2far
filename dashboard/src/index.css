@@ -747,6 +747,17 @@ h3 {
   opacity: 0.9;
 }
 
+.sos-alarm-actions {
+  margin: 0.75rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.85rem;
+  opacity: 0.85;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
 .sos-alarm-ack {
   margin-top: 1rem;
   font: inherit;
@@ -802,6 +813,7 @@ h3 {
   right: 0;
   z-index: 2000;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
@@ -810,6 +822,25 @@ h3 {
   color: white;
   font-size: 0.85rem;
   font-weight: 700;
+}
+
+/* Live/persisted trail of what's happened during this alert — flex-basis:100% drops it to its
+   own line below the "SOS active"/Disable row instead of squeezing into that single row. */
+.sos-active-banner-actions {
+  flex-basis: 100%;
+  margin: 0.3rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 400;
+  opacity: 0.9;
+}
+
+.sos-active-banner-actions li::before {
+  content: "· ";
 }
 
 .sos-active-banner button {

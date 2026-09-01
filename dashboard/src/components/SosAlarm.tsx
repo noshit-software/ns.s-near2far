@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 
+import { apiGet } from "../lib/api"
 import { getClientId } from "../lib/clientId"
 import { BadgeIcon, BellIcon, CarIcon, MedicalCrossIcon, SuspiciousIcon } from "./icons"
 
@@ -12,6 +13,14 @@ type SosAlert = {
   kind: "sos" | "help"
   contact_name: string | null
   origin_client_id: string
+  created_at: string
+}
+
+type SosAction = {
+  id: number
+  alert_id: number
+  action_type: "category" | "call"
+  detail: string
   created_at: string
 }
 
@@ -70,6 +79,7 @@ export function SosAlarm({ lastEvent }: { lastEvent: unknown }) {
   const [alert, setAlert] = useState<SosAlert | null>(null)
   const [silenced, setSilenced] = useState(false)
   const [helpToast, setHelpToast] = useState<SosAlert | null>(null)
+  const [actions, setActions] = useState<SosAction[]>([])
   const stopSiren = useRef<(() => void) | null>(null)
 
   useEffect(() => {
@@ -84,12 +94,30 @@ export function SosAlarm({ lastEvent }: { lastEvent: unknown }) {
       } else {
         setAlert(a)
         setSilenced(false)
+        setActions([])
       }
     } else if (type === "sos.acknowledged") {
       const { id } = payload as { id: number }
       setAlert((prev) => (prev?.id === id ? null : prev))
+    } else if (type === "sos.action_logged") {
+      const action = payload as SosAction
+      setAlert((current) => {
+        if (current?.id === action.alert_id) setActions((prev) => [...prev, action])
+        return current
+      })
     }
   }, [lastEvent])
+
+  // Live-appended actions above cover anything that happens *after* this device started
+  // watching — this fills in whatever happened between the alert firing and this device's
+  // full-screen overlay actually mounting (a real gap: the trigger fires the WS event
+  // immediately, but this component's own render/effect cycle isn't instant).
+  useEffect(() => {
+    if (!alert) return
+    apiGet<SosAction[]>(`/sos/${alert.id}/actions`)
+      .then(setActions)
+      .catch(() => {})
+  }, [alert?.id])
 
   useEffect(() => {
     if (!helpToast) return
@@ -142,6 +170,13 @@ export function SosAlarm({ lastEvent }: { lastEvent: unknown }) {
           {alert.address ??
             (alert.lat != null ? `${alert.lat.toFixed(5)}, ${alert.lng?.toFixed(5)}` : "Location unavailable")}
         </div>
+        {actions.length > 0 && (
+          <ul className="sos-alarm-actions">
+            {actions.map((a) => (
+              <li key={a.id}>{a.detail}</li>
+            ))}
+          </ul>
+        )}
       </div>
       {!silenced ? (
         <button type="button" className="sos-alarm-ack" onClick={() => setSilenced(true)}>

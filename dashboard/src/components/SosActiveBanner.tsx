@@ -1,6 +1,14 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
-import { apiPost, getAdminPassword } from "../lib/api"
+import { apiGet, apiPost, getAdminPassword } from "../lib/api"
+
+type SosAction = {
+  id: number
+  alert_id: number
+  action_type: "category" | "call"
+  detail: string
+  created_at: string
+}
 
 // Shown only on the device that triggered the SOS (SetupWizard tracks that via the id returned
 // from the trigger call). Disabling requires re-typing the admin password as a confirmation
@@ -9,14 +17,31 @@ import { apiPost, getAdminPassword } from "../lib/api"
 // grabs this exact phone, "make it stop" shouldn't be a single tap.
 export function SosActiveBanner({
   alertId,
+  lastEvent,
   onCleared,
 }: {
   alertId: number
+  lastEvent: unknown
   onCleared: () => void
 }) {
   const [confirming, setConfirming] = useState(false)
   const [code, setCode] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [actions, setActions] = useState<SosAction[]>([])
+
+  useEffect(() => {
+    apiGet<SosAction[]>(`/sos/${alertId}/actions`)
+      .then(setActions)
+      .catch(() => {})
+  }, [alertId])
+
+  useEffect(() => {
+    if (!lastEvent || typeof lastEvent !== "object") return
+    const { type, payload } = lastEvent as { type?: string; payload?: unknown }
+    if (type !== "sos.action_logged") return
+    const action = payload as SosAction
+    if (action.alert_id === alertId) setActions((prev) => [...prev, action])
+  }, [lastEvent, alertId])
 
   async function disable() {
     setError(null)
@@ -38,6 +63,13 @@ export function SosActiveBanner({
       {!confirming ? (
         <>
           <span>SOS active — everyone else's device is alarming</span>
+          {actions.length > 0 && (
+            <ul className="sos-active-banner-actions">
+              {actions.map((a) => (
+                <li key={a.id}>{a.detail}</li>
+              ))}
+            </ul>
+          )}
           <button type="button" onClick={() => setConfirming(true)}>
             Disable
           </button>

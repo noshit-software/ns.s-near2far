@@ -29,6 +29,14 @@ class SosTriggerBody(BaseModel):
     exclude_endpoint: str | None = None
 
 
+class SosActionBody(BaseModel):
+    action_type: str
+    detail: str
+
+
+ACTION_TYPES = {"category", "call"}
+
+
 def _alert_dict(row) -> dict:
     return {
         "id": row["id"],
@@ -140,3 +148,54 @@ async def active_sos(request: Request) -> dict:
         return {"success": True, "data": None}
 
     return {"success": True, "data": _alert_dict(row)}
+
+
+@router.post("/api/sos/{alert_id}/actions", dependencies=[Depends(require_admin_auth)])
+async def log_sos_action(alert_id: int, body: SosActionBody, request: Request) -> dict:
+    if body.action_type not in ACTION_TYPES:
+        raise HTTPException(status_code=400, detail="Unknown action_type")
+
+    async with request.app.state.db_pool.acquire() as conn:
+        exists = await conn.fetchval("SELECT id FROM runtime.sos_alerts WHERE id = $1", alert_id)
+        if exists is None:
+            raise HTTPException(status_code=404, detail="Alert not found")
+
+        row = await conn.fetchrow(
+            "INSERT INTO runtime.sos_alert_actions (alert_id, action_type, detail) "
+            "VALUES ($1, $2, $3) RETURNING id, alert_id, action_type, detail, created_at",
+            alert_id,
+            body.action_type,
+            body.detail,
+        )
+
+    action = {
+        "id": row["id"],
+        "alert_id": row["alert_id"],
+        "action_type": row["action_type"],
+        "detail": row["detail"],
+        "created_at": row["created_at"].isoformat(),
+    }
+    await publish("sos.action_logged", action)
+    return {"success": True, "data": action}
+
+
+@router.get("/api/sos/{alert_id}/actions", dependencies=[Depends(require_admin_auth)])
+async def list_sos_actions(alert_id: int, request: Request) -> dict:
+    async with request.app.state.db_pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT id, alert_id, action_type, detail, created_at FROM runtime.sos_alert_actions "
+            "WHERE alert_id = $1 ORDER BY created_at",
+            alert_id,
+        )
+
+    actions = [
+        {
+            "id": r["id"],
+            "alert_id": r["alert_id"],
+            "action_type": r["action_type"],
+            "detail": r["detail"],
+            "created_at": r["created_at"].isoformat(),
+        }
+        for r in rows
+    ]
+    return {"success": True, "data": actions}

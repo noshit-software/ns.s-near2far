@@ -317,7 +317,7 @@ export function SetupWizard() {
     <div className="app-shell">
       <SosAlarm lastEvent={lastEvent} />
       {activeSosId != null && (
-        <SosActiveBanner alertId={activeSosId} onCleared={() => setActiveSosId(null)} />
+        <SosActiveBanner alertId={activeSosId} lastEvent={lastEvent} onCleared={() => setActiveSosId(null)} />
       )}
       <header className="app-topbar">
         <h1>{showSettings ? "Settings" : household.name}</h1>
@@ -561,7 +561,7 @@ export function SetupWizard() {
         >
           <MapIcon />
         </button>
-        <SosButton household={household} onTriggered={setActiveSosId} />
+        <SosButton household={household} activeSosId={activeSosId} onTriggered={setActiveSosId} />
         <button
           type="button"
           className={`tab-button ${showSettings ? "active" : ""}`}
