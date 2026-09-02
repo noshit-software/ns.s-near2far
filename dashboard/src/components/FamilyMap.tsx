@@ -21,8 +21,13 @@ type Position = {
   color: string | null
   lat: number
   lng: number
+  battery: number | null
   recorded_at: string
 }
+
+// Matches the backend's own low-battery push threshold (app/battery_alerts.py) so the map
+// badge appears exactly when a warning would've fired, not at some independently-chosen cutoff.
+const LOW_BATTERY_THRESHOLD = 20
 
 // Full avatar size at "close" zoom, in px. Every other tier below is a fraction of this.
 const BASE_SIZE = 120
@@ -331,6 +336,9 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
               <span className="member-detail-meta">
                 {activeStatus && <span className="member-panel-status">{activeStatus}</span>}
                 <span className="member-panel-time">{relativeTime(activeMember.recorded_at)}</span>
+                {activeMember.battery !== null && activeMember.battery <= LOW_BATTERY_THRESHOLD && (
+                  <span className="member-panel-battery-low">🔋 {activeMember.battery}%</span>
+                )}
               </span>
             </div>
           </div>

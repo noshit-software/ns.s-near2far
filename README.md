@@ -32,7 +32,8 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   past neighborhood level, live-updated over the existing WebSocket event stream. A one-click
   quick-select strip of thumbnail avatars sits along the bottom — thumb-sized so a typical
   household's members all fit on one row with no scrolling — with a single expanded detail card
-  below it (avatar, name, moving/stationary status with speed, relative last-seen time) for
+  below it (avatar, name, moving/stationary status with speed, relative last-seen time, and a red
+  low-battery badge once their phone's reported level drops to 20% or below) for
   whichever member is currently selected; tapping an avatar in the strip selects that member and
   centers the map on them, snapping to a zoom level chosen from their last-known speed (closer for
   stationary/walking, wider for driving) rather than a fixed zoom — the already-selected avatar
@@ -431,6 +432,17 @@ Leaving `VAPID_PRIVATE_KEY` blank disables push entirely — the trip detector s
 `send_push_to_household` no-ops, and the dashboard's enable button hides itself once it sees no key
 returned from `/api/push/vapid-public-key`.
 
+## Low-battery alerts (Web Push)
+
+OwnTracks reports battery percentage on every location update (`batt`, 0-100); Traccar and Overland
+don't send one, so members on those sources just never trigger this. `app/battery_alerts.py` mirrors
+`trips.py`'s per-member in-memory state pattern: the first report at or below 20% fires a single push
+("Alex's phone is low on battery"), then stays quiet on every subsequent low report from that member
+until their battery climbs back above 40% — a hysteresis gap so it doesn't re-fire on every position
+update while hovering around the threshold. Uses the same push subscriptions/VAPID setup as trip
+alerts above — no separate opt-in. The map's member-detail panel shows a red battery badge under the
+same 20% threshold.
+
 ## Editing a member
 
 Tapping a member's row in Settings opens a bottom-sheet **Edit member** modal — the one place
@@ -587,6 +599,8 @@ there, like a modal. Put the blur on a `::before`/`::after` pseudo-element inste
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
   );
   ```
+  The low-battery warning needs a `battery` column on `runtime.positions` on an existing install:
+  `ALTER TABLE runtime.positions ADD COLUMN IF NOT EXISTS battery SMALLINT;`
   The one-tap emergency call buttons need `substrate.emergency_contacts` on an existing install
   (category `NULL` = general, shown for every SOS category; a specific category's contacts only
   show once that category is engaged):

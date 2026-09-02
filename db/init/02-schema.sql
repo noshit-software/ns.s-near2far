@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS runtime.positions (
   member_id UUID NOT NULL REFERENCES substrate.members(id) ON DELETE CASCADE,
   lat DOUBLE PRECISION NOT NULL,
   lng DOUBLE PRECISION NOT NULL,
+  battery SMALLINT,
   recorded_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

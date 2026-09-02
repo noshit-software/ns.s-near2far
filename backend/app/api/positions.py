@@ -9,6 +9,7 @@ from app.auth import verify_password
 from app.config import settings
 from app.events import publish
 from app.middleware.auth import require_admin_auth
+from app.battery_alerts import on_battery as _on_battery
 from app.trips import on_position as _on_position
 
 router = APIRouter()
@@ -59,6 +60,7 @@ class OwnTracksLocation(BaseModel):
     lon: float | None = None
     tst: int | None = None  # unix seconds
     tid: str | None = None  # tracker ID — used as our device_id
+    batt: int | None = None  # battery percentage, 0-100
 
 
 def _position_dict(
@@ -77,6 +79,7 @@ def _position_dict(
         "color": color,
         "lat": row["lat"],
         "lng": row["lng"],
+        "battery": row["battery"],
         "recorded_at": row["recorded_at"].isoformat(),
     }
 
@@ -92,6 +95,7 @@ async def _record_position(
     lat: float,
     lng: float,
     recorded_at: datetime | None = None,
+    battery: int | None = None,
 ) -> dict | None:
     if lat == 0 and lng == 0:
         # (0, 0) — "null island" — is the standard sentinel a GPS source sends when it has no
@@ -103,24 +107,27 @@ async def _record_position(
 
     if recorded_at is not None:
         row = await conn.fetchrow(
-            "INSERT INTO runtime.positions (member_id, lat, lng, recorded_at) VALUES ($1, $2, $3, $4) "
-            "RETURNING id, member_id, lat, lng, recorded_at",
+            "INSERT INTO runtime.positions (member_id, lat, lng, battery, recorded_at) VALUES ($1, $2, $3, $4, $5) "
+            "RETURNING id, member_id, lat, lng, battery, recorded_at",
             member_id,
             lat,
             lng,
+            battery,
             recorded_at,
         )
     else:
         row = await conn.fetchrow(
-            "INSERT INTO runtime.positions (member_id, lat, lng) VALUES ($1, $2, $3) "
-            "RETURNING id, member_id, lat, lng, recorded_at",
+            "INSERT INTO runtime.positions (member_id, lat, lng, battery) VALUES ($1, $2, $3, $4) "
+            "RETURNING id, member_id, lat, lng, battery, recorded_at",
             member_id,
             lat,
             lng,
+            battery,
         )
     data = _position_dict(member_id, display_name, avatar_filename, avatar_seed, color, row)
     await publish("position.updated", data)
     await _on_position(conn, member_id, display_name, household_id, lat, lng, row["recorded_at"])
+    await _on_battery(conn, member_id, display_name, household_id, battery)
     return data
 
 
@@ -130,7 +137,7 @@ async def latest_positions(request: Request) -> dict:
         rows = await conn.fetch(
             """
             SELECT DISTINCT ON (p.member_id)
-                p.member_id, m.display_name, m.avatar_filename, m.avatar_seed, m.color, p.lat, p.lng, p.recorded_at
+                p.member_id, m.display_name, m.avatar_filename, m.avatar_seed, m.color, p.lat, p.lng, p.battery, p.recorded_at
             FROM runtime.positions p
             JOIN substrate.members m ON m.id = p.member_id
             ORDER BY p.member_id, p.recorded_at DESC
@@ -293,6 +300,7 @@ async def owntracks_forward(body: OwnTracksLocation | list[OwnTracksLocation], r
                 report.lat,
                 report.lon,
                 recorded_at=recorded_at,
+                battery=report.batt,
             )
 
     return []

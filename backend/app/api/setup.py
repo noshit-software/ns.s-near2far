@@ -6,7 +6,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 
-from app import trips
+from app import battery_alerts, trips
 from app.auth import hash_password, verify_password
 from app.config import settings
 from app.events import publish
@@ -428,6 +428,7 @@ async def delete_member(member_id: str, request: Request) -> dict:
         (AVATAR_DIR / row["avatar_filename"]).unlink(missing_ok=True)
 
     trips.forget_member(member_id)
+    battery_alerts.forget_member(member_id)
     await publish("member.deleted", {"id": str(row["id"])})
     return {"success": True, "data": None}
 

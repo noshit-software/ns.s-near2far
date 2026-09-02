@@ -1080,6 +1080,18 @@ h3 {
   color: #c8c8c8;
 }
 
+.member-panel-battery-low {
+  color: #ff8080;
+  font-weight: 600;
+}
+
+.member-panel-battery-low::before {
+  content: "·";
+  margin-right: 0.4rem;
+  font-weight: 400;
+  color: #c8c8c8;
+}
+
 /* Leaflet's own zoom control renders with its stock white/boxy default look — never restyled,
    so it stuck out against the app's glass theme everywhere else on the map. */
 .family-map .leaflet-control-zoom {

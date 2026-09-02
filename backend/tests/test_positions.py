@@ -29,6 +29,7 @@ async def test_real_position_is_recorded():
         "member_id": "member-1",
         "lat": 37.7749,
         "lng": -122.4194,
+        "battery": None,
         "recorded_at": datetime(2026, 1, 1, tzinfo=timezone.utc),
     }
     conn = FakeConn(fetchrow_result=fake_row)
@@ -51,6 +52,7 @@ async def test_explicit_recorded_at_is_used_over_server_time():
         "member_id": "member-1",
         "lat": 1.0,
         "lng": 2.0,
+        "battery": None,
         "recorded_at": client_ts,
     }
     conn = FakeConn(fetchrow_result=fake_row)
