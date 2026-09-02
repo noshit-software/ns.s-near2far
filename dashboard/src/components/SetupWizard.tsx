@@ -9,6 +9,7 @@ import { LocationPicker } from "./LocationPicker"
 import { MemberEditModal } from "./MemberEditModal"
 import { NotificationSetup } from "./NotificationSetup"
 import { PasswordInput } from "./PasswordInput"
+import { Place, PlacesManager } from "./PlacesManager"
 import { SosActiveBanner } from "./SosActiveBanner"
 import { SosAlarm } from "./SosAlarm"
 import { SosButton } from "./SosButton"
@@ -38,6 +39,7 @@ type Household = {
   emergency_label: string
   members: Member[]
   emergency_contacts: EmergencyContact[]
+  places: Place[]
 }
 
 const SOS_CATEGORY_LABELS: Record<string, string> = {
@@ -174,7 +176,7 @@ export function SetupWizard() {
       })
       setAdminPassword(adminPassword)
       setUnlocked(true)
-      setHousehold({ ...created, members: [], emergency_contacts: [] })
+      setHousehold({ ...created, members: [], emergency_contacts: [], places: [] })
     } catch (e) {
       setError((e as Error).message)
     }
@@ -336,6 +338,17 @@ export function SetupWizard() {
               onChange={updateGeofence}
               height={200}
               lockedByDefault
+            />
+
+            <h3>Places</h3>
+            <p className="hint">
+              Get a push notification whenever a member arrives at or leaves one of these — same
+              as Home.
+            </p>
+            <PlacesManager
+              householdId={household.id}
+              places={household.places}
+              onChange={(places) => setHousehold({ ...household, places })}
             />
 
             <div className="section-heading-row">

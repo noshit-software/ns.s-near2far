@@ -6,7 +6,7 @@ import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile
 from pydantic import BaseModel
 
-from app import battery_alerts, trips
+from app import battery_alerts, geofence_alerts, trips
 from app.auth import hash_password, verify_password
 from app.config import settings
 from app.events import publish
@@ -41,6 +41,21 @@ def _household_dict(row) -> dict:
 
 
 class HomeGeofence(BaseModel):
+    lat: float
+    lng: float
+    radius_m: float
+
+
+class CreatePlace(BaseModel):
+    household_id: str
+    name: str
+    lat: float
+    lng: float
+    radius_m: float
+
+
+class UpdatePlace(BaseModel):
+    name: str
     lat: float
     lng: float
     radius_m: float
@@ -145,6 +160,11 @@ async def get_household(request: Request) -> dict:
             "WHERE household_id = $1 ORDER BY sort_order, id",
             household["id"],
         )
+        places = await conn.fetch(
+            "SELECT id, name, lat, lng, radius_m FROM substrate.places "
+            "WHERE household_id = $1 ORDER BY created_at",
+            household["id"],
+        )
 
     return {
         "success": True,
@@ -152,6 +172,7 @@ async def get_household(request: Request) -> dict:
             **_household_dict(household),
             "members": [{**dict(m), "id": str(m["id"])} for m in members],
             "emergency_contacts": [{**dict(c), "id": str(c["id"])} for c in contacts],
+            "places": [{**dict(p), "id": str(p["id"])} for p in places],
         },
     }
 
@@ -192,6 +213,57 @@ async def update_geofence(body: HomeGeofence, request: Request) -> dict:
     data = _household_dict(row)
     await publish("household.updated", data)
     return {"success": True, "data": data}
+
+
+@router.post("/api/setup/places", dependencies=[Depends(require_admin_auth)])
+async def create_place(body: CreatePlace, request: Request) -> dict:
+    async with request.app.state.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "INSERT INTO substrate.places (household_id, name, lat, lng, radius_m) "
+            "VALUES ($1, $2, $3, $4, $5) RETURNING id, name, lat, lng, radius_m",
+            body.household_id,
+            body.name,
+            body.lat,
+            body.lng,
+            body.radius_m,
+        )
+
+    data = {**dict(row), "id": str(row["id"])}
+    await publish("household.updated", None)
+    return {"success": True, "data": data}
+
+
+@router.post("/api/setup/places/{place_id}", dependencies=[Depends(require_admin_auth)])
+async def update_place(place_id: str, body: UpdatePlace, request: Request) -> dict:
+    async with request.app.state.db_pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "UPDATE substrate.places SET name = $1, lat = $2, lng = $3, radius_m = $4 "
+            "WHERE id = $5 RETURNING id, name, lat, lng, radius_m",
+            body.name,
+            body.lat,
+            body.lng,
+            body.radius_m,
+            place_id,
+        )
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Place not found")
+
+    data = {**dict(row), "id": str(row["id"])}
+    await publish("household.updated", None)
+    return {"success": True, "data": data}
+
+
+@router.delete("/api/setup/places/{place_id}", dependencies=[Depends(require_admin_auth)])
+async def delete_place(place_id: str, request: Request) -> dict:
+    async with request.app.state.db_pool.acquire() as conn:
+        result = await conn.execute("DELETE FROM substrate.places WHERE id = $1", place_id)
+
+    if result == "DELETE 0":
+        raise HTTPException(status_code=404, detail="Place not found")
+
+    await publish("household.updated", None)
+    return {"success": True, "data": None}
 
 
 @router.post("/api/setup/household/emergency-number", dependencies=[Depends(require_admin_auth)])
@@ -429,6 +501,7 @@ async def delete_member(member_id: str, request: Request) -> dict:
 
     trips.forget_member(member_id)
     battery_alerts.forget_member(member_id)
+    geofence_alerts.forget_member(member_id)
     await publish("member.deleted", {"id": str(row["id"])})
     return {"success": True, "data": None}
 

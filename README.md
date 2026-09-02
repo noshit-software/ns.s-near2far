@@ -443,6 +443,15 @@ update while hovering around the threshold. Uses the same push subscriptions/VAP
 alerts above — no separate opt-in. The map's member-detail panel shows a red battery badge under the
 same 20% threshold.
 
+## Place alerts (Web Push)
+
+Beyond the "Home" geofence every household already has, Settings has a **Places** list (school,
+work, grandma's, etc. — add/edit/remove, same click-to-place-pin picker as Home) backed by
+`substrate.places`. `app/geofence_alerts.py` checks every recorded position against Home plus all
+of a household's places and, on each arrive/leave transition, sends a push ("Alex arrived at
+School" / "Alex left Work") — same per-member in-memory state pattern as trip and battery alerts,
+same push subscriptions/VAPID setup, no separate opt-in.
+
 ## Editing a member
 
 Tapping a member's row in Settings opens a bottom-sheet **Edit member** modal — the one place
@@ -601,6 +610,18 @@ there, like a modal. Put the blur on a `::before`/`::after` pseudo-element inste
   ```
   The low-battery warning needs a `battery` column on `runtime.positions` on an existing install:
   `ALTER TABLE runtime.positions ADD COLUMN IF NOT EXISTS battery SMALLINT;`
+  Place alerts need `substrate.places` on an existing install:
+  ```sql
+  CREATE TABLE IF NOT EXISTS substrate.places (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    household_id UUID NOT NULL REFERENCES substrate.households(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    lat DOUBLE PRECISION NOT NULL,
+    lng DOUBLE PRECISION NOT NULL,
+    radius_m DOUBLE PRECISION NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  );
+  ```
   The one-tap emergency call buttons need `substrate.emergency_contacts` on an existing install
   (category `NULL` = general, shown for every SOS category; a specific category's contacts only
   show once that category is engaged):

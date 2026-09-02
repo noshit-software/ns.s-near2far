@@ -10,6 +10,7 @@ from app.config import settings
 from app.events import publish
 from app.middleware.auth import require_admin_auth
 from app.battery_alerts import on_battery as _on_battery
+from app.geofence_alerts import on_position as _on_geofence
 from app.trips import on_position as _on_position
 
 router = APIRouter()
@@ -128,6 +129,7 @@ async def _record_position(
     await publish("position.updated", data)
     await _on_position(conn, member_id, display_name, household_id, lat, lng, row["recorded_at"])
     await _on_battery(conn, member_id, display_name, household_id, battery)
+    await _on_geofence(conn, member_id, display_name, household_id, lat, lng)
     return data
 
 

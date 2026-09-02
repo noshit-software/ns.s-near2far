@@ -41,8 +41,8 @@ async def test_real_position_is_recorded():
     assert result["lng"] == -122.4194
     assert result["color"] == "#ff0000"
     assert result["display_name"] == "Alex"
-    assert len(conn.calls) == 1
     assert conn.calls[0][0] == "fetchrow"
+    assert "INSERT INTO runtime.positions" in conn.calls[0][1][0]
 
 
 async def test_explicit_recorded_at_is_used_over_server_time():

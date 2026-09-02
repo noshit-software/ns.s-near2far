@@ -1303,6 +1303,53 @@ h3 {
   color: var(--accent);
 }
 
+/* --- Places (geofence alerts beyond Home) --- */
+
+.places-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+  padding: 0;
+  list-style: none;
+}
+
+.place-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
+.place-row-editing {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.place-row-name {
+  font-weight: 600;
+  flex: 1;
+}
+
+.place-row-radius {
+  font-size: 0.75rem;
+  color: var(--text-muted, #999);
+}
+
+.place-row-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.place-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
 /* --- Member edit modal --- */
 
 .member-edit-modal-root {

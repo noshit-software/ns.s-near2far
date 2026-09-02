@@ -39,6 +39,19 @@ CREATE TABLE IF NOT EXISTS substrate.members (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Named places beyond "Home" (school, work, grandma's, etc.) for arrival/departure push
+-- alerts. Home itself stays on households.home_geofence (pre-existing, and every household has
+-- exactly one) — this table is for the open-ended list of everywhere else.
+CREATE TABLE IF NOT EXISTS substrate.places (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  household_id UUID NOT NULL REFERENCES substrate.households(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  lat DOUBLE PRECISION NOT NULL,
+  lng DOUBLE PRECISION NOT NULL,
+  radius_m DOUBLE PRECISION NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS runtime.positions (
   id BIGSERIAL PRIMARY KEY,
   member_id UUID NOT NULL REFERENCES substrate.members(id) ON DELETE CASCADE,
