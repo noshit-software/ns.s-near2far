@@ -29,7 +29,11 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   renders as a circular avatar marker (their uploaded photo, or a generated placeholder — see
   "Member avatars"),
   shrinking through 80/60/40% size tiers and finally to a plain colored dot (20%) as you zoom out
-  past neighborhood level, live-updated over the existing WebSocket event stream. A one-click
+  past neighborhood level, live-updated over the existing WebSocket event stream — which re-fetches
+  `/api/positions/latest` outright whenever the socket reconnects or the tab becomes visible again
+  (`lib/ws.ts`'s `ws.reconnected` signal, `FamilyMap`'s `visibilitychange` listener), so a
+  backgrounded/locked/slept device that missed updates while its socket was silently dead catches
+  up instead of leaving a marker frozen at its last-known spot. A one-click
   quick-select strip of thumbnail avatars sits along the bottom — thumb-sized so a typical
   household's members all fit on one row with no scrolling — with a single expanded detail card
   below it (avatar, name, moving/stationary status with speed, relative last-seen time, and a red

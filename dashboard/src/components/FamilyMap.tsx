@@ -226,7 +226,7 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
     mapRef.current?.flyTo([p.lat, p.lng], zoomForSpeed(speedsRef.current[p.member_id]))
   }
 
-  useEffect(() => {
+  function refetchPositions() {
     apiGet<Position[]>("/positions/latest")
       .then((rows) => {
         const byMember: Record<string, Position> = {}
@@ -234,6 +234,22 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
         setPositions(byMember)
       })
       .catch(() => {})
+  }
+
+  useEffect(() => {
+    refetchPositions()
+  }, [])
+
+  // A backgrounded/locked/slept device can leave the WebSocket dead for a long stretch without
+  // the tab itself ever closing — reconnecting (see lib/ws.ts) or the tab becoming visible again
+  // are the two moments that matter: catch up on whatever position updates were missed, rather
+  // than leaving a marker frozen at its last-known spot indefinitely.
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === "visible") refetchPositions()
+    }
+    document.addEventListener("visibilitychange", onVisible)
+    return () => document.removeEventListener("visibilitychange", onVisible)
   }, [])
 
   useEffect(() => {
@@ -254,6 +270,8 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
     } else if (type === "sos.acknowledged") {
       const { id } = payload as { id: number }
       setSosMarker((prev) => (prev?.id === id ? null : prev))
+    } else if (type === "ws.reconnected") {
+      refetchPositions()
     }
   }, [lastEvent])
 
