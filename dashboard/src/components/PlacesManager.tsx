@@ -97,7 +97,7 @@ export function PlacesManager({
                   onChange={(pos) =>
                     onChange(places.map((p) => (p.id === place.id ? { ...p, ...pos } : p)))
                   }
-                  height={180}
+                  height={270}
                 />
                 <label>
                   Radius (m)
@@ -148,7 +148,7 @@ export function PlacesManager({
               autoFocus
             />
           </label>
-          <LocationPicker value={location} radiusM={Number(radiusM) || 0} onChange={setLocation} height={200} />
+          <LocationPicker value={location} radiusM={Number(radiusM) || 0} onChange={setLocation} height={300} />
           <label>
             Radius (m)
             <input value={radiusM} onChange={(e) => setRadiusM(e.target.value)} />
