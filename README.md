@@ -566,8 +566,34 @@ there, like a modal. Put the blur on a `::before`/`::after` pseudo-element inste
   pulling backend changes, you must `pm2 restart near2far` or the old code keeps running silently
   (symptom: a route that clearly exists in the code 404s with FastAPI's generic `{"detail":"Not
   Found"}`, meaning the route was never actually registered in the running process).
-- **`git pull` also doesn't rebuild the dashboard.** It only updates source files; nginx serves the
-  compiled `dashboard/dist/`, which only regenerates via an explicit `npm run build`.
+- **The dashboard is its own Docker container, not a bare `npm run build`.** `dashboard/Dockerfile`
+  is a multi-stage build — `npm install && npm run build` happens *inside* the image build, and the
+  result is baked into an nginx:alpine image; there's no host-side `dashboard/dist/` involved in
+  production at all. Running `npm run build` on the VPS host builds nothing anyone serves.
+  `pm2 restart near2far` only restarts the bare-host **backend** process — it has no effect on this
+  container whatsoever. The actual deploy step is
+  `docker compose build --no-cache --pull dashboard && docker compose up -d --no-deps dashboard`.
+  `--no-cache --pull` matters: a cached `RUN npm run build` layer can silently reuse the *old*
+  compiled output even after `git pull`'d source changes, with the build step reporting a
+  suspiciously-fast "success" and the live bundle hash never changing. `--no-deps` matters even
+  more: the dashboard service's `depends_on: [backend]` means a bare `up -d --build dashboard`
+  tries to recreate the docker-compose `backend` service too — which is a separate, essentially
+  vestigial container in production (real traffic is served by the bare pm2 process via the VPS's
+  own system-level nginx, not through anything in this repo's docker-compose stack) that isn't
+  normally running and can't rebuild/sync `uv` dependencies without outbound network access, which
+  this host's container network doesn't reliably have. Letting compose touch it needlessly is how a
+  routine dashboard deploy took the whole site down once already (see the nginx resolver note
+  below).
+- **The dashboard's nginx must not eagerly resolve `backend` at startup.** A static
+  `proxy_pass http://backend:8000;` in `dashboard/nginx.conf` gets resolved once, when nginx's
+  config loads — if the docker-compose `backend` container isn't up and healthy at that exact
+  moment (see above: it usually isn't, in production), nginx refuses to start at all
+  (`host not found in upstream "backend"`), crash-looping the *entire* dashboard container, not
+  just the unused `/api` proxy path. Every `/api`-ish `location` block instead does
+  `set $backend_upstream backend:8000; proxy_pass http://$backend_upstream;` with a
+  `resolver 127.0.0.11 valid=10s;` (Docker's embedded DNS) at the server level — this defers
+  resolution to request time, so a missing/unhealthy `backend` container just 502s those
+  (in-production-unused) routes instead of taking the dashboard down.
 - **`ufw` needs an explicit rule for every port containers need to reach on the host**, not just
   public-facing ones. The backend (port 5101, host-run via pm2) needs to be reachable from Docker's
   bridge networks for the traccar container's `TRACCAR_FORWARD_URL` to work —
