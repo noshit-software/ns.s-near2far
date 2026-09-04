@@ -78,11 +78,13 @@ export function PlacesManager({
     }
   }
 
+  const sortedPlaces = [...places].sort((a, b) => a.name.localeCompare(b.name))
+
   return (
     <div className="places-manager settings-group">
       {places.length > 0 && (
         <ul className="places-list">
-          {places.map((place) =>
+          {sortedPlaces.map((place) =>
             editingId === place.id ? (
               <li key={place.id} className="place-row place-row-editing">
                 <input
