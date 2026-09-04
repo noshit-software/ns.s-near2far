@@ -79,61 +79,63 @@ export function PlacesManager({
   }
 
   return (
-    <div className="places-manager">
-      <ul className="places-list">
-        {places.map((place) =>
-          editingId === place.id ? (
-            <li key={place.id} className="place-row place-row-editing">
-              <input
-                value={place.name}
-                onChange={(e) =>
-                  onChange(places.map((p) => (p.id === place.id ? { ...p, name: e.target.value } : p)))
-                }
-              />
-              <LocationPicker
-                value={{ lat: place.lat, lng: place.lng }}
-                radiusM={place.radius_m}
-                onChange={(pos) =>
-                  onChange(places.map((p) => (p.id === place.id ? { ...p, ...pos } : p)))
-                }
-                height={180}
-              />
-              <label>
-                Radius (m)
+    <div className="places-manager settings-group">
+      {places.length > 0 && (
+        <ul className="places-list">
+          {places.map((place) =>
+            editingId === place.id ? (
+              <li key={place.id} className="place-row place-row-editing">
                 <input
-                  value={place.radius_m}
+                  value={place.name}
                   onChange={(e) =>
-                    onChange(
-                      places.map((p) =>
-                        p.id === place.id ? { ...p, radius_m: Number(e.target.value) || 0 } : p,
-                      ),
-                    )
+                    onChange(places.map((p) => (p.id === place.id ? { ...p, name: e.target.value } : p)))
                   }
                 />
-              </label>
-              <div className="place-row-actions">
-                <button type="button" onClick={() => updatePlace(place)}>
-                  Save
+                <LocationPicker
+                  value={{ lat: place.lat, lng: place.lng }}
+                  radiusM={place.radius_m}
+                  onChange={(pos) =>
+                    onChange(places.map((p) => (p.id === place.id ? { ...p, ...pos } : p)))
+                  }
+                  height={180}
+                />
+                <label>
+                  Radius (m)
+                  <input
+                    value={place.radius_m}
+                    onChange={(e) =>
+                      onChange(
+                        places.map((p) =>
+                          p.id === place.id ? { ...p, radius_m: Number(e.target.value) || 0 } : p,
+                        ),
+                      )
+                    }
+                  />
+                </label>
+                <div className="place-row-actions">
+                  <button type="button" className="btn btn-add" onClick={() => updatePlace(place)}>
+                    Save
+                  </button>
+                  <button type="button" className="btn btn-edit" onClick={() => setEditingId(null)}>
+                    Cancel
+                  </button>
+                </div>
+              </li>
+            ) : (
+              <li key={place.id} className="place-row">
+                <span className="place-row-name">{place.name}</span>
+                <span className="place-row-radius">±{place.radius_m}m</span>
+                <button type="button" className="btn btn-edit" onClick={() => setEditingId(place.id)}>
+                  Edit
                 </button>
-                <button type="button" onClick={() => setEditingId(null)}>
-                  Cancel
+                <button type="button" className="btn btn-remove" onClick={() => removePlace(place.id)}>
+                  Remove
                 </button>
-              </div>
-            </li>
-          ) : (
-            <li key={place.id} className="place-row">
-              <span className="place-row-name">{place.name}</span>
-              <span className="place-row-radius">±{place.radius_m}m</span>
-              <button type="button" onClick={() => setEditingId(place.id)}>
-                Edit
-              </button>
-              <button type="button" onClick={() => removePlace(place.id)}>
-                Remove
-              </button>
-            </li>
-          ),
-        )}
-      </ul>
+              </li>
+            ),
+          )}
+        </ul>
+      )}
 
       {adding ? (
         <div className="place-add-form">
@@ -152,11 +154,17 @@ export function PlacesManager({
             <input value={radiusM} onChange={(e) => setRadiusM(e.target.value)} />
           </label>
           <div className="place-row-actions">
-            <button type="button" onClick={submitNewPlace} disabled={!name.trim() || !location}>
-              Add place
+            <button
+              type="button"
+              className="btn btn-add"
+              onClick={submitNewPlace}
+              disabled={!name.trim() || !location}
+            >
+              Add
             </button>
             <button
               type="button"
+              className="btn btn-edit"
               onClick={() => {
                 setAdding(false)
                 setName("")
@@ -168,8 +176,8 @@ export function PlacesManager({
           </div>
         </div>
       ) : (
-        <button type="button" onClick={() => setAdding(true)}>
-          Add a place
+        <button type="button" className="btn btn-add" onClick={() => setAdding(true)}>
+          Add
         </button>
       )}
       {error && <p className="error">{error}</p>}

@@ -374,52 +374,52 @@ export function SetupWizard() {
                 field below to link it to this member.
               </p>
             )}
-            <ul>
-              {household.members.map((m) => (
-                <li key={m.id} className="member-row">
-                  <button
-                    type="button"
-                    className="member-row-header member-row-edit-trigger"
-                    onClick={() => setEditingMemberId(m.id)}
-                  >
-                    <img
-                      className="member-row-avatar"
-                      src={
-                        m.avatar_filename
-                          ? `/uploads/avatars/${m.avatar_filename}`
-                          : generatedAvatarDataUri(m.avatar_seed)
-                      }
-                      alt=""
+            <div className="settings-group">
+              <ul>
+                {household.members.map((m) => (
+                  <li key={m.id} className="member-row">
+                    <div className="member-row-header">
+                      <img
+                        className="member-row-avatar"
+                        src={
+                          m.avatar_filename
+                            ? `/uploads/avatars/${m.avatar_filename}`
+                            : generatedAvatarDataUri(m.avatar_seed)
+                        }
+                        alt=""
+                      />
+                      <span>{m.display_name}</span>
+                    </div>
+                    <button type="button" className="btn btn-edit" onClick={() => setEditingMemberId(m.id)}>
+                      Edit
+                    </button>
+                  </li>
+                ))}
+              </ul>
+
+              {editingMemberId &&
+                (() => {
+                  const editing = household.members.find((m) => m.id === editingMemberId)
+                  return editing ? (
+                    <MemberEditModal
+                      member={editing}
+                      onUpdated={updateMember}
+                      onDeleted={removeMember}
+                      onClose={() => setEditingMemberId(null)}
                     />
-                    <span>{m.display_name}</span>
-                    <span className="member-row-edit-hint">Edit</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
+                  ) : null
+                })()}
 
-            {editingMemberId &&
-              (() => {
-                const editing = household.members.find((m) => m.id === editingMemberId)
-                return editing ? (
-                  <MemberEditModal
-                    member={editing}
-                    onUpdated={updateMember}
-                    onDeleted={removeMember}
-                    onClose={() => setEditingMemberId(null)}
-                  />
-                ) : null
-              })()}
-
-            <div className="member-form-row">
-              <input
-                value={memberName}
-                onChange={(e) => setMemberName(e.target.value)}
-                placeholder="Member name"
-              />
-              <button onClick={submitMember} disabled={!memberName}>
-                Add member
-              </button>
+              <div className="member-form-row">
+                <input
+                  value={memberName}
+                  onChange={(e) => setMemberName(e.target.value)}
+                  placeholder="Member name"
+                />
+                <button className="btn btn-add" onClick={submitMember} disabled={!memberName}>
+                  Add
+                </button>
+              </div>
             </div>
 
             <h3>Emergency number</h3>
@@ -427,33 +427,35 @@ export function SetupWizard() {
               The number and label the round SOS button dials — 911 by default, but not every
               region uses 911 (e.g. 112, 999).
             </p>
-            <div className="emergency-contact-row emergency-number-row">
-              <label className="emergency-number-field">
-                Label
-                <input
-                  defaultValue={household.emergency_label}
-                  maxLength={18}
-                  onBlur={(e) => {
-                    const label = e.target.value.trim()
-                    if (label && label !== household.emergency_label) {
-                      updateEmergencyNumber(household.emergency_number, label)
-                    }
-                  }}
-                />
-              </label>
-              <label className="emergency-number-field">
-                Number
-                <input
-                  defaultValue={household.emergency_number}
-                  type="tel"
-                  onBlur={(e) => {
-                    const number = e.target.value.trim()
-                    if (number && number !== household.emergency_number) {
-                      updateEmergencyNumber(number, household.emergency_label)
-                    }
-                  }}
-                />
-              </label>
+            <div className="settings-group">
+              <div className="emergency-contact-row emergency-number-row">
+                <label className="emergency-number-field">
+                  Label
+                  <input
+                    defaultValue={household.emergency_label}
+                    maxLength={18}
+                    onBlur={(e) => {
+                      const label = e.target.value.trim()
+                      if (label && label !== household.emergency_label) {
+                        updateEmergencyNumber(household.emergency_number, label)
+                      }
+                    }}
+                  />
+                </label>
+                <label className="emergency-number-field">
+                  Number
+                  <input
+                    defaultValue={household.emergency_number}
+                    type="tel"
+                    onBlur={(e) => {
+                      const number = e.target.value.trim()
+                      if (number && number !== household.emergency_number) {
+                        updateEmergencyNumber(number, household.emergency_label)
+                      }
+                    }}
+                  />
+                </label>
+              </div>
             </div>
 
             <h3>Emergency contacts</h3>
@@ -512,7 +514,7 @@ export function SetupWizard() {
                             if (phone && phone !== c.phone) updateEmergencyContact(c.id, c.name, phone, c.notes)
                           }}
                         />
-                        <button type="button" onClick={() => removeEmergencyContact(c.id)}>
+                        <button type="button" className="btn btn-remove" onClick={() => removeEmergencyContact(c.id)}>
                           Remove
                         </button>
                       </div>
@@ -543,7 +545,7 @@ export function SetupWizard() {
                           placeholder="Phone (e.g. 555-123-4567)"
                           type="tel"
                         />
-                        <button type="button" onClick={() => addEmergencyContact(category)}>
+                        <button type="button" className="btn btn-add" onClick={() => addEmergencyContact(category)}>
                           Add
                         </button>
                       </div>

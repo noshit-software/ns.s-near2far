@@ -11,6 +11,13 @@
   --accent: #d97110;
   --accent-hover: #e8873a;
   --danger: #ff6b6b;
+  /* "Planet blue" from the logo's moons — used for Add actions specifically, so Add/Edit/Remove
+     read as three distinct, consistent colors everywhere in Settings rather than each screen
+     inventing its own button look. */
+  --blue: #5980a6;
+  --blue-hover: #6f93b8;
+  --neutral: #46536a;
+  --neutral-hover: #56647d;
   --radius: 10px;
   /* Shared "liquid glass" tokens — same recipe as the SOS panel (translucent + blurred +
      bright inner-edge highlight) applied consistently across the top bar, tab bar, member
@@ -1258,8 +1265,9 @@ h3 {
 
 .member-row {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
 }
 
 .member-row-header {
@@ -1267,24 +1275,13 @@ h3 {
   align-items: center;
   gap: 0.6rem;
   font-weight: 600;
+  min-width: 0;
 }
 
-.setup-wizard .member-row-header.member-row-edit-trigger {
-  width: 100%;
-  background: transparent;
-  border: none;
-  padding: 0.4rem;
-  margin: -0.4rem;
-  border-radius: 8px;
-  font: inherit;
-  font-weight: 600;
-  color: var(--text);
-  cursor: pointer;
-  text-align: left;
-}
-
-.setup-wizard .member-row-header.member-row-edit-trigger:hover:not(:disabled) {
-  background: var(--surface-2);
+.member-row-header span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .member-row-avatar {
@@ -1296,11 +1293,59 @@ h3 {
   background: var(--surface-2);
 }
 
-.member-row-edit-hint {
-  margin-left: auto;
-  font-size: 0.75rem;
+/* Unified action-button system — every Add/Edit/Remove/Save/Cancel button in Settings uses one
+   of these three instead of each section inventing its own size/padding/color. Add is always
+   the logo's "planet blue," Remove is always the app's orange accent, Edit/Cancel are always
+   neutral grey — consistent regardless of which section they're in. */
+.setup-wizard .btn {
+  padding: 0.55rem 1.1rem;
+  border-radius: 8px;
+  border: none;
+  color: white;
+  font: inherit;
+  font-size: 0.85rem;
   font-weight: 600;
-  color: var(--accent);
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.setup-wizard .btn-add {
+  background: var(--blue);
+}
+
+.setup-wizard .btn-add:hover:not(:disabled) {
+  background: var(--blue-hover);
+}
+
+.setup-wizard .btn-remove {
+  background: var(--accent);
+}
+
+.setup-wizard .btn-remove:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.setup-wizard .btn-edit {
+  background: var(--neutral);
+}
+
+.setup-wizard .btn-edit:hover:not(:disabled) {
+  background: var(--neutral-hover);
+}
+
+/* Visually groups a section's actual content (list + add-row) in its own rounded container,
+   set to the page's own background — distinct from the surrounding glass settings card — so
+   it reads as one clearly-bounded unit at a glance. */
+.settings-group {
+  background: var(--bg);
+  border-radius: 16px;
+  padding: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.settings-group:last-child {
+  margin-bottom: 0;
 }
 
 /* --- Places (geofence alerts beyond Home) --- */
@@ -1780,6 +1825,9 @@ h3 {
 }
 
 .emergency-contact-group {
+  background: var(--bg);
+  border-radius: 16px;
+  padding: 0.85rem;
   margin-bottom: 1rem;
 }
 
@@ -1830,13 +1878,6 @@ h3 {
   flex: 1;
   min-width: 0;
   font-size: 0.9rem;
-}
-
-.emergency-contact-row > button {
-  flex-shrink: 0;
-  width: 80px;
-  padding: 0.5rem 0;
-  text-align: center;
 }
 
 .emergency-contact-reorder {
