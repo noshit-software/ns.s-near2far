@@ -682,11 +682,15 @@ there, like a modal. Put the blur on a `::before`/`::after` pseudo-element inste
   for a specific HTTP status code in the error page (e.g. "HTTP ERROR 400") before assuming DNS/
   firewall/network issues; that generic wrapper renders for any 4xx/5xx response with an empty body.
 - **A deployed frontend fix can be invisible even after confirming the new build is live on the
-  server.** The dashboard's `index.html` needs an explicit no-cache header (`add_header
-  Cache-Control "no-cache, must-revalidate";` in the nginx `location = /index.html` block) — the
-  hashed asset filenames (`assets/index-<hash>.js/.css`) are safe to cache forever since the hash
-  changes every build, but without this the HTML shell referencing them can get stuck cached
-  indefinitely. An **installed PWA on iOS is worse** — it doesn't reliably recheck for a new page on
+  server.** The dashboard's `index.html` needs `no-store` in its Cache-Control header (`add_header
+  Cache-Control "no-store, no-cache, must-revalidate";` in the nginx `location = /index.html` block) —
+  `no-store` is required because Cloudflare (and CDN edges generally) ignore `no-cache` alone and
+  cache the HTML at the edge anyway; `no-store` is what actually prevents edge caching. The `/assets/`
+  nginx block adds `Cache-Control: public, max-age=31536000, immutable` so hashed asset bundles
+  (`assets/index-<hash>.js/.css`) are cached aggressively by browsers and CDN edges — safe because
+  the hash changes on every build. Without `no-store` on `index.html`, any CDN will serve a stale
+  shell pointing at old bundle hashes to all clients indefinitely after a deploy, even when the
+  server itself is current. An **installed PWA on iOS is worse** — it doesn't reliably recheck for a new page on
   every open even with the right headers now in place, so after a dashboard deploy that should be
   visible, also **delete the home-screen icon and re-add it** (Safari → the site → Share → Add to
   Home Screen) if the fix still doesn't show up. Verify what's actually live yourself before
