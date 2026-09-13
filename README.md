@@ -521,26 +521,17 @@ a neighborhood.
 
 ### VPS deploy sequence
 
-> **⚠️ PRODUCTION = bare npm + pm2. NOT Docker.**
-> `docker-compose.yml` is local dev only — running `docker compose build` on the VPS builds
-> images that nothing serves. The dashboard is built directly on the host with `npm run build`.
-
-Run the same three steps every time, in this order, regardless of which files changed — the
-gotchas below are all cases of skipping one because "only the frontend changed" or "only the
-backend changed" seemed true at the time:
+The dashboard runs in Docker; the backend runs bare via pm2. Run all three steps every time
+regardless of which files changed:
 
 ```bash
 git pull
-cd dashboard && npm run build && cd ..
+docker compose build dashboard && docker compose up -d dashboard
 pm2 restart near2far
 ```
 
-Nothing runs via Docker Compose on the VPS by default — the backend/dashboard services in
-`docker-compose.yml` are for local dev only (they'd fight pm2/nginx for the same ports on the
-VPS), and `traccar` is now profile-gated (`profiles: ["traccar"]`) and opt-in, not part of the
-default stack — see "GPS setup" above for why (OwnTracks doesn't need a separate service at
-all). Only run `docker compose --profile traccar up -d --build traccar` if you're actually using
-Traccar.
+`traccar` is profile-gated and off by default — only run
+`docker compose --profile traccar up -d --build traccar` if you're actually using Traccar.
 
 ### CSS gotcha: `backdrop-filter` and `position: fixed` (learned the hard way, twice)
 
