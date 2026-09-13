@@ -9,6 +9,9 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/service-worker.js")
 }
 
+if (location.search.includes("_r=")) {
+  history.replaceState(null, "", location.pathname + location.hash)
+}
 setupAutoReload()
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

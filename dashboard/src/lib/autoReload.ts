@@ -1,10 +1,16 @@
 // Detects a new deploy and reloads automatically, so an installed PWA doesn't need a manual
-// force-quit/reopen (or delete/re-add) to pick up a fresh build — iOS doesn't reliably recheck
-// an installed PWA's page on its own, even with index.html's no-cache header in place.
+// force-quit/reopen to pick up a fresh build.
 //
 // Works by comparing the currently-loaded JS bundle's hashed filename (Vite content-hashes it
-// on every build) against whatever index.html actually references right now. Checked whenever
-// the app comes back to the foreground — the natural moment a stale page would otherwise linger.
+// on every build) against whatever index.html actually references right now.
+//
+// Two triggers:
+//   1. visibilitychange / focus — immediate on foreground
+//   2. 3-minute interval — iOS PWA drops these events unreliably; the interval is the backstop
+//
+// reload() is avoided: on iOS PWA it can silently serve the old cached shell even with
+// no-cache headers. Instead we navigate to /?_r=<timestamp> — a cache-busting URL that nginx's
+// try_files still serves as index.html, guaranteeing a fresh fetch. main.tsx strips the param.
 
 function currentBundleSrc(): string | null {
   const script = document.querySelector('script[type="module"][src*="/assets/"]')
@@ -21,10 +27,10 @@ export function setupAutoReload(): void {
       const html = await res.text()
       const match = html.match(/\/assets\/index-[^"]+\.js/)
       if (match && match[0] !== loaded) {
-        window.location.reload()
+        window.location.replace(window.location.pathname + "?_r=" + Date.now())
       }
     } catch {
-      // Offline or a transient network blip — just try again next time the app is foregrounded.
+      // Offline or transient network blip — try again on the next tick.
     }
   }
 
@@ -32,4 +38,5 @@ export function setupAutoReload(): void {
     if (document.visibilityState === "visible") check()
   })
   window.addEventListener("focus", check)
+  setInterval(check, 3 * 60 * 1000)
 }

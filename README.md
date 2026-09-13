@@ -47,8 +47,10 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   "Enable trip alerts" button (Settings, above "Home" — not on the map itself) subscribes
   the browser to Web Push; it renders nothing once already subscribed. Since an installed PWA doesn't
   reliably recheck for a new deploy on its own (especially on iOS), the dashboard compares its loaded
-  JS bundle against the server's on every foreground/focus and reloads automatically when they
-  differ — no manual close/reopen needed after a rebuild. The whole app shell — top bar, tab bar,
+  JS bundle against the server's on every foreground/focus and on a 3-minute interval (iOS PWA
+  drops visibility events unreliably), then navigates to a cache-busting URL rather than calling
+  `reload()` — iOS PWA can silently serve the old cached shell through a plain reload despite
+  no-cache headers. No manual close/reopen needed after a rebuild. The whole app shell — top bar, tab bar,
   member panel cards, settings/setup cards, and the SOS panel — shares one "liquid glass" look:
   heavily blurred, translucent surfaces with a bright inner-edge highlight, so whatever's behind
   (map, page content) stays visible through them instead of a solid card sitting on top. A round
