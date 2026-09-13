@@ -1042,6 +1042,7 @@ h3 {
 .member-strip-deselect {
   position: absolute;
   inset: 0;
+  z-index: 1;
   display: grid;
   place-items: center;
   background: rgba(0, 0, 0, 0.48);
