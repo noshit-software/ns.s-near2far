@@ -152,11 +152,12 @@ function haversineM(lat1: number, lng1: number, lat2: number, lng2: number): num
 // Thresholds match the backend's own walking/driving classification (app/trips.py).
 function zoomForSpeed(speedMps: number | undefined): number {
   if (speedMps === undefined) return 16
-  if (speedMps < 0.8) return 18 // stationary
-  if (speedMps < 3) return 17 // walking
-  if (speedMps < 8) return 15 // city driving
-  if (speedMps < 15) return 13 // faster driving
-  return 11 // highway
+  if (speedMps < 0.8) return 18  // stationary
+  if (speedMps < 3) return 17    // walking
+  if (speedMps < 8) return 15    // city driving
+  if (speedMps < 15) return 13   // faster driving
+  if (speedMps < 40) return 11   // highway
+  return 8                        // aircraft / very fast (40+ m/s ≈ 145+ km/h)
 }
 
 function motionLabel(speedMps: number | undefined): string {
@@ -216,10 +217,12 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
   )
   const [activeMemberId, setActiveMemberId] = useState<string | null>(null)
   const activeMemberIdRef = useRef<string | null>(null)
+  const followZoomRef = useRef<number | null>(null)
   const [, forceTick] = useState(0)
 
   function setActiveAndTrack(id: string | null) {
     activeMemberIdRef.current = id
+    followZoomRef.current = null
     setActiveMemberId(id)
   }
 
@@ -241,7 +244,9 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
   }
 
   function snapTo(p: Position) {
-    mapRef.current?.flyTo([p.lat, p.lng], zoomForSpeed(speedsRef.current[p.member_id]))
+    const z = zoomForSpeed(speedsRef.current[p.member_id])
+    followZoomRef.current = z
+    mapRef.current?.flyTo([p.lat, p.lng], z)
   }
 
   function refetchPositions() {
@@ -281,7 +286,13 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
         return { ...prev, [p.member_id]: p }
       })
       if (activeMemberIdRef.current === p.member_id) {
-        mapRef.current?.panTo([p.lat, p.lng])
+        const targetZoom = zoomForSpeed(speedsRef.current[p.member_id])
+        if (followZoomRef.current !== targetZoom) {
+          followZoomRef.current = targetZoom
+          mapRef.current?.flyTo([p.lat, p.lng], targetZoom)
+        } else {
+          mapRef.current?.panTo([p.lat, p.lng])
+        }
       }
     } else if (type === "sos.triggered") {
       const a = payload as { id: number; lat: number | null; lng: number | null; category: string; kind: string }
