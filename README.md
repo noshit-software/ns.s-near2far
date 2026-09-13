@@ -6,7 +6,7 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
 
 ## Stack
 
-- **backend/** — FastAPI, event bus, WebSocket stream to dashboard, setup API (household + members),
+- **backend/** — FastAPI, event bus, WebSocket stream to dashboard (with 30 s keepalive ping to survive nginx's 60 s proxy_read_timeout), setup API (household + members),
   `GET /api/positions/latest` for current per-member position, `POST /api/traccar/forward` — receives
   Traccar's position-forwarding webhook and maps it to a member via the source-agnostic `device_id`
   column — `POST /api/overland/forward` (not the default path, see "Alternative GPS sources"

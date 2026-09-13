@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.auth import verify_password
@@ -30,8 +32,24 @@ async def dashboard_stream(websocket: WebSocket) -> None:
         return
 
     await websocket.accept()
+
+    # nginx (both the container's and the VPS's system proxy) has a default
+    # proxy_read_timeout of 60s — any WebSocket idle longer than that gets silently
+    # closed. With OwnTracks updates several minutes apart, the connection dies between
+    # every pair of events. A 30s heartbeat keeps it alive without touching nginx config.
+    async def _heartbeat() -> None:
+        while True:
+            await asyncio.sleep(30)
+            try:
+                await websocket.send_json({"type": "ping"})
+            except Exception:
+                return
+
+    task = asyncio.create_task(_heartbeat())
     try:
         async for event in subscribe("*"):
             await websocket.send_json(event)
     except WebSocketDisconnect:
         pass
+    finally:
+        task.cancel()
