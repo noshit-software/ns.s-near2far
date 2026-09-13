@@ -160,7 +160,9 @@ function zoomForSpeed(speedMps: number | undefined): number {
   return 8                        // aircraft / very fast (40+ m/s ≈ 145+ km/h)
 }
 
-function motionLabel(speedMps: number | undefined): string {
+function motionLabel(speedMps: number | undefined, recordedAt: string): string {
+  const ageS = (Date.now() - new Date(recordedAt).getTime()) / 1000
+  if (ageS > 300) return "Stopped"
   if (speedMps === undefined || speedMps < 0.8) return "Stationary"
   if (speedMps < 3) return "Walking"
   return "Driving"
@@ -362,6 +364,7 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
                 }}
                 aria-label={p.display_name}
               >
+                {p.member_id === activeMemberId && <span className="member-strip-deselect">✕</span>}
                 <img
                   src={
                     p.avatar_filename
@@ -389,8 +392,9 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
               <span className="member-detail-name">{activeMember.display_name}</span>
               <span className="member-detail-meta">
                 <span className="member-panel-status">
-                  {motionLabel(activeSpeedMps)}
-                  {activeSpeedMps !== undefined && activeSpeedMps >= 0.8 && (
+                  {motionLabel(activeSpeedMps, activeMember.recorded_at)}
+                  {activeSpeedMps !== undefined && activeSpeedMps >= 0.8 &&
+                    (Date.now() - new Date(activeMember.recorded_at).getTime()) / 1000 <= 300 && (
                     <>
                       {" · "}
                       <strong>{Math.round(activeSpeedMps * 2.237)} mph</strong>
