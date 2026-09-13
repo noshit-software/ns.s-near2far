@@ -1001,10 +1001,8 @@ h3 {
 }
 
 .member-strip-avatar {
-  flex: 1 1 0;
-  min-width: 0;
-  max-width: 52px;
-  aspect-ratio: 1;
+  width: 100%;
+  height: 100%;
   padding: 2px;
   border-radius: 50%;
   /* Matches the rest of the app's glass treatment (tile borders, .member-detail card below it)
@@ -1028,8 +1026,12 @@ h3 {
   display: block;
 }
 
-.member-strip-avatar {
+.member-strip-avatar-wrap {
   position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 52px;
+  aspect-ratio: 1;
 }
 
 .member-strip-avatar.active {
@@ -1040,7 +1042,6 @@ h3 {
 .member-strip-deselect {
   position: absolute;
   inset: 0;
-  z-index: 2;
   display: grid;
   place-items: center;
   background: rgba(0, 0, 0, 0.48);

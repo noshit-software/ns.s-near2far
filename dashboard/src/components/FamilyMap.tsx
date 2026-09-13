@@ -350,30 +350,31 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
         {positionList.length > 0 && (
           <div className="member-strip">
             {positionList.map((p) => (
-              <button
-                key={p.member_id}
-                type="button"
-                className={`member-strip-avatar ${p.member_id === activeMemberId ? "active" : ""}`}
-                onClick={() => {
-                  if (p.member_id === activeMemberId) {
-                    setActiveAndTrack(null)
-                  } else {
-                    setActiveAndTrack(p.member_id)
-                    snapTo(p)
-                  }
-                }}
-                aria-label={p.display_name}
-              >
+              <div key={p.member_id} className="member-strip-avatar-wrap">
+                <button
+                  type="button"
+                  className={`member-strip-avatar ${p.member_id === activeMemberId ? "active" : ""}`}
+                  onClick={() => {
+                    if (p.member_id === activeMemberId) {
+                      setActiveAndTrack(null)
+                    } else {
+                      setActiveAndTrack(p.member_id)
+                      snapTo(p)
+                    }
+                  }}
+                  aria-label={p.display_name}
+                >
+                  <img
+                    src={
+                      p.avatar_filename
+                        ? `/uploads/avatars/${p.avatar_filename}`
+                        : generatedAvatarDataUri(p.avatar_seed)
+                    }
+                    alt=""
+                  />
+                </button>
                 {p.member_id === activeMemberId && <span className="member-strip-deselect">✕</span>}
-                <img
-                  src={
-                    p.avatar_filename
-                      ? `/uploads/avatars/${p.avatar_filename}`
-                      : generatedAvatarDataUri(p.avatar_seed)
-                  }
-                  alt=""
-                />
-              </button>
+              </div>
             ))}
           </div>
         )}
