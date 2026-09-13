@@ -521,6 +521,10 @@ a neighborhood.
 
 ### VPS deploy sequence
 
+> **⚠️ PRODUCTION = bare npm + pm2. NOT Docker.**
+> `docker-compose.yml` is local dev only — running `docker compose build` on the VPS builds
+> images that nothing serves. The dashboard is built directly on the host with `npm run build`.
+
 Run the same three steps every time, in this order, regardless of which files changed — the
 gotchas below are all cases of skipping one because "only the frontend changed" or "only the
 backend changed" seemed true at the time:
