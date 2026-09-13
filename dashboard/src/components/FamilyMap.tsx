@@ -159,11 +159,10 @@ function zoomForSpeed(speedMps: number | undefined): number {
   return 11 // highway
 }
 
-function statusForSpeed(speedMps: number | undefined): string {
-  if (speedMps === undefined) return ""
-  if (speedMps < 0.8) return "Stationary"
-  if (speedMps < 3) return `Walking · ${Math.round(speedMps * 3.6)} km/h`
-  return `Driving · ${Math.round(speedMps * 3.6)} km/h`
+function motionLabel(speedMps: number | undefined): string {
+  if (speedMps === undefined || speedMps < 0.8) return "Stationary"
+  if (speedMps < 3) return "Walking"
+  return "Driving"
 }
 
 function relativeTime(iso: string): string {
@@ -174,9 +173,18 @@ function relativeTime(iso: string): string {
   return `${Math.round(seconds / 86400)}d ago`
 }
 
-function FitToMarkers({ positions, home }: { positions: Position[]; home: { lat: number; lng: number } }) {
+function FitToMarkers({
+  positions,
+  home,
+  locked,
+}: {
+  positions: Position[]
+  home: { lat: number; lng: number }
+  locked: boolean
+}) {
   const map = useMap()
   useEffect(() => {
+    if (locked) return
     const points: [number, number][] = [
       [home.lat, home.lng],
       ...positions.map((p): [number, number] => [p.lat, p.lng]),
@@ -187,7 +195,7 @@ function FitToMarkers({ positions, home }: { positions: Position[]; home: { lat:
       map.fitBounds(points, { padding: [40, 40] })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [positions.map((p) => `${p.member_id}:${p.lat}:${p.lng}`).join(","), home.lat, home.lng])
+  }, [positions.map((p) => `${p.member_id}:${p.lat}:${p.lng}`).join(","), home.lat, home.lng, locked])
   return null
 }
 
@@ -207,7 +215,13 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
     null,
   )
   const [activeMemberId, setActiveMemberId] = useState<string | null>(null)
+  const activeMemberIdRef = useRef<string | null>(null)
   const [, forceTick] = useState(0)
+
+  function setActiveAndTrack(id: string | null) {
+    activeMemberIdRef.current = id
+    setActiveMemberId(id)
+  }
 
   useEffect(() => {
     const interval = setInterval(() => forceTick((n) => n + 1), 30_000)
@@ -217,9 +231,13 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
   function updateSpeed(prev: Position | undefined, next: Position) {
     if (!prev) return
     const dtS = (new Date(next.recorded_at).getTime() - new Date(prev.recorded_at).getTime()) / 1000
-    if (dtS <= 0) return
+    // Too close in time → GPS noise dominates; skip rather than store a nonsense speed.
+    if (dtS < 5) return
     const distM = haversineM(prev.lat, prev.lng, next.lat, next.lng)
-    speedsRef.current[next.member_id] = distM / dtS
+    const mps = distM / dtS
+    // Hard cap at 60 m/s (216 km/h) — anything above is a GPS glitch, not real movement.
+    if (mps > 60) return
+    speedsRef.current[next.member_id] = mps
   }
 
   function snapTo(p: Position) {
@@ -262,6 +280,9 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
         updateSpeed(prev[p.member_id], p)
         return { ...prev, [p.member_id]: p }
       })
+      if (activeMemberIdRef.current === p.member_id) {
+        mapRef.current?.panTo([p.lat, p.lng])
+      }
     } else if (type === "sos.triggered") {
       const a = payload as { id: number; lat: number | null; lng: number | null; category: string; kind: string }
       if (a.lat == null || a.lng == null || a.kind !== "sos") return
@@ -278,15 +299,16 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
   const positionList = Object.values(positions)
   const spread = spreadOverlapping(positionList, mapRef.current, zoom)
 
+  // If the active member disappears (left the household, etc.), clear the selection so the
+  // map goes back to fit-all mode. But don't auto-select on startup — start with no selection.
   useEffect(() => {
-    if (activeMemberId && positions[activeMemberId]) return
-    const first = positionList[0]
-    setActiveMemberId(first ? first.member_id : null)
+    if (!activeMemberId || positions[activeMemberId]) return
+    setActiveAndTrack(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [positionList.map((p) => p.member_id).join(",")])
 
   const activeMember = activeMemberId ? positions[activeMemberId] : undefined
-  const activeStatus = activeMember ? statusForSpeed(speedsRef.current[activeMember.member_id]) : undefined
+  const activeSpeedMps = activeMember ? speedsRef.current[activeMember.member_id] : undefined
 
   return (
     <div className="family-map">
@@ -298,7 +320,7 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
         className="family-map-canvas"
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        <FitToMarkers positions={positionList} home={household.home_geofence} />
+        <FitToMarkers positions={positionList} home={household.home_geofence} locked={activeMemberId !== null} />
         <ZoomTracker onZoom={setZoom} />
         {positionList.map((p) => (
           <Marker key={p.member_id} position={spread[p.member_id] ?? [p.lat, p.lng]} icon={memberIcon(p, zoom)}>
@@ -319,10 +341,13 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
                 key={p.member_id}
                 type="button"
                 className={`member-strip-avatar ${p.member_id === activeMemberId ? "active" : ""}`}
-                disabled={p.member_id === activeMemberId}
                 onClick={() => {
-                  setActiveMemberId(p.member_id)
-                  snapTo(p)
+                  if (p.member_id === activeMemberId) {
+                    setActiveAndTrack(null)
+                  } else {
+                    setActiveAndTrack(p.member_id)
+                    snapTo(p)
+                  }
                 }}
                 aria-label={p.display_name}
               >
@@ -352,7 +377,17 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
             <div className="member-detail-info">
               <span className="member-detail-name">{activeMember.display_name}</span>
               <span className="member-detail-meta">
-                {activeStatus && <span className="member-panel-status">{activeStatus}</span>}
+                <span className="member-panel-status">
+                  {motionLabel(activeSpeedMps)}
+                  {activeSpeedMps !== undefined && activeSpeedMps >= 0.8 && (
+                    <>
+                      {" · "}
+                      <strong>{Math.round(activeSpeedMps * 2.237)} mph</strong>
+                      {" | "}
+                      {Math.round(activeSpeedMps * 3.6)} km/h
+                    </>
+                  )}
+                </span>
                 <span className="member-panel-time">{relativeTime(activeMember.recorded_at)}</span>
                 {activeMember.battery !== null && activeMember.battery <= LOW_BATTERY_THRESHOLD && (
                   <span className="member-panel-battery-low">🔋 {activeMember.battery}%</span>

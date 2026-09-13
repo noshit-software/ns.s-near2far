@@ -1030,8 +1030,22 @@ h3 {
 
 .member-strip-avatar.active {
   border-color: var(--accent);
-  opacity: 0.45;
-  cursor: default;
+  cursor: pointer;
+  position: relative;
+}
+
+.member-strip-avatar.active::after {
+  content: "✕";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.48);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #fff;
+  pointer-events: none;
 }
 
 .member-detail {

@@ -38,10 +38,12 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   household's members all fit on one row with no scrolling — with a single expanded detail card
   below it (avatar, name, moving/stationary status with speed, relative last-seen time, and a red
   low-battery badge once their phone's reported level drops to 20% or below) for
-  whichever member is currently selected; tapping an avatar in the strip selects that member and
-  centers the map on them, snapping to a zoom level chosen from their last-known speed (closer for
-  stationary/walking, wider for driving) rather than a fixed zoom — the already-selected avatar
-  renders disabled/dimmed rather than disappearing, since re-tapping it would be a no-op. An
+  whichever member is currently selected; tapping an avatar in the strip selects that member,
+  centers the map on them (speed-adaptive zoom), and keeps the map continuously panned to their
+  position as updates arrive — tapping the selected avatar again (shown with a ✕ overlay) deselects
+  and returns the map to fit-all mode. When no member is selected the map stays fitted to all
+  members and re-fits on each update. Speed in the detail card shows mph (bold) and km/h side by
+  side; implausible readings from GPS noise (sub-5 s intervals or above 216 km/h) are discarded. An
   "Enable trip alerts" button (Settings, above "Home" — not on the map itself) subscribes
   the browser to Web Push; it renders nothing once already subscribed. Since an installed PWA doesn't
   reliably recheck for a new deploy on its own (especially on iOS), the dashboard compares its loaded
