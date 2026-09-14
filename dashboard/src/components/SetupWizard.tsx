@@ -322,7 +322,7 @@ export function SetupWizard() {
         <SosActiveBanner alertId={activeSosId} lastEvent={lastEvent} onCleared={() => setActiveSosId(null)} />
       )}
       <header className="app-topbar">
-        <h1 style={!showSettings ? { color: "var(--accent)" } : undefined}>{showSettings ? "Settings" : household.name}</h1>
+        <h1>{showSettings ? "Settings" : household.name}</h1>
       </header>
 
       <main className={`app-content ${!showSettings ? "app-content-map" : ""}`}>

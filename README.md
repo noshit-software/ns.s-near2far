@@ -526,12 +526,58 @@ regardless of which files changed:
 
 ```bash
 git pull
-docker compose build dashboard && docker compose up -d dashboard
+docker compose build --no-cache dashboard && docker compose up -d --no-deps dashboard
 pm2 restart near2far
 ```
 
+`--no-cache` is required — without it Docker reuses a cached `npm run build` layer and the bundle hash never changes, so the new code is silently never served. `--no-deps` prevents compose from trying to recreate the backend/db containers (which aren't needed and can fail in production).
+
 `traccar` is profile-gated and off by default — only run
 `docker compose --profile traccar up -d --build traccar` if you're actually using Traccar.
+
+### System nginx must proxy to Docker, not serve from `dashboard/dist`
+
+The VPS's system nginx config for `near2far.family` must proxy all traffic to the Docker dashboard container (port 5100), **not** serve static files from `dashboard/dist` on disk. Docker builds write compiled output inside the container image — they never touch the host filesystem. A system nginx config with `root /opt/ns.s/ns.s-near2far/dashboard/dist` will serve a permanently stale build regardless of how many times Docker is rebuilt or Cloudflare is purged.
+
+Correct `/etc/nginx/sites-enabled/near2far.conf`:
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name near2far.family;
+
+    location / {
+        proxy_pass http://127.0.0.1:5100;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
+    location /api {
+        proxy_pass http://127.0.0.1:5101;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
+    location /uploads {
+        proxy_pass http://127.0.0.1:5101;
+        proxy_set_header Host $host;
+    }
+
+    location /ws {
+        proxy_pass http://127.0.0.1:5101;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+    }
+}
+```
+
+All cache headers (`no-store` on `index.html`, `immutable` on `/assets/`) are set inside the Docker container's own nginx — the system nginx just proxies through.
 
 ### CSS gotcha: `backdrop-filter` and `position: fixed` (learned the hard way, twice)
 

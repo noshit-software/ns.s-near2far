@@ -152,12 +152,13 @@ function haversineM(lat1: number, lng1: number, lat2: number, lng2: number): num
 // Thresholds match the backend's own walking/driving classification (app/trips.py).
 function zoomForSpeed(speedMps: number | undefined): number {
   if (speedMps === undefined) return 16
-  if (speedMps < 0.8) return 18  // stationary
-  if (speedMps < 3) return 17    // walking
-  if (speedMps < 8) return 15    // city driving
-  if (speedMps < 15) return 13   // faster driving
-  if (speedMps < 40) return 11   // highway
-  return 8                        // aircraft / very fast (40+ m/s ≈ 145+ km/h)
+  if (speedMps < 0.8) return 18   // stationary
+  if (speedMps < 3) return 17     // walking (~6 mph)
+  if (speedMps < 8) return 16     // slow city (~18 mph)
+  if (speedMps < 18) return 15    // city driving (~40 mph)
+  if (speedMps < 30) return 13    // fast/highway (~67 mph)
+  if (speedMps < 40) return 11    // very fast (~89 mph)
+  return 8                         // aircraft (40+ m/s ≈ 145+ km/h)
 }
 
 function motionLabel(speedMps: number | undefined, recordedAt: string): string {
