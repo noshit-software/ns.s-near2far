@@ -1,11 +1,13 @@
+import re
 import time
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Query, HTTPException
 
 router = APIRouter()
 
 _fire_cache: dict = {"data": None, "expires": 0.0}
+_ice_cache: dict = {}  # keyed by bbox string, value: {data, expires}
 
 USFS_URL = (
     "https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/"
@@ -13,6 +15,27 @@ USFS_URL = (
     "?where=1%3D1&outFields=IncidentName,GISAcres,CreateDate"
     "&f=geojson&resultRecordCount=500"
 )
+
+WAZE_URL = (
+    "https://www.waze.com/live-map/api/georss"
+    "?top={top}&bottom={bottom}&left={left}&right={right}"
+    "&env=row&types=alerts"
+)
+
+# Keywords that appear in Waze report text for immigration enforcement activity
+_ICE_RE = re.compile(
+    r"ice\b|immigration|border patrol|migra|checkpoint|ret[eé]n|inmigr",
+    re.IGNORECASE,
+)
+
+
+def _is_ice_alert(alert: dict) -> bool:
+    text = " ".join(filter(None, [
+        alert.get("reportDescription", ""),
+        alert.get("subtype", ""),
+        alert.get("street", ""),
+    ]))
+    return bool(_ICE_RE.search(text))
 
 
 @router.get("/api/layers/wildfire")
@@ -37,6 +60,45 @@ async def get_wildfire():
 
 
 @router.get("/api/layers/ice")
-async def get_ice():
-    # Placeholder — crowdsourced checkpoint sources TBD
-    return {"type": "FeatureCollection", "features": []}
+async def get_ice(
+    top: float = Query(...),
+    bottom: float = Query(...),
+    left: float = Query(...),
+    right: float = Query(...),
+):
+    bbox_key = f"{top:.3f},{bottom:.3f},{left:.3f},{right:.3f}"
+    now = time.time()
+    cached = _ice_cache.get(bbox_key)
+    if cached and cached["expires"] > now:
+        return cached["data"]
+
+    url = WAZE_URL.format(top=top, bottom=bottom, left=left, right=right)
+    try:
+        async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
+            r = await client.get(url)
+            r.raise_for_status()
+            waze_data = r.json()
+    except Exception:
+        return {"type": "FeatureCollection", "features": []}
+
+    alerts = [
+        a for a in (waze_data.get("alerts") or [])
+        if a.get("type") == "POLICE" and _is_ice_alert(a)
+    ]
+
+    features = [
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [a["location"]["x"], a["location"]["y"]]},
+            "properties": {
+                "description": a.get("reportDescription") or a.get("subtype", "Checkpoint"),
+                "reported_at": a.get("pubMillis"),
+            },
+        }
+        for a in alerts
+        if a.get("location")
+    ]
+
+    result = {"type": "FeatureCollection", "features": features}
+    _ice_cache[bbox_key] = {"data": result, "expires": now + 300}  # 5-minute cache
+    return result

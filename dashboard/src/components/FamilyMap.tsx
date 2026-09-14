@@ -235,6 +235,52 @@ function WildfireLayer() {
   )
 }
 
+function IceLayer() {
+  const map = useMap()
+  const [data, setData] = useState<GeoJSON.FeatureCollection | null>(null)
+
+  useEffect(() => {
+    function fetch_() {
+      const b = map.getBounds()
+      const params = new URLSearchParams({
+        top: String(b.getNorth()),
+        bottom: String(b.getSouth()),
+        left: String(b.getWest()),
+        right: String(b.getEast()),
+      })
+      fetch(`/api/layers/ice?${params}`)
+        .then((r) => r.json())
+        .then(setData)
+        .catch(() => {})
+    }
+    fetch_()
+    map.on("moveend", fetch_)
+    const id = setInterval(fetch_, 5 * 60 * 1000)
+    return () => {
+      map.off("moveend", fetch_)
+      clearInterval(id)
+    }
+  }, [map])
+
+  if (!data) return null
+  return (
+    <GeoJSON
+      key={JSON.stringify(data.features?.map((f) => f.properties?.reported_at))}
+      data={data}
+      pointToLayer={(_, latlng) =>
+        L.marker(latlng, {
+          icon: L.divIcon({ className: "", html: "🧊", iconSize: [24, 24], iconAnchor: [12, 12] }),
+        })
+      }
+      onEachFeature={(feature, layer) => {
+        if (feature.properties?.description) {
+          layer.bindPopup(feature.properties.description)
+        }
+      }}
+    />
+  )
+}
+
 export function FamilyMap({ household, lastEvent }: { household: Household; lastEvent: unknown }) {
   const [wildfireOn, setWildfireOn] = useState(false)
   const [iceOn, setIceOn] = useState(false)
@@ -374,6 +420,7 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
         ))}
         {sosMarker && <Marker position={[sosMarker.lat, sosMarker.lng]} icon={sosIcon()} zIndexOffset={1000} />}
         {wildfireOn && <WildfireLayer />}
+        {iceOn && <IceLayer />}
       </MapContainer>
       <div className="map-layer-toggles">
         <button
