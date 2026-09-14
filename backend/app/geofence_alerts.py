@@ -7,6 +7,7 @@ while stationary inside one.
 
 import json
 
+from app.events import publish
 from app.push import send_push_to_household
 from app.trips import _haversine_m
 
@@ -54,6 +55,13 @@ async def on_position(
     names = {place_id: name for place_id, name, *_ in places}
 
     for place_id in now_inside - was_inside:
+        await publish("geofence.entered", {
+            "member_id": member_id,
+            "display_name": display_name,
+            "place_id": place_id,
+            "place_name": names[place_id],
+            "is_home": place_id == "home",
+        })
         await send_push_to_household(
             conn,
             household_id,

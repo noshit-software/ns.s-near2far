@@ -287,6 +287,46 @@ function IceLayer() {
   )
 }
 
+type ChimeNote = { freq: number; start: number; duration: number }
+
+function _playNotes(notes: ChimeNote[]) {
+  try {
+    const ctx = new AudioContext()
+    for (const { freq, start, duration } of notes) {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.type = "sine"
+      osc.frequency.value = freq
+      gain.gain.setValueAtTime(0.28, ctx.currentTime + start)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + start + duration)
+      osc.start(ctx.currentTime + start)
+      osc.stop(ctx.currentTime + start + duration + 0.05)
+    }
+  } catch {
+    // AudioContext blocked (no user gesture yet) — silent fallback
+  }
+}
+
+// Warm ascending arpeggio (C5–E5–G5–C6) for home arrivals
+function chimeHome() {
+  _playNotes([
+    { freq: 523.25, start: 0.00, duration: 0.55 },
+    { freq: 659.25, start: 0.16, duration: 0.55 },
+    { freq: 783.99, start: 0.32, duration: 0.55 },
+    { freq: 1046.5, start: 0.48, duration: 0.90 },
+  ])
+}
+
+// Softer 2-note chime for any other place
+function chimePlace() {
+  _playNotes([
+    { freq: 659.25, start: 0.00, duration: 0.45 },
+    { freq: 880.00, start: 0.20, duration: 0.70 },
+  ])
+}
+
 export function FamilyMap({ household, lastEvent }: { household: Household; lastEvent: unknown }) {
   const [wildfireOn, setWildfireOn] = useState(false)
   const [iceOn, setIceOn] = useState(false)
@@ -384,6 +424,9 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
     } else if (type === "sos.acknowledged") {
       const { id } = payload as { id: number }
       setSosMarker((prev) => (prev?.id === id ? null : prev))
+    } else if (type === "geofence.entered") {
+      const g = payload as { is_home: boolean }
+      if (g.is_home) chimeHome(); else chimePlace()
     } else if (type === "ws.reconnected") {
       refetchPositions()
     }
