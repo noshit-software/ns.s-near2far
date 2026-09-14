@@ -2,7 +2,7 @@ import "leaflet/dist/leaflet.css"
 
 import L from "leaflet"
 import { useEffect, useRef, useState } from "react"
-import { MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from "react-leaflet"
+import { GeoJSON, MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from "react-leaflet"
 
 import { apiGet } from "../lib/api"
 import { generatedAvatarDataUri, resolveMemberColor } from "../lib/avatar"
@@ -210,7 +210,34 @@ function ZoomTracker({ onZoom }: { onZoom: (zoom: number) => void }) {
   return null
 }
 
+function WildfireLayer() {
+  const [data, setData] = useState<GeoJSON.FeatureCollection | null>(null)
+
+  useEffect(() => {
+    function fetch_() {
+      fetch("/api/layers/wildfire")
+        .then((r) => r.json())
+        .then(setData)
+        .catch(() => {})
+    }
+    fetch_()
+    const id = setInterval(fetch_, 10 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  if (!data) return null
+  return (
+    <GeoJSON
+      key={data.features?.length}
+      data={data}
+      style={{ color: "#ff4500", weight: 1.5, fillColor: "#ff6b00", fillOpacity: 0.25 }}
+    />
+  )
+}
+
 export function FamilyMap({ household, lastEvent }: { household: Household; lastEvent: unknown }) {
+  const [wildfireOn, setWildfireOn] = useState(false)
+  const [iceOn, setIceOn] = useState(false)
   const [positions, setPositions] = useState<Record<string, Position>>({})
   const [zoom, setZoom] = useState(14)
   const mapRef = useRef<L.Map | null>(null)
@@ -346,7 +373,22 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
           </Marker>
         ))}
         {sosMarker && <Marker position={[sosMarker.lat, sosMarker.lng]} icon={sosIcon()} zIndexOffset={1000} />}
+        {wildfireOn && <WildfireLayer />}
       </MapContainer>
+      <div className="map-layer-toggles">
+        <button
+          type="button"
+          className={`map-layer-btn ${wildfireOn ? "active" : ""}`}
+          onClick={() => setWildfireOn((v) => !v)}
+          title="Wildfire"
+        >🔥</button>
+        <button
+          type="button"
+          className={`map-layer-btn ${iceOn ? "active" : ""}`}
+          onClick={() => setIceOn((v) => !v)}
+          title="ICE checkpoints"
+        >🧊</button>
+      </div>
       <div className="map-overlay-bottom">
         {positionList.length > 0 && (
           <div className="member-strip">
