@@ -413,6 +413,7 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
             </div>
           </div>
         )}
+        <p style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.55)", color: "#fff", padding: "2px 6px", borderRadius: 4, fontSize: "0.75rem", zIndex: 1000, pointerEvents: "none" }}>z{zoom}</p>
         <p className="map-attribution">
           Map data &copy;{" "}
           <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
