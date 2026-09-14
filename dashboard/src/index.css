@@ -2030,6 +2030,16 @@ h3 {
   background: rgba(217, 113, 16, 0.25);
 }
 
+.map-layer-report-btn {
+  border-color: rgba(100, 200, 255, 0.4);
+  font-size: 0.95rem;
+}
+
+.map-layer-report-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .map-attribution {
   font-size: 0.7rem;
   color: var(--text-dim);

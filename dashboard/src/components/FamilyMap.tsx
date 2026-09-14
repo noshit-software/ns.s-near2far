@@ -4,7 +4,7 @@ import L from "leaflet"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { GeoJSON, MapContainer, Marker, Popup, Tooltip, TileLayer, useMap, useMapEvents } from "react-leaflet"
 
-import { apiGet } from "../lib/api"
+import { apiGet, apiPost } from "../lib/api"
 import { generatedAvatarDataUri, resolveMemberColor } from "../lib/avatar"
 
 type Household = {
@@ -272,68 +272,60 @@ function WildfireLayer() {
         style={{ color: "#ff4500", weight: 1.5, fillColor: "#ff6b00", fillOpacity: 0.25 }}
       />
       {centroids.map((c, i) => (
-        <Marker
-          key={i}
-          position={c.pos}
-          icon={_flameIcon}
-          eventHandlers={{
-            mouseover: (e) => e.target.setOpacity(0),
-            mouseout: (e) => e.target.setOpacity(1),
-          }}
-        >
-          <Tooltip direction="top" offset={[0, -8]}>
+        <Marker key={i} position={c.pos} icon={_flameIcon}>
+          <Popup>
             <strong>{c.name ?? "Wildfire"}</strong>
-            {c.acres != null && <> · {Math.round(c.acres).toLocaleString()} acres</>}
-          </Tooltip>
+            {c.acres != null && <><br />{Math.round(c.acres).toLocaleString()} acres</>}
+          </Popup>
         </Marker>
       ))}
     </>
   )
 }
 
-function IceLayer() {
-  const map = useMap()
+const _iceIcon = L.divIcon({
+  className: "",
+  html: '<span style="font-size:18px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))">🧊</span>',
+  iconSize: [22, 22],
+  iconAnchor: [11, 11],
+})
+
+function IceLayer({ refreshToken }: { refreshToken: number }) {
   const [data, setData] = useState<GeoJSON.FeatureCollection | null>(null)
 
-  useEffect(() => {
-    function fetch_() {
-      const b = map.getBounds()
-      const params = new URLSearchParams({
-        top: String(b.getNorth()),
-        bottom: String(b.getSouth()),
-        left: String(b.getWest()),
-        right: String(b.getEast()),
-      })
-      fetch(`/api/layers/ice?${params}`)
-        .then((r) => r.json())
-        .then(setData)
-        .catch(() => {})
-    }
-    fetch_()
-    map.on("moveend", fetch_)
-    const id = setInterval(fetch_, 5 * 60 * 1000)
-    return () => {
-      map.off("moveend", fetch_)
-      clearInterval(id)
-    }
-  }, [map])
+  function refresh() {
+    fetch("/api/layers/ice", { headers: { Authorization: `Bearer ${localStorage.getItem("near2far_admin_password") ?? ""}` } })
+      .then((r) => r.json())
+      .then((d) => { if (d.type === "FeatureCollection") setData(d) })
+      .catch(() => {})
+  }
 
-  if (!data) return null
+  useEffect(() => {
+    refresh()
+    const id = setInterval(refresh, 2 * 60 * 1000)
+    return () => clearInterval(id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshToken])
+
   return (
-    <GeoJSON
-      key={JSON.stringify(data.features?.map((f) => f.properties?.reported_at))}
-      data={data}
-      pointToLayer={(_, latlng) =>
-        L.marker(latlng, {
-          icon: L.divIcon({ className: "", html: "🧊", iconSize: [24, 24], iconAnchor: [12, 12] }),
-        })
-      }
-      onEachFeature={(feature, layer) => {
-        if (feature.properties?.description) {
-          layer.bindPopup(feature.properties.description)
-        }
-      }}
-    />
+    <>
+      {data?.features?.map((f, i) => {
+        const [lng, lat] = (f.geometry as GeoJSON.Point).coordinates
+        const props = f.properties ?? {}
+        const age = props.reported_at
+          ? Math.round((Date.now() - new Date(props.reported_at).getTime()) / 60000)
+          : null
+        return (
+          <Marker key={props.id ?? i} position={[lat, lng]} icon={_iceIcon}>
+            <Popup>
+              <strong>Checkpoint reported</strong>
+              {age != null && <><br />{age} min ago</>}
+              {props.note && <><br />{props.note}</>}
+            </Popup>
+          </Marker>
+        )
+      })}
+    </>
   )
 }
 
@@ -380,6 +372,8 @@ function chimePlace() {
 export function FamilyMap({ household, lastEvent }: { household: Household; lastEvent: unknown }) {
   const [wildfireOn, setWildfireOn] = useState(false)
   const [iceOn, setIceOn] = useState(false)
+  const [iceRefreshCount, setIceRefreshCount] = useState(0)
+  const [reporting, setReporting] = useState(false)
   const [positions, setPositions] = useState<Record<string, Position>>({})
   const [zoom, setZoom] = useState(14)
   const mapRef = useRef<L.Map | null>(null)
@@ -519,7 +513,7 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
         ))}
         {sosMarker && <Marker position={[sosMarker.lat, sosMarker.lng]} icon={sosIcon()} zIndexOffset={1000} />}
         {wildfireOn && <WildfireLayer />}
-        {iceOn && <IceLayer />}
+        {iceOn && <IceLayer refreshToken={iceRefreshCount} />}
       </MapContainer>
       <div className="map-layer-toggles">
         <button
@@ -534,6 +528,25 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
           onClick={() => setIceOn((v) => !v)}
           title="ICE checkpoints"
         >🧊</button>
+        {iceOn && (
+          <button
+            type="button"
+            className="map-layer-btn map-layer-report-btn"
+            disabled={reporting}
+            onClick={async () => {
+              const center = mapRef.current?.getCenter()
+              if (!center) return
+              setReporting(true)
+              try {
+                await apiPost("/layers/ice/report", { lat: center.lat, lng: center.lng })
+                setIceRefreshCount((n) => n + 1)
+              } catch { /* ignore */ } finally {
+                setReporting(false)
+              }
+            }}
+            title="Report checkpoint at map center"
+          >{reporting ? "…" : "📍"}</button>
+        )}
       </div>
       <div className="map-overlay-bottom">
         {positionList.length > 0 && (

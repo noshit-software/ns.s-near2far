@@ -1,13 +1,14 @@
-import re
 import time
 
 import httpx
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
+
+from app.middleware.auth import require_admin_auth
 
 router = APIRouter()
 
 _fire_cache: dict = {"data": None, "expires": 0.0}
-_ice_cache: dict = {}  # keyed by bbox string, value: {data, expires}
 
 USFS_URL = (
     "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/"
@@ -15,27 +16,6 @@ USFS_URL = (
     "?where=1%3D1&outFields=IncidentName,GISAcres,CreateDate"
     "&f=geojson&resultRecordCount=500"
 )
-
-WAZE_URL = (
-    "https://www.waze.com/live-map/api/georss"
-    "?top={top}&bottom={bottom}&left={left}&right={right}"
-    "&env=row&types=alerts"
-)
-
-# Keywords that appear in Waze report text for immigration enforcement activity
-_ICE_RE = re.compile(
-    r"ice\b|immigration|border patrol|migra|checkpoint|ret[eé]n|inmigr",
-    re.IGNORECASE,
-)
-
-
-def _is_ice_alert(alert: dict) -> bool:
-    text = " ".join(filter(None, [
-        alert.get("reportDescription", ""),
-        alert.get("subtype", ""),
-        alert.get("street", ""),
-    ]))
-    return bool(_ICE_RE.search(text))
 
 
 @router.get("/api/layers/wildfire")
@@ -55,50 +35,52 @@ async def get_wildfire():
         raise HTTPException(502, f"Failed to fetch fire data: {e}")
 
     _fire_cache["data"] = data
-    _fire_cache["expires"] = now + 600  # 10-minute cache
+    _fire_cache["expires"] = now + 600
     return data
 
 
-@router.get("/api/layers/ice")
-async def get_ice(
-    top: float = Query(...),
-    bottom: float = Query(...),
-    left: float = Query(...),
-    right: float = Query(...),
-):
-    bbox_key = f"{top:.3f},{bottom:.3f},{left:.3f},{right:.3f}"
-    now = time.time()
-    cached = _ice_cache.get(bbox_key)
-    if cached and cached["expires"] > now:
-        return cached["data"]
-
-    url = WAZE_URL.format(top=top, bottom=bottom, left=left, right=right)
-    try:
-        async with httpx.AsyncClient(timeout=10, headers={"User-Agent": "Mozilla/5.0"}) as client:
-            r = await client.get(url)
-            r.raise_for_status()
-            waze_data = r.json()
-    except Exception:
-        return {"type": "FeatureCollection", "features": []}
-
-    alerts = [
-        a for a in (waze_data.get("alerts") or [])
-        if a.get("type") == "POLICE" and _is_ice_alert(a)
-    ]
+@router.get("/api/layers/ice", dependencies=[Depends(require_admin_auth)])
+async def get_ice(request: Request):
+    async with request.app.state.db_pool.acquire() as conn:
+        household_id = await conn.fetchval(
+            "SELECT id FROM substrate.households ORDER BY created_at LIMIT 1"
+        )
+        rows = await conn.fetch(
+            "SELECT id, lat, lng, note, reported_at FROM runtime.checkpoint_reports "
+            "WHERE household_id = $1 AND expires_at > now() ORDER BY reported_at DESC",
+            household_id,
+        )
 
     features = [
         {
             "type": "Feature",
-            "geometry": {"type": "Point", "coordinates": [a["location"]["x"], a["location"]["y"]]},
+            "geometry": {"type": "Point", "coordinates": [r["lng"], r["lat"]]},
             "properties": {
-                "description": a.get("reportDescription") or a.get("subtype", "Checkpoint"),
-                "reported_at": a.get("pubMillis"),
+                "id": r["id"],
+                "note": r["note"],
+                "reported_at": r["reported_at"].isoformat(),
             },
         }
-        for a in alerts
-        if a.get("location")
+        for r in rows
     ]
+    return {"type": "FeatureCollection", "features": features}
 
-    result = {"type": "FeatureCollection", "features": features}
-    _ice_cache[bbox_key] = {"data": result, "expires": now + 300}  # 5-minute cache
-    return result
+
+class CheckpointReport(BaseModel):
+    lat: float
+    lng: float
+    note: str | None = None
+
+
+@router.post("/api/layers/ice/report", dependencies=[Depends(require_admin_auth)])
+async def report_checkpoint(body: CheckpointReport, request: Request):
+    async with request.app.state.db_pool.acquire() as conn:
+        household_id = await conn.fetchval(
+            "SELECT id FROM substrate.households ORDER BY created_at LIMIT 1"
+        )
+        row = await conn.fetchrow(
+            "INSERT INTO runtime.checkpoint_reports (household_id, lat, lng, note) "
+            "VALUES ($1, $2, $3, $4) RETURNING id, reported_at, expires_at",
+            household_id, body.lat, body.lng, body.note,
+        )
+    return {"success": True, "data": {"id": row["id"], "reported_at": row["reported_at"].isoformat()}}

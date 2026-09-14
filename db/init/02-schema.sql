@@ -116,6 +116,19 @@ CREATE TABLE IF NOT EXISTS runtime.sos_alert_actions (
 -- A non-null category (matching sos_alerts.category) only shows once that category is engaged
 -- — e.g. 'car' contacts (AAA, insurance, non-emergency police) are only relevant for car
 -- trouble, not a medical emergency. App-enforced caps: 2 general, 3 per category.
+-- Community-reported ICE/immigration checkpoint sightings. Household-scoped so only the
+-- family's own reports show (not a shared public map). Expire after 2 hours by default;
+-- the GET endpoint filters out expired rows rather than deleting them eagerly.
+CREATE TABLE IF NOT EXISTS runtime.checkpoint_reports (
+  id BIGSERIAL PRIMARY KEY,
+  household_id UUID NOT NULL REFERENCES substrate.households(id) ON DELETE CASCADE,
+  lat DOUBLE PRECISION NOT NULL,
+  lng DOUBLE PRECISION NOT NULL,
+  note TEXT,
+  reported_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT now() + INTERVAL '2 hours'
+);
+
 CREATE TABLE IF NOT EXISTS substrate.emergency_contacts (
   id BIGSERIAL PRIMARY KEY,
   household_id UUID NOT NULL REFERENCES substrate.households(id),

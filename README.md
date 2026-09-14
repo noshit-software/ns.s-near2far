@@ -129,7 +129,7 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   (geofence-based) are still a placeholder.
 - **Geofence arrival audio** — the dashboard plays a chime when a member enters a saved place. Home arrivals get a 4-note ascending arpeggio (C–E–G–C); other places get a softer 2-note chime. Plays via Web Audio API in the browser tab; no files needed. Different tones per place-type are wired — individual per-place tone selection can be added later in Settings.
 - **OwnTracks staleness alerts** — background watcher fires a push notification when any member's last location is more than 30 minutes old; clears automatically on recovery. A stale indicator (amber dot on avatar, warning line in detail panel) also appears on the map.
-- **Map layers** — toggleable overlays on the family map (🔥 wildfire perimeters, 🧊 ICE checkpoints). Fire perimeters are fetched from the Interior/NIFC ArcGIS public endpoint (`/api/layers/wildfire`, 10-minute server-side cache) and rendered as orange polygons with a 🔥 centroid marker per incident; hovering the marker fades it so the perimeter below is visible, and a tooltip shows the fire name and acreage. ICE checkpoints are fetched from Waze's unofficial alerts API (`/api/layers/ice`, 5-minute server-side cache keyed by viewport bounds) — only `POLICE`-type alerts whose description/subtype contain immigration-related keywords (ICE, migra, checkpoint, retén, etc.) are surfaced, rendered as 🧊 emoji markers with a popup. Each layer is a button in the top-right corner of the map; active state is accented orange to match the rest of the glass UI.
+- **Map layers** — toggleable overlays on the family map (🔥 wildfire perimeters, 🧊 ICE checkpoints). Fire perimeters are fetched from the Interior/NIFC ArcGIS public endpoint (`/api/layers/wildfire`, 10-minute server-side cache) and rendered as orange polygons with a 🔥 centroid marker per incident; tap the marker to see fire name and acreage. ICE checkpoints are community-reported by the family (`POST /api/layers/ice/report`), stored in `runtime.checkpoint_reports`, and expire after 2 hours. When the 🧊 layer is active a 📍 button appears — tap it to report a checkpoint at the current map center. Tap any 🧊 marker for age and optional note. Each layer is a button in the top-right corner of the map.
 - **db/** — Postgres 16 + pgvector + Apache AGE
 - **traccar** — official `traccar/traccar` image, own embedded database (unrelated to the Postgres
   above). Web UI + REST API on :8082 (localhost-only — reach it via an nginx-proxied subdomain, e.g.
@@ -716,6 +716,18 @@ there, like a modal. Put the blur on a `::before`/`::after` pseudo-element inste
   ```
   If `substrate.emergency_contacts` already exists from before `notes` was added:
   `ALTER TABLE substrate.emergency_contacts ADD COLUMN IF NOT EXISTS notes TEXT;`
+  Community checkpoint reports need `runtime.checkpoint_reports` on an existing install:
+  ```sql
+  CREATE TABLE IF NOT EXISTS runtime.checkpoint_reports (
+    id BIGSERIAL PRIMARY KEY,
+    household_id UUID NOT NULL REFERENCES substrate.households(id) ON DELETE CASCADE,
+    lat DOUBLE PRECISION NOT NULL,
+    lng DOUBLE PRECISION NOT NULL,
+    note TEXT,
+    reported_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    expires_at TIMESTAMPTZ NOT NULL DEFAULT now() + INTERVAL '2 hours'
+  );
+  ```
 - **Member photo uploads need `backend/uploads/` to persist and be writable.** Locally that's the
   `backend_uploads` docker volume; on the VPS (bare pm2, no container) it's just a directory next to
   the app code — make sure it survives deploys (it's not in git) and that the pm2 process can write
