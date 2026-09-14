@@ -157,7 +157,7 @@ function zoomForSpeed(speedMps: number | undefined): number {
   if (speedMps < 8) return 16     // slow city (~18 mph)
   if (speedMps < 18) return 15    // city driving (~40 mph)
   if (speedMps < 30) return 13    // fast/highway (~67 mph)
-  if (speedMps < 40) return 11    // very fast (~89 mph)
+  if (speedMps < 40) return 12    // very fast (~89 mph)
   return 8                         // aircraft (40+ m/s ≈ 145+ km/h)
 }
 
