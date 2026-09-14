@@ -10,8 +10,8 @@ _fire_cache: dict = {"data": None, "expires": 0.0}
 _ice_cache: dict = {}  # keyed by bbox string, value: {data, expires}
 
 USFS_URL = (
-    "https://services3.arcgis.com/T4QMspbfLg3qTGWY/arcgis/rest/services/"
-    "Current_WildlandFire_Perimeters/FeatureServer/0/query"
+    "https://services9.arcgis.com/RHVPKKiFTONKtxq3/arcgis/rest/services/"
+    "USA_Wildfires_v1/FeatureServer/1/query"
     "?where=1%3D1&outFields=IncidentName,GISAcres,CreateDate"
     "&f=geojson&resultRecordCount=500"
 )
