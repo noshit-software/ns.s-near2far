@@ -1,8 +1,8 @@
 import "leaflet/dist/leaflet.css"
 
 import L from "leaflet"
-import { useEffect, useRef, useState } from "react"
-import { GeoJSON, MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from "react-leaflet"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { GeoJSON, MapContainer, Marker, Popup, Tooltip, TileLayer, useMap, useMapEvents } from "react-leaflet"
 
 import { apiGet } from "../lib/api"
 import { generatedAvatarDataUri, resolveMemberColor } from "../lib/avatar"
@@ -216,6 +216,29 @@ function ZoomTracker({ onZoom }: { onZoom: (zoom: number) => void }) {
   return null
 }
 
+const _flameIcon = L.divIcon({
+  className: "",
+  html: '<span style="font-size:18px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))">🔥</span>',
+  iconSize: [22, 22],
+  iconAnchor: [11, 11],
+})
+
+function _ringCentroid(coords: number[][]): [number, number] {
+  const lat = coords.reduce((s, c) => s + c[1], 0) / coords.length
+  const lng = coords.reduce((s, c) => s + c[0], 0) / coords.length
+  return [lat, lng]
+}
+
+function _featureCentroid(f: GeoJSON.Feature): [number, number] | null {
+  const g = f.geometry
+  if (g.type === "Polygon") return _ringCentroid(g.coordinates[0])
+  if (g.type === "MultiPolygon") {
+    const largest = g.coordinates.reduce((a, b) => a[0].length >= b[0].length ? a : b)
+    return _ringCentroid(largest[0])
+  }
+  return null
+}
+
 function WildfireLayer() {
   const [data, setData] = useState<GeoJSON.FeatureCollection | null>(null)
 
@@ -231,13 +254,40 @@ function WildfireLayer() {
     return () => clearInterval(id)
   }, [])
 
+  const centroids = useMemo(() => {
+    if (!data || !Array.isArray(data.features)) return []
+    return data.features.flatMap((f) => {
+      const pos = _featureCentroid(f)
+      if (!pos) return []
+      return [{ pos, name: f.properties?.IncidentName as string | undefined, acres: f.properties?.GISAcres as number | undefined }]
+    })
+  }, [data])
+
   if (!data || data.type !== "FeatureCollection" || !Array.isArray(data.features)) return null
   return (
-    <GeoJSON
-      key={data.features.length}
-      data={data}
-      style={{ color: "#ff4500", weight: 1.5, fillColor: "#ff6b00", fillOpacity: 0.25 }}
-    />
+    <>
+      <GeoJSON
+        key={data.features.length}
+        data={data}
+        style={{ color: "#ff4500", weight: 1.5, fillColor: "#ff6b00", fillOpacity: 0.25 }}
+      />
+      {centroids.map((c, i) => (
+        <Marker
+          key={i}
+          position={c.pos}
+          icon={_flameIcon}
+          eventHandlers={{
+            mouseover: (e) => e.target.setOpacity(0),
+            mouseout: (e) => e.target.setOpacity(1),
+          }}
+        >
+          <Tooltip direction="top" offset={[0, -8]}>
+            <strong>{c.name ?? "Wildfire"}</strong>
+            {c.acres != null && <> · {Math.round(c.acres).toLocaleString()} acres</>}
+          </Tooltip>
+        </Marker>
+      ))}
+    </>
   )
 }
 
