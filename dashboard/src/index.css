@@ -1118,6 +1118,25 @@ h3 {
   color: #c8c8c8;
 }
 
+.member-panel-stale {
+  color: #ffb347;
+  font-weight: 600;
+  display: block;
+  font-size: 0.72rem;
+}
+
+.member-strip-stale {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ffb347;
+  border: 2px solid rgba(26, 35, 48, 0.8);
+  z-index: 2;
+}
+
 /* Leaflet's own zoom control renders with its stock white/boxy default look — never restyled,
    so it stuck out against the app's glass theme everywhere else on the map. */
 .family-map .leaflet-control-zoom {

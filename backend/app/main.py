@@ -10,14 +10,18 @@ from app.config import settings
 from app.dashboard_stream import router as dashboard_stream_router
 from app.db import create_pool
 from app.logging import configure_logging
+from app.staleness_alerts import run_staleness_watcher
 
 configure_logging()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    import asyncio
     app.state.db_pool = await create_pool()
+    watcher = asyncio.create_task(run_staleness_watcher(app.state.db_pool))
     yield
+    watcher.cancel()
     await app.state.db_pool.close()
 
 

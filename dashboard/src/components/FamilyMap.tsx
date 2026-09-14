@@ -29,6 +29,12 @@ type Position = {
 // badge appears exactly when a warning would've fired, not at some independently-chosen cutoff.
 const LOW_BATTERY_THRESHOLD = 20
 
+const STALE_THRESHOLD_MS = 30 * 60 * 1000
+
+function isStale(recorded_at: string): boolean {
+  return Date.now() - new Date(recorded_at).getTime() > STALE_THRESHOLD_MS
+}
+
 // Full avatar size at "close" zoom, in px. Every other tier below is a fraction of this.
 const BASE_SIZE = 120
 
@@ -225,10 +231,10 @@ function WildfireLayer() {
     return () => clearInterval(id)
   }, [])
 
-  if (!data) return null
+  if (!data || data.type !== "FeatureCollection" || !Array.isArray(data.features)) return null
   return (
     <GeoJSON
-      key={data.features?.length}
+      key={data.features.length}
       data={data}
       style={{ color: "#ff4500", weight: 1.5, fillColor: "#ff6b00", fillOpacity: 0.25 }}
     />
@@ -464,6 +470,7 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
                   />
                 </button>
                 {p.member_id === activeMemberId && <span className="member-strip-deselect">✕</span>}
+                {isStale(p.recorded_at) && <span className="member-strip-stale" title="Location is stale" />}
               </div>
             ))}
           </div>
@@ -497,6 +504,9 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
                 <span className="member-panel-time">{relativeTime(activeMember.recorded_at)}</span>
                 {activeMember.battery !== null && activeMember.battery <= LOW_BATTERY_THRESHOLD && (
                   <span className="member-panel-battery-low">🔋 {activeMember.battery}%</span>
+                )}
+                {isStale(activeMember.recorded_at) && (
+                  <span className="member-panel-stale">⚠ Location stale — OwnTracks may have stopped</span>
                 )}
               </span>
             </div>

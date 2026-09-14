@@ -11,6 +11,7 @@ from app.events import publish
 from app.middleware.auth import require_admin_auth
 from app.battery_alerts import on_battery as _on_battery
 from app.geofence_alerts import on_position as _on_geofence
+from app.staleness_alerts import on_fresh_position as _on_fresh_position
 from app.trips import on_position as _on_position
 
 router = APIRouter()
@@ -127,6 +128,7 @@ async def _record_position(
         )
     data = _position_dict(member_id, display_name, avatar_filename, avatar_seed, color, row)
     await publish("position.updated", data)
+    _on_fresh_position(member_id)
     await _on_position(conn, member_id, display_name, household_id, lat, lng, row["recorded_at"])
     await _on_battery(conn, member_id, display_name, household_id, battery)
     await _on_geofence(conn, member_id, display_name, household_id, lat, lng)
