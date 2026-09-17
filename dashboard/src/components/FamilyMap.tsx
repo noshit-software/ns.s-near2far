@@ -4,7 +4,7 @@ import L from "leaflet"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { GeoJSON, MapContainer, Marker, Popup, Tooltip, TileLayer, useMap, useMapEvents } from "react-leaflet"
 
-import { apiGet, apiPost } from "../lib/api"
+import { apiGet } from "../lib/api"
 import { generatedAvatarDataUri, resolveMemberColor } from "../lib/avatar"
 
 type Household = {
@@ -371,9 +371,6 @@ function chimePlace() {
 
 export function FamilyMap({ household, lastEvent }: { household: Household; lastEvent: unknown }) {
   const [wildfireOn, setWildfireOn] = useState(false)
-  const [iceOn, setIceOn] = useState(false)
-  const [iceRefreshCount, setIceRefreshCount] = useState(0)
-  const [reporting, setReporting] = useState(false)
   const [positions, setPositions] = useState<Record<string, Position>>({})
   const [zoom, setZoom] = useState(14)
   const mapRef = useRef<L.Map | null>(null)
@@ -513,7 +510,6 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
         ))}
         {sosMarker && <Marker position={[sosMarker.lat, sosMarker.lng]} icon={sosIcon()} zIndexOffset={1000} />}
         {wildfireOn && <WildfireLayer />}
-        {iceOn && <IceLayer refreshToken={iceRefreshCount} />}
       </MapContainer>
       <div className="map-layer-toggles">
         <button
@@ -522,31 +518,6 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
           onClick={() => setWildfireOn((v) => !v)}
           title="Wildfire"
         >🔥</button>
-        <button
-          type="button"
-          className={`map-layer-btn ${iceOn ? "active" : ""}`}
-          onClick={() => setIceOn((v) => !v)}
-          title="ICE checkpoints"
-        >🧊</button>
-        {iceOn && (
-          <button
-            type="button"
-            className="map-layer-btn map-layer-report-btn"
-            disabled={reporting}
-            onClick={async () => {
-              const center = mapRef.current?.getCenter()
-              if (!center) return
-              setReporting(true)
-              try {
-                await apiPost("/layers/ice/report", { lat: center.lat, lng: center.lng })
-                setIceRefreshCount((n) => n + 1)
-              } catch { /* ignore */ } finally {
-                setReporting(false)
-              }
-            }}
-            title="Report checkpoint at map center"
-          >{reporting ? "…" : "📍"}</button>
-        )}
       </div>
       <div className="map-overlay-bottom">
         {positionList.length > 0 && (
