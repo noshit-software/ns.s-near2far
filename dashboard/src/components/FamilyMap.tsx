@@ -152,6 +152,26 @@ function haversineM(lat1: number, lng1: number, lat2: number, lng2: number): num
   return 2 * r * Math.asin(Math.sqrt(a))
 }
 
+function bearingDeg(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const dLng = ((lng2 - lng1) * Math.PI) / 180
+  const p1 = (lat1 * Math.PI) / 180
+  const p2 = (lat2 * Math.PI) / 180
+  const y = Math.sin(dLng) * Math.cos(p2)
+  const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dLng)
+  return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360
+}
+
+function projectPoint(lat: number, lng: number, bearing: number, distanceM: number): [number, number] {
+  const R = 6371000
+  const d = distanceM / R
+  const b = (bearing * Math.PI) / 180
+  const lat1 = (lat * Math.PI) / 180
+  const lng1 = (lng * Math.PI) / 180
+  const lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(b))
+  const lng2 = lng1 + Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(lat1), Math.cos(d) - Math.sin(lat1) * Math.sin(lat2))
+  return [(lat2 * 180) / Math.PI, (lng2 * 180) / Math.PI]
+}
+
 // Zoom to snap to when centering on a member, based on their current speed — close-in for
 // someone stationary/walking, progressively further out the faster they're moving so a
 // driving member's road context stays visible instead of the map staying at walking-zoom.
@@ -290,48 +310,66 @@ const _iceIcon = L.divIcon({
   iconAnchor: [11, 11],
 })
 
-function IceLayer({ refreshToken }: { refreshToken: number }) {
-  const [data, setData] = useState<GeoJSON.FeatureCollection | null>(null)
-  const map = useMap()
+function IceLayer({
+  positions,
+  refreshToken,
+  onData,
+}: {
+  positions: Position[]
+  refreshToken: number
+  onData: (features: GeoJSON.Feature[]) => void
+}) {
+  const [features, setFeatures] = useState<GeoJSON.Feature[]>([])
 
-  function refresh() {
-    const center = map.getCenter()
-    const params = new URLSearchParams({
-      lat: center.lat.toFixed(5),
-      lng: center.lng.toFixed(5),
-      distance: "20",
-    })
-    fetch(`/api/layers/ice?${params}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("near2far_admin_password") ?? ""}` },
-    })
-      .then((r) => r.json())
-      .then((d) => { if (d.type === "FeatureCollection") setData(d) })
-      .catch(() => {})
+  async function refresh() {
+    if (positions.length === 0) return
+    const auth = `Bearer ${localStorage.getItem("near2far_admin_password") ?? ""}`
+    const seen = new Map<string, GeoJSON.Feature>()
+
+    await Promise.all(
+      positions.map(async (p) => {
+        const params = new URLSearchParams({ lat: p.lat.toFixed(5), lng: p.lng.toFixed(5), distance: "20" })
+        try {
+          const r = await fetch(`/api/layers/ice?${params}`, { headers: { Authorization: auth } })
+          const d = await r.json() as GeoJSON.FeatureCollection
+          if (d.type === "FeatureCollection") {
+            for (const f of d.features) {
+              const key = (f.properties?.id as string | null) ?? JSON.stringify(f.geometry)
+              if (!seen.has(key)) seen.set(key, f)
+            }
+          }
+        } catch { /* ignore */ }
+      })
+    )
+
+    const merged = Array.from(seen.values())
+    setFeatures(merged)
+    onData(merged)
   }
 
   useEffect(() => {
-    refresh()
-    const id = setInterval(refresh, 5 * 60 * 1000)
+    void refresh()
+    const id = setInterval(() => void refresh(), 5 * 60 * 1000)
     return () => clearInterval(id)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refreshToken])
+  }, [refreshToken, positions.map((p) => `${p.lat},${p.lng}`).join("|")])
 
   return (
     <>
-      {data?.features?.map((f, i) => {
+      {features.map((f, i) => {
         const [lng, lat] = (f.geometry as GeoJSON.Point).coordinates
         const props = f.properties ?? {}
         const age = props.created_at
-          ? Math.round((Date.now() - new Date(props.created_at).getTime()) / 60000)
+          ? Math.round((Date.now() - new Date(props.created_at as string).getTime()) / 60000)
           : null
         return (
-          <Marker key={props.id ?? i} position={[lat, lng]} icon={_iceIcon}>
+          <Marker key={(props.id as string | null) ?? i} position={[lat, lng]} icon={_iceIcon}>
             <Popup>
               <strong>ICE Activity</strong>
               {props.address && <><br />{props.address}</>}
               {age != null && <><br />{age}m ago</>}
-              {props.description && <><br /><em style={{fontSize:"0.85em"}}>{props.description.replace(/ - stopice\.net$/, "")}</em></>}
-              {props.url && <><br /><a href={props.url} target="_blank" rel="noreferrer" style={{fontSize:"0.8em"}}>stopice.net</a></>}
+              {props.description && <><br /><em style={{ fontSize: "0.85em" }}>{(props.description as string).replace(/ - stopice\.net$/, "")}</em></>}
+              {props.url && <><br /><a href={props.url as string} target="_blank" rel="noreferrer" style={{ fontSize: "0.8em" }}>stopice.net</a></>}
             </Popup>
           </Marker>
         )
@@ -387,7 +425,8 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
   const [positions, setPositions] = useState<Record<string, Position>>({})
   const [zoom, setZoom] = useState(14)
   const mapRef = useRef<L.Map | null>(null)
-  const speedsRef = useRef<Record<string, number>>({})
+  const motionRef = useRef<Record<string, { speed: number; bearing: number | null }>>({})
+  const iceDataRef = useRef<{ geometry: { coordinates: [number, number] }; properties: { address: string | null; created_at: string | null } }[]>([])
   const [sosMarker, setSosMarker] = useState<{ id: number; lat: number; lng: number; category: string } | null>(
     null,
   )
@@ -407,20 +446,19 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
     return () => clearInterval(interval)
   }, [])
 
-  function updateSpeed(prev: Position | undefined, next: Position) {
+  function updateMotion(prev: Position | undefined, next: Position) {
     if (!prev) return
     const dtS = (new Date(next.recorded_at).getTime() - new Date(prev.recorded_at).getTime()) / 1000
-    // Too close in time → GPS noise dominates; skip rather than store a nonsense speed.
     if (dtS < 5) return
     const distM = haversineM(prev.lat, prev.lng, next.lat, next.lng)
     const mps = distM / dtS
-    // Hard cap at 60 m/s (216 km/h) — anything above is a GPS glitch, not real movement.
     if (mps > 60) return
-    speedsRef.current[next.member_id] = mps
+    const bearing = mps >= 0.8 ? bearingDeg(prev.lat, prev.lng, next.lat, next.lng) : null
+    motionRef.current[next.member_id] = { speed: mps, bearing }
   }
 
   function snapTo(p: Position) {
-    const z = zoomForSpeed(speedsRef.current[p.member_id])
+    const z = zoomForSpeed(motionRef.current[p.member_id]?.speed)
     followZoomRef.current = z
     mapRef.current?.flyTo([p.lat, p.lng], z)
   }
@@ -458,11 +496,11 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
     if (type === "position.updated") {
       const p = payload as Position
       setPositions((prev) => {
-        updateSpeed(prev[p.member_id], p)
+        updateMotion(prev[p.member_id], p)
         return { ...prev, [p.member_id]: p }
       })
       if (activeMemberIdRef.current === p.member_id) {
-        const targetZoom = zoomForSpeed(speedsRef.current[p.member_id])
+        const targetZoom = zoomForSpeed(motionRef.current[p.member_id]?.speed)
         if (followZoomRef.current !== targetZoom) {
           followZoomRef.current = targetZoom
           mapRef.current?.flyTo([p.lat, p.lng], targetZoom)
@@ -498,7 +536,27 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
   }, [positionList.map((p) => p.member_id).join(",")])
 
   const activeMember = activeMemberId ? positions[activeMemberId] : undefined
-  const activeSpeedMps = activeMember ? speedsRef.current[activeMember.member_id] : undefined
+  const activeMotion = activeMember ? motionRef.current[activeMember.member_id] : undefined
+  const activeSpeedMps = activeMotion?.speed
+
+  // For a driving member, project their trajectory and warn if ICE activity is on the path.
+  // Look-ahead: 10 min at current speed (capped at 25 mi). Warn if alert within 2 mi of that point.
+  let iceAhead: { distMi: number; address: string | null } | null = null
+  if (activeMember && iceOn && iceDataRef.current.length > 0 && activeMotion) {
+    const { speed, bearing } = activeMotion
+    if (speed >= 3 && bearing !== null) {
+      const lookAheadM = Math.min(speed * 600, 40_000)
+      const [projLat, projLng] = projectPoint(activeMember.lat, activeMember.lng, bearing, lookAheadM)
+      for (const f of iceDataRef.current) {
+        const [fLng, fLat] = f.geometry.coordinates
+        if (haversineM(projLat, projLng, fLat, fLng) < 3200) {
+          const distMi = Math.round(haversineM(activeMember.lat, activeMember.lng, fLat, fLng) / 1609)
+          iceAhead = { distMi, address: f.properties.address }
+          break
+        }
+      }
+    }
+  }
 
   return (
     <div className="family-map">
@@ -523,7 +581,13 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
         ))}
         {sosMarker && <Marker position={[sosMarker.lat, sosMarker.lng]} icon={sosIcon()} zIndexOffset={1000} />}
         {wildfireOn && <WildfireLayer />}
-        {iceOn && <IceLayer refreshToken={iceRefreshCount} />}
+        {iceOn && (
+          <IceLayer
+            positions={positionList}
+            refreshToken={iceRefreshCount}
+            onData={(f) => { iceDataRef.current = f as typeof iceDataRef.current }}
+          />
+        )}
       </MapContainer>
       <div className="map-layer-toggles">
         <button
@@ -604,6 +668,11 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
                 )}
                 {isStale(activeMember.recorded_at) && (
                   <span className="member-panel-stale">⚠ Location stale — OwnTracks may have stopped</span>
+                )}
+                {iceAhead && (
+                  <span className="member-panel-ice-ahead">
+                    🧊 ICE activity ~{iceAhead.distMi}mi ahead{iceAhead.address ? ` · ${iceAhead.address}` : ""}
+                  </span>
                 )}
               </span>
             </div>

@@ -1125,6 +1125,13 @@ h3 {
   font-size: 0.72rem;
 }
 
+.member-panel-ice-ahead {
+  color: #7dd8f8;
+  font-weight: 600;
+  display: block;
+  font-size: 0.72rem;
+}
+
 .member-strip-stale {
   position: absolute;
   top: 2px;
