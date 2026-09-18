@@ -6,6 +6,8 @@ import { Circle, CircleMarker, MapContainer, TileLayer, useMap, useMapEvents } f
 
 type LatLng = { lat: number; lng: number }
 
+type NominatimResult = { display_name: string; lat: string; lon: string }
+
 function ClickToMove({ onMove }: { onMove: (pos: LatLng) => void }) {
   useMapEvents({
     click(e) {
@@ -22,6 +24,15 @@ function FitToRadius({ center, radiusM }: { center: LatLng; radiusM: number }) {
     map.fitBounds(bounds)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [center.lat, center.lng, radiusM])
+  return null
+}
+
+function FlyToLocation({ target }: { target: LatLng | null }) {
+  const map = useMap()
+  useEffect(() => {
+    if (target) map.flyTo([target.lat, target.lng], 16)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target])
   return null
 }
 
@@ -43,6 +54,10 @@ export function LocationPicker({
   const [locating, setLocating] = useState(!hadInitialValue.current)
   const [locateError, setLocateError] = useState<string | null>(null)
   const [editing, setEditing] = useState(!lockedByDefault)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [searchResults, setSearchResults] = useState<NominatimResult[]>([])
+  const [flyTarget, setFlyTarget] = useState<LatLng | null>(null)
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (hadInitialValue.current) return
@@ -77,8 +92,6 @@ export function LocationPicker({
 
     locate()
 
-    // If permission was denied and the user later grants it via the browser's
-    // site settings (no page reload), retry automatically.
     let status: PermissionStatus | null = null
     if ("permissions" in navigator) {
       navigator.permissions
@@ -96,6 +109,27 @@ export function LocationPicker({
       if (status) status.onchange = null
     }
   }, [onChange])
+
+  function handleSearchChange(q: string) {
+    setSearchQuery(q)
+    if (searchTimer.current) clearTimeout(searchTimer.current)
+    if (q.length < 3) { setSearchResults([]); return }
+    searchTimer.current = setTimeout(() => {
+      fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`)
+        .then((r) => r.json())
+        .then((data: NominatimResult[]) => setSearchResults(data))
+        .catch(() => setSearchResults([]))
+    }, 400)
+  }
+
+  function selectResult(r: NominatimResult) {
+    const pos = { lat: parseFloat(r.lat), lng: parseFloat(r.lon) }
+    setFlyTarget(pos)
+    setCenter(pos)
+    onChange(pos)
+    setSearchQuery(r.display_name)
+    setSearchResults([])
+  }
 
   if (locating) {
     return <div className="location-picker">finding your location…</div>
@@ -118,6 +152,23 @@ export function LocationPicker({
 
   return (
     <div className="location-picker">
+      <div className="location-search">
+        <input
+          type="search"
+          className="location-search-input"
+          placeholder="Search for an address…"
+          value={searchQuery}
+          onChange={(e) => handleSearchChange(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Escape") { setSearchQuery(""); setSearchResults([]) } }}
+        />
+        {searchResults.length > 0 && (
+          <ul className="location-search-results">
+            {searchResults.map((r, i) => (
+              <li key={i} onMouseDown={() => selectResult(r)}>{r.display_name}</li>
+            ))}
+          </ul>
+        )}
+      </div>
       <div className="location-map-wrap">
         <MapContainer
           center={marker}
@@ -128,6 +179,7 @@ export function LocationPicker({
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <ClickToMove onMove={handleMove} />
           <FitToRadius center={marker} radiusM={radiusM} />
+          <FlyToLocation target={flyTarget} />
           <CircleMarker center={marker} radius={6} />
           <Circle center={marker} radius={radiusM} />
         </MapContainer>
