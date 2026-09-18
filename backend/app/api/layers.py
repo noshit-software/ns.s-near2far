@@ -1,4 +1,6 @@
+import json
 import logging
+import re
 import time
 
 import httpx
@@ -73,7 +75,8 @@ async def get_ice(
         async with httpx.AsyncClient(timeout=10) as client:
             r = await client.get(url)
             r.raise_for_status()
-            raw = r.json()
+            clean = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", " ", r.text)
+            raw = json.loads(clean)
     except Exception as e:
         if _ice_cache["data"] is not None:
             return _ice_cache["data"]
