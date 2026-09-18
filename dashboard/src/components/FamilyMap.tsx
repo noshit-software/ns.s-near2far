@@ -305,12 +305,20 @@ function WildfireLayer({ onLoading }: { onLoading: (v: boolean) => void }) {
   )
 }
 
-const _iceIcon = L.divIcon({
-  className: "",
-  html: '<span style="font-size:18px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))">🧊</span>',
-  iconSize: [22, 22],
-  iconAnchor: [11, 11],
-})
+const _ICE_PRIORITY_COLORS = ["#888", "#aaa", "#5b8cff", "#ffb347", "#ff8c00", "#ff3b3b"]
+
+function iceIcon(priority: number | null): L.DivIcon {
+  const color = _ICE_PRIORITY_COLORS[Math.max(1, Math.min(priority ?? 1, 5))]
+  return L.divIcon({
+    className: "",
+    html: `<div style="position:relative;display:inline-block">
+      <span style="font-size:18px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))">🧊</span>
+      <span style="position:absolute;bottom:-2px;right:-2px;width:8px;height:8px;border-radius:50%;background:${color};border:1.5px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.4)"></span>
+    </div>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+  })
+}
 
 function IceLayer({
   positions,
@@ -369,11 +377,16 @@ function IceLayer({
           ? Math.round((Date.now() - new Date(props.created_at as string).getTime()) / 60000)
           : null
         return (
-          <Marker key={(props.id as string | null) ?? i} position={[lat, lng]} icon={_iceIcon}>
+          <Marker key={(props.id as string | null) ?? i} position={[lat, lng]} icon={iceIcon(props.priority != null ? Number(props.priority) : null)}>
             <Popup>
               <strong>ICE Activity</strong>
               {props.address && <><br />{props.address}</>}
               {age != null && <><br />{age}m ago</>}
+              {props.priority != null && (() => {
+                const p = Math.max(1, Math.min(Number(props.priority), 5))
+                const color = _ICE_PRIORITY_COLORS[p]
+                return <><br /><span style={{ color, fontWeight: 600 }}>{"●".repeat(p)}{"○".repeat(5 - p)}</span> confidence</>
+              })()}
               {props.description && <><br /><em style={{ fontSize: "0.85em" }}>{(props.description as string).replace(/ - stopice\.net$/, "")}</em></>}
               {props.url && <><br /><a href={props.url as string} target="_blank" rel="noreferrer" style={{ fontSize: "0.8em" }}>stopice.net</a></>}
             </Popup>
