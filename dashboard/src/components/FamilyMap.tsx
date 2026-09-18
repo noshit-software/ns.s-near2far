@@ -426,7 +426,7 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
   const [zoom, setZoom] = useState(14)
   const mapRef = useRef<L.Map | null>(null)
   const motionRef = useRef<Record<string, { speed: number; bearing: number | null }>>({})
-  const iceDataRef = useRef<{ geometry: { coordinates: [number, number] }; properties: { address: string | null; created_at: string | null } }[]>([])
+  const iceDataRef = useRef<GeoJSON.Feature[]>([])
   const [sosMarker, setSosMarker] = useState<{ id: number; lat: number; lng: number; category: string } | null>(
     null,
   )
@@ -548,10 +548,11 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
       const lookAheadM = Math.min(speed * 600, 40_000)
       const [projLat, projLng] = projectPoint(activeMember.lat, activeMember.lng, bearing, lookAheadM)
       for (const f of iceDataRef.current) {
-        const [fLng, fLat] = f.geometry.coordinates
+        if (f.geometry.type !== "Point") continue
+        const [fLng, fLat] = (f.geometry as GeoJSON.Point).coordinates
         if (haversineM(projLat, projLng, fLat, fLng) < 3200) {
           const distMi = Math.round(haversineM(activeMember.lat, activeMember.lng, fLat, fLng) / 1609)
-          iceAhead = { distMi, address: f.properties.address }
+          iceAhead = { distMi, address: (f.properties?.address as string | null) ?? null }
           break
         }
       }
@@ -585,7 +586,7 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
           <IceLayer
             positions={positionList}
             refreshToken={iceRefreshCount}
-            onData={(f) => { iceDataRef.current = f as typeof iceDataRef.current }}
+            onData={(f) => { iceDataRef.current = f }}
           />
         )}
       </MapContainer>
