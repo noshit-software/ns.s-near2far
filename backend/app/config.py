@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     # original network-only trust model) so this doesn't break an install that hasn't set it.
     traccar_forward_token: str = ""
 
+    stopice_api_key: str = ""
+
     # Comma-separated list of allowed origins for CORS, e.g. "https://near2far.family". Empty
     # (the default) keeps the wildcard "*" this app has always used — auth here is a Bearer/
     # Basic credential in a header, not a cookie, so wildcard CORS doesn't expose a classic

@@ -1,10 +1,10 @@
 import logging
-import os
 import time
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.config import settings
 from app.middleware.auth import require_admin_auth
 
 log = logging.getLogger(__name__)
@@ -19,8 +19,6 @@ USFS_URL = (
     "?where=1%3D1&outFields=IncidentName,GISAcres,CreateDate"
     "&f=geojson&resultRecordCount=500"
 )
-
-STOPICE_API_KEY = os.getenv("STOPICE_API_KEY", "")
 
 # Cache keyed by (rounded_lat, rounded_lng) — rounds to ~1 km grid
 _ice_cache: dict = {"data": None, "expires": 0.0, "lat": None, "lng": None}
@@ -53,7 +51,7 @@ async def get_ice(
     lng: float = Query(...),
     distance: int = Query(default=20, ge=1, le=100),
 ):
-    if not STOPICE_API_KEY:
+    if not settings.stopice_api_key:
         raise HTTPException(503, "STOPICE_API_KEY not configured")
 
     now = time.time()
@@ -68,7 +66,7 @@ async def get_ice(
         return _ice_cache["data"]
 
     url = (
-        f"https://stopice.net/api/?key={STOPICE_API_KEY}"
+        f"https://stopice.net/api/?key={settings.stopice_api_key}"
         f"&recentalerts=1&lat={lat}&long={lng}&distance={distance}"
     )
     try:
