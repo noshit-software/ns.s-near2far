@@ -81,33 +81,44 @@ async def get_ice(
             return _ice_cache["data"]
         raise HTTPException(502, f"StopICE API error: {e}")
 
-    # Response shape is undocumented — try common patterns
-    alerts: list = []
-    if isinstance(raw, list):
-        alerts = raw
-    elif isinstance(raw, dict):
-        for key in ("alerts", "data", "results", "items"):
-            if key in raw and isinstance(raw[key], list):
-                alerts = raw[key]
-                break
-        if not alerts:
-            log.warning("stopice_unexpected_shape keys=%s", list(raw.keys()))
+    # Response: {"success":"true", "DATASET-ALERT:<id>": [{alert obj}], ...}
+    # Each value is a single-element list; alert fields: id, created, priority,
+    # address, lat, long (all strings), description, media, url
+    if not isinstance(raw, dict):
+        log.warning("stopice_unexpected_shape type=%s", type(raw).__name__)
+        raw = {}
 
     features = []
-    for a in alerts:
-        a_lat = a.get("lat") or a.get("latitude")
-        a_lng = a.get("lng") or a.get("lon") or a.get("longitude") or a.get("long")
-        if a_lat is None or a_lng is None:
+    for key, val in raw.items():
+        if not key.startswith("DATASET-ALERT:"):
             continue
+        a = val[0] if isinstance(val, list) and val else val
+        if not isinstance(a, dict):
+            continue
+        a_lat = a.get("lat")
+        a_lng = a.get("long")
+        if not a_lat or not a_lng:
+            continue
+        # "SEP 18, 2026 (09:41:19)" → ISO for the frontend age calculation
+        created_iso: str | None = None
+        created_raw = a.get("created", "")
+        if created_raw:
+            try:
+                from datetime import datetime, timezone
+                dt = datetime.strptime(created_raw, "%b %d, %Y (%H:%M:%S)")
+                created_iso = dt.replace(tzinfo=timezone.utc).isoformat()
+            except ValueError:
+                created_iso = created_raw
         features.append({
             "type": "Feature",
             "geometry": {"type": "Point", "coordinates": [float(a_lng), float(a_lat)]},
             "properties": {
                 "id": a.get("id"),
                 "address": a.get("address"),
-                "comments": a.get("comments"),
+                "description": a.get("description"),
                 "priority": a.get("priority"),
-                "created_at": a.get("created_at") or a.get("date") or a.get("timestamp") or a.get("time"),
+                "created_at": created_iso,
+                "url": a.get("url"),
             },
         })
 

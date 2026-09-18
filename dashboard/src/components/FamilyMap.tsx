@@ -330,8 +330,8 @@ function IceLayer({ refreshToken }: { refreshToken: number }) {
               <strong>ICE Activity</strong>
               {props.address && <><br />{props.address}</>}
               {age != null && <><br />{age}m ago</>}
-              {props.comments && <><br /><em>{props.comments}</em></>}
-              {props.priority != null && <><br />Priority: {props.priority}/5</>}
+              {props.description && <><br /><em style={{fontSize:"0.85em"}}>{props.description.replace(/ - stopice\.net$/, "")}</em></>}
+              {props.url && <><br /><a href={props.url} target="_blank" rel="noreferrer" style={{fontSize:"0.8em"}}>stopice.net</a></>}
             </Popup>
           </Marker>
         )
