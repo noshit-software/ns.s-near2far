@@ -2,6 +2,7 @@ import json
 import logging
 import re
 import time
+from datetime import datetime, timedelta, timezone
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -110,6 +111,14 @@ async def get_ice(
                 created_iso = dt.replace(tzinfo=timezone.utc).isoformat()
             except ValueError:
                 created_iso = created_raw
+        if created_iso:
+            try:
+                age = datetime.now(timezone.utc) - datetime.fromisoformat(created_iso)
+                if age > timedelta(hours=24):
+                    continue
+            except ValueError:
+                pass
+
         features.append({
             "type": "Feature",
             "geometry": {"type": "Point", "coordinates": [float(a_lng), float(a_lat)]},

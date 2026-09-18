@@ -307,11 +307,13 @@ function WildfireLayer({ onLoading }: { onLoading: (v: boolean) => void }) {
 
 const _ICE_PRIORITY_OPACITY = [0.2, 0.25, 0.45, 0.65, 0.85, 1.0]
 
-function iceIcon(priority: number | null): L.DivIcon {
+function iceIcon(priority: number | null, ageMin: number | null): L.DivIcon {
   const opacity = _ICE_PRIORITY_OPACITY[Math.max(1, Math.min(priority ?? 1, 5))]
+  // Grayscale 0% (fresh) → 85% (23h) — independent of priority
+  const gray = ageMin != null ? Math.min(85, Math.round((ageMin / 1440) * 85)) : 0
   return L.divIcon({
     className: "",
-    html: `<span style="font-size:18px;line-height:1;opacity:${opacity};filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))">🧊</span>`,
+    html: `<span style="font-size:18px;line-height:1;opacity:${opacity};filter:grayscale(${gray}%) drop-shadow(0 1px 2px rgba(0,0,0,.6))">🧊</span>`,
     iconSize: [22, 22],
     iconAnchor: [11, 11],
   })
@@ -373,16 +375,16 @@ function IceLayer({
         const ageMin = props.created_at
           ? Math.round((Date.now() - new Date(props.created_at as string).getTime()) / 60000)
           : null
-        const age = ageMin == null ? null
+        const ageLabel = ageMin == null ? null
           : ageMin < 60 ? `${ageMin}m ago`
           : ageMin < 1440 ? `${Math.round(ageMin / 60)}h ago`
           : `${Math.round(ageMin / 1440)}d ago`
         return (
-          <Marker key={(props.id as string | null) ?? i} position={[lat, lng]} icon={iceIcon(props.priority != null ? Number(props.priority) : null)}>
+          <Marker key={(props.id as string | null) ?? i} position={[lat, lng]} icon={iceIcon(props.priority != null ? Number(props.priority) : null, ageMin)}>
             <Popup>
               <strong>ICE Activity</strong>
               {props.address && <><br />{props.address}</>}
-              {age != null && <><br />{age}</>}
+              {ageLabel != null && <><br />{ageLabel}</>}
               {props.priority != null && (() => {
                 const p = Math.max(1, Math.min(Number(props.priority), 5))
                 return <><br /><span style={{ fontWeight: 600 }}>{"●".repeat(p)}{"○".repeat(5 - p)}</span> confidence</>
