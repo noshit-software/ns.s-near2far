@@ -292,9 +292,18 @@ const _iceIcon = L.divIcon({
 
 function IceLayer({ refreshToken }: { refreshToken: number }) {
   const [data, setData] = useState<GeoJSON.FeatureCollection | null>(null)
+  const map = useMap()
 
   function refresh() {
-    fetch("/api/layers/ice", { headers: { Authorization: `Bearer ${localStorage.getItem("near2far_admin_password") ?? ""}` } })
+    const center = map.getCenter()
+    const params = new URLSearchParams({
+      lat: center.lat.toFixed(5),
+      lng: center.lng.toFixed(5),
+      distance: "20",
+    })
+    fetch(`/api/layers/ice?${params}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem("near2far_admin_password") ?? ""}` },
+    })
       .then((r) => r.json())
       .then((d) => { if (d.type === "FeatureCollection") setData(d) })
       .catch(() => {})
@@ -302,7 +311,7 @@ function IceLayer({ refreshToken }: { refreshToken: number }) {
 
   useEffect(() => {
     refresh()
-    const id = setInterval(refresh, 2 * 60 * 1000)
+    const id = setInterval(refresh, 5 * 60 * 1000)
     return () => clearInterval(id)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshToken])
@@ -312,15 +321,17 @@ function IceLayer({ refreshToken }: { refreshToken: number }) {
       {data?.features?.map((f, i) => {
         const [lng, lat] = (f.geometry as GeoJSON.Point).coordinates
         const props = f.properties ?? {}
-        const age = props.reported_at
-          ? Math.round((Date.now() - new Date(props.reported_at).getTime()) / 60000)
+        const age = props.created_at
+          ? Math.round((Date.now() - new Date(props.created_at).getTime()) / 60000)
           : null
         return (
           <Marker key={props.id ?? i} position={[lat, lng]} icon={_iceIcon}>
             <Popup>
-              <strong>Checkpoint reported</strong>
-              {age != null && <><br />{age} min ago</>}
-              {props.note && <><br />{props.note}</>}
+              <strong>ICE Activity</strong>
+              {props.address && <><br />{props.address}</>}
+              {age != null && <><br />{age}m ago</>}
+              {props.comments && <><br /><em>{props.comments}</em></>}
+              {props.priority != null && <><br />Priority: {props.priority}/5</>}
             </Popup>
           </Marker>
         )
@@ -371,6 +382,8 @@ function chimePlace() {
 
 export function FamilyMap({ household, lastEvent }: { household: Household; lastEvent: unknown }) {
   const [wildfireOn, setWildfireOn] = useState(false)
+  const [iceOn, setIceOn] = useState(false)
+  const [iceRefreshCount, setIceRefreshCount] = useState(0)
   const [positions, setPositions] = useState<Record<string, Position>>({})
   const [zoom, setZoom] = useState(14)
   const mapRef = useRef<L.Map | null>(null)
@@ -510,6 +523,7 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
         ))}
         {sosMarker && <Marker position={[sosMarker.lat, sosMarker.lng]} icon={sosIcon()} zIndexOffset={1000} />}
         {wildfireOn && <WildfireLayer />}
+        {iceOn && <IceLayer refreshToken={iceRefreshCount} />}
       </MapContainer>
       <div className="map-layer-toggles">
         <button
@@ -518,6 +532,12 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
           onClick={() => setWildfireOn((v) => !v)}
           title="Wildfire"
         >🔥</button>
+        <button
+          type="button"
+          className={`map-layer-btn ${iceOn ? "active" : ""}`}
+          onClick={() => { setIceOn((v) => !v); setIceRefreshCount((n) => n + 1) }}
+          title="ICE activity"
+        >🧊</button>
       </div>
       <div className="map-overlay-bottom">
         {positionList.length > 0 && (

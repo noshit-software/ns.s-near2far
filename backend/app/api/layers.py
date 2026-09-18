@@ -1,10 +1,13 @@
+import logging
+import os
 import time
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.middleware.auth import require_admin_auth
+
+log = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -16,6 +19,11 @@ USFS_URL = (
     "?where=1%3D1&outFields=IncidentName,GISAcres,CreateDate"
     "&f=geojson&resultRecordCount=500"
 )
+
+STOPICE_API_KEY = os.getenv("STOPICE_API_KEY", "")
+
+# Cache keyed by (rounded_lat, rounded_lng) — rounds to ~1 km grid
+_ice_cache: dict = {"data": None, "expires": 0.0, "lat": None, "lng": None}
 
 
 @router.get("/api/layers/wildfire")
@@ -40,47 +48,69 @@ async def get_wildfire():
 
 
 @router.get("/api/layers/ice", dependencies=[Depends(require_admin_auth)])
-async def get_ice(request: Request):
-    async with request.app.state.db_pool.acquire() as conn:
-        household_id = await conn.fetchval(
-            "SELECT id FROM substrate.households ORDER BY created_at LIMIT 1"
-        )
-        rows = await conn.fetch(
-            "SELECT id, lat, lng, note, reported_at FROM runtime.checkpoint_reports "
-            "WHERE household_id = $1 AND expires_at > now() ORDER BY reported_at DESC",
-            household_id,
-        )
+async def get_ice(
+    lat: float = Query(...),
+    lng: float = Query(...),
+    distance: int = Query(default=20, ge=1, le=100),
+):
+    if not STOPICE_API_KEY:
+        raise HTTPException(503, "STOPICE_API_KEY not configured")
 
-    features = [
-        {
+    now = time.time()
+    cache_lat = round(lat, 2)
+    cache_lng = round(lng, 2)
+    if (
+        _ice_cache["data"] is not None
+        and _ice_cache["expires"] > now
+        and _ice_cache["lat"] == cache_lat
+        and _ice_cache["lng"] == cache_lng
+    ):
+        return _ice_cache["data"]
+
+    url = (
+        f"https://stopice.net/api/?key={STOPICE_API_KEY}"
+        f"&recentalerts=1&lat={lat}&long={lng}&distance={distance}"
+    )
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(url)
+            r.raise_for_status()
+            raw = r.json()
+    except Exception as e:
+        if _ice_cache["data"] is not None:
+            return _ice_cache["data"]
+        raise HTTPException(502, f"StopICE API error: {e}")
+
+    # Response shape is undocumented — try common patterns
+    alerts: list = []
+    if isinstance(raw, list):
+        alerts = raw
+    elif isinstance(raw, dict):
+        for key in ("alerts", "data", "results", "items"):
+            if key in raw and isinstance(raw[key], list):
+                alerts = raw[key]
+                break
+        if not alerts:
+            log.warning("stopice_unexpected_shape keys=%s", list(raw.keys()))
+
+    features = []
+    for a in alerts:
+        a_lat = a.get("lat") or a.get("latitude")
+        a_lng = a.get("lng") or a.get("lon") or a.get("longitude") or a.get("long")
+        if a_lat is None or a_lng is None:
+            continue
+        features.append({
             "type": "Feature",
-            "geometry": {"type": "Point", "coordinates": [r["lng"], r["lat"]]},
+            "geometry": {"type": "Point", "coordinates": [float(a_lng), float(a_lat)]},
             "properties": {
-                "id": r["id"],
-                "note": r["note"],
-                "reported_at": r["reported_at"].isoformat(),
+                "id": a.get("id"),
+                "address": a.get("address"),
+                "comments": a.get("comments"),
+                "priority": a.get("priority"),
+                "created_at": a.get("created_at") or a.get("date") or a.get("timestamp") or a.get("time"),
             },
-        }
-        for r in rows
-    ]
-    return {"type": "FeatureCollection", "features": features}
+        })
 
-
-class CheckpointReport(BaseModel):
-    lat: float
-    lng: float
-    note: str | None = None
-
-
-@router.post("/api/layers/ice/report", dependencies=[Depends(require_admin_auth)])
-async def report_checkpoint(body: CheckpointReport, request: Request):
-    async with request.app.state.db_pool.acquire() as conn:
-        household_id = await conn.fetchval(
-            "SELECT id FROM substrate.households ORDER BY created_at LIMIT 1"
-        )
-        row = await conn.fetchrow(
-            "INSERT INTO runtime.checkpoint_reports (household_id, lat, lng, note) "
-            "VALUES ($1, $2, $3, $4) RETURNING id, reported_at, expires_at",
-            household_id, body.lat, body.lng, body.note,
-        )
-    return {"success": True, "data": {"id": row["id"], "reported_at": row["reported_at"].isoformat()}}
+    geojson: dict = {"type": "FeatureCollection", "features": features}
+    _ice_cache.update({"data": geojson, "expires": now + 300, "lat": cache_lat, "lng": cache_lng})
+    return geojson
