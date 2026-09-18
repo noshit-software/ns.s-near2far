@@ -259,19 +259,21 @@ function _featureCentroid(f: GeoJSON.Feature): [number, number] | null {
   return null
 }
 
-function WildfireLayer() {
+function WildfireLayer({ onLoading }: { onLoading: (v: boolean) => void }) {
   const [data, setData] = useState<GeoJSON.FeatureCollection | null>(null)
 
   useEffect(() => {
     function fetch_() {
+      onLoading(true)
       fetch("/api/layers/wildfire")
         .then((r) => r.json())
-        .then(setData)
-        .catch(() => {})
+        .then((d) => { setData(d); onLoading(false) })
+        .catch(() => onLoading(false))
     }
     fetch_()
     const id = setInterval(fetch_, 10 * 60 * 1000)
     return () => clearInterval(id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const centroids = useMemo(() => {
@@ -314,15 +316,18 @@ function IceLayer({
   positions,
   refreshToken,
   onData,
+  onLoading,
 }: {
   positions: Position[]
   refreshToken: number
   onData: (features: GeoJSON.Feature[]) => void
+  onLoading: (v: boolean) => void
 }) {
   const [features, setFeatures] = useState<GeoJSON.Feature[]>([])
 
   async function refresh() {
     if (positions.length === 0) return
+    onLoading(true)
     const auth = `Bearer ${localStorage.getItem("near2far_admin_password") ?? ""}`
     const seen = new Map<string, GeoJSON.Feature>()
 
@@ -345,6 +350,7 @@ function IceLayer({
     const merged = Array.from(seen.values())
     setFeatures(merged)
     onData(merged)
+    onLoading(false)
   }
 
   useEffect(() => {
@@ -420,7 +426,9 @@ function chimePlace() {
 
 export function FamilyMap({ household, lastEvent }: { household: Household; lastEvent: unknown }) {
   const [wildfireOn, setWildfireOn] = useState(false)
+  const [wildfireLoading, setWildfireLoading] = useState(false)
   const [iceOn, setIceOn] = useState(false)
+  const [iceLoading, setIceLoading] = useState(false)
   const [iceRefreshCount, setIceRefreshCount] = useState(0)
   const [positions, setPositions] = useState<Record<string, Position>>({})
   const [zoom, setZoom] = useState(14)
@@ -581,28 +589,29 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
           </Marker>
         ))}
         {sosMarker && <Marker position={[sosMarker.lat, sosMarker.lng]} icon={sosIcon()} zIndexOffset={1000} />}
-        {wildfireOn && <WildfireLayer />}
+        {wildfireOn && <WildfireLayer onLoading={setWildfireLoading} />}
         {iceOn && (
           <IceLayer
             positions={positionList}
             refreshToken={iceRefreshCount}
             onData={(f) => { iceDataRef.current = f }}
+            onLoading={setIceLoading}
           />
         )}
       </MapContainer>
       <div className="map-layer-toggles">
         <button
           type="button"
-          className={`map-layer-btn ${wildfireOn ? "active" : ""}`}
+          className={`map-layer-btn ${wildfireOn ? "active" : ""} ${wildfireLoading ? "loading" : ""}`}
           onClick={() => setWildfireOn((v) => !v)}
           title="Wildfire"
-        >🔥</button>
+        >{wildfireLoading ? "⏳" : "🔥"}</button>
         <button
           type="button"
-          className={`map-layer-btn ${iceOn ? "active" : ""}`}
+          className={`map-layer-btn ${iceOn ? "active" : ""} ${iceLoading ? "loading" : ""}`}
           onClick={() => { setIceOn((v) => !v); setIceRefreshCount((n) => n + 1) }}
           title="ICE activity"
-        >🧊</button>
+        >{iceLoading ? "⏳" : "🧊"}</button>
       </div>
       <div className="map-overlay-bottom">
         {positionList.length > 0 && (
