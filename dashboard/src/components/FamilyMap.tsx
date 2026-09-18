@@ -328,7 +328,7 @@ function IceLayer({
 
     await Promise.all(
       positions.map(async (p) => {
-        const params = new URLSearchParams({ lat: p.lat.toFixed(5), lng: p.lng.toFixed(5), distance: "20" })
+        const params = new URLSearchParams({ lat: p.lat.toFixed(5), lng: p.lng.toFixed(5), distance: "50" })
         try {
           const r = await fetch(`/api/layers/ice?${params}`, { headers: { Authorization: auth } })
           const d = await r.json() as GeoJSON.FeatureCollection

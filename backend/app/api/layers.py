@@ -49,7 +49,7 @@ async def get_wildfire():
 async def get_ice(
     lat: float = Query(...),
     lng: float = Query(...),
-    distance: int = Query(default=20, ge=1, le=100),
+    distance: int = Query(default=50, ge=1, le=100),
 ):
     if not settings.stopice_api_key:
         raise HTTPException(503, "STOPICE_API_KEY not configured")
