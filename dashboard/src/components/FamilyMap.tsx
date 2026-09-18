@@ -370,15 +370,19 @@ function IceLayer({
       {features.map((f, i) => {
         const [lng, lat] = (f.geometry as GeoJSON.Point).coordinates
         const props = f.properties ?? {}
-        const age = props.created_at
+        const ageMin = props.created_at
           ? Math.round((Date.now() - new Date(props.created_at as string).getTime()) / 60000)
           : null
+        const age = ageMin == null ? null
+          : ageMin < 60 ? `${ageMin}m ago`
+          : ageMin < 1440 ? `${Math.round(ageMin / 60)}h ago`
+          : `${Math.round(ageMin / 1440)}d ago`
         return (
           <Marker key={(props.id as string | null) ?? i} position={[lat, lng]} icon={iceIcon(props.priority != null ? Number(props.priority) : null)}>
             <Popup>
               <strong>ICE Activity</strong>
               {props.address && <><br />{props.address}</>}
-              {age != null && <><br />{age}m ago</>}
+              {age != null && <><br />{age}</>}
               {props.priority != null && (() => {
                 const p = Math.max(1, Math.min(Number(props.priority), 5))
                 return <><br /><span style={{ fontWeight: 600 }}>{"●".repeat(p)}{"○".repeat(5 - p)}</span> confidence</>
