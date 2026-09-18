@@ -305,18 +305,15 @@ function WildfireLayer({ onLoading }: { onLoading: (v: boolean) => void }) {
   )
 }
 
-const _ICE_PRIORITY_COLORS = ["#888", "#aaa", "#5b8cff", "#ffb347", "#ff8c00", "#ff3b3b"]
+const _ICE_PRIORITY_OPACITY = [0.2, 0.25, 0.45, 0.65, 0.85, 1.0]
 
 function iceIcon(priority: number | null): L.DivIcon {
-  const color = _ICE_PRIORITY_COLORS[Math.max(1, Math.min(priority ?? 1, 5))]
+  const opacity = _ICE_PRIORITY_OPACITY[Math.max(1, Math.min(priority ?? 1, 5))]
   return L.divIcon({
     className: "",
-    html: `<div style="position:relative;display:inline-block">
-      <span style="font-size:18px;line-height:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))">🧊</span>
-      <span style="position:absolute;bottom:-2px;right:-2px;width:8px;height:8px;border-radius:50%;background:${color};border:1.5px solid #fff;box-shadow:0 1px 2px rgba(0,0,0,.4)"></span>
-    </div>`,
-    iconSize: [26, 26],
-    iconAnchor: [13, 13],
+    html: `<span style="font-size:18px;line-height:1;opacity:${opacity};filter:drop-shadow(0 1px 2px rgba(0,0,0,.6))">🧊</span>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11],
   })
 }
 
@@ -384,8 +381,7 @@ function IceLayer({
               {age != null && <><br />{age}m ago</>}
               {props.priority != null && (() => {
                 const p = Math.max(1, Math.min(Number(props.priority), 5))
-                const color = _ICE_PRIORITY_COLORS[p]
-                return <><br /><span style={{ color, fontWeight: 600 }}>{"●".repeat(p)}{"○".repeat(5 - p)}</span> confidence</>
+                return <><br /><span style={{ fontWeight: 600 }}>{"●".repeat(p)}{"○".repeat(5 - p)}</span> confidence</>
               })()}
               {props.description && <><br /><em style={{ fontSize: "0.85em" }}>{(props.description as string).replace(/ - stopice\.net$/, "")}</em></>}
               {props.url && <><br /><a href={props.url as string} target="_blank" rel="noreferrer" style={{ fontSize: "0.8em" }}>stopice.net</a></>}
