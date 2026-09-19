@@ -14,6 +14,7 @@ from app.config import settings
 from app.events import publish
 from app.middleware.auth import require_admin_auth
 from app.traccar_admin import ensure_traccar_device
+from app.ws_tickets import issue_ticket
 
 router = APIRouter()
 
@@ -465,6 +466,13 @@ async def verify_admin_password(body: VerifyPassword, request: Request) -> dict:
 class ChangePassword(BaseModel):
     current_password: str
     new_password: str
+
+
+@router.post("/api/setup/ws-ticket", dependencies=[Depends(require_admin_auth)])
+async def get_ws_ticket() -> dict:
+    """Issues a short-lived single-use token for WebSocket auth so the raw admin password
+    never appears in the WebSocket URL."""
+    return {"success": True, "data": {"ticket": issue_ticket()}}
 
 
 @router.post("/api/setup/household/password", dependencies=[Depends(require_admin_auth)])

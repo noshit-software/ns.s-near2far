@@ -801,7 +801,9 @@ is a genuine tradeoff discussion, not a mechanical change.
 **Fixed** (2026-09-18): `POST /api/setup/verify` now rate-limits failed attempts (10 per 5
 minutes per IP → 429). `GET /api/setup/household` now requires auth when a household exists —
 unauthenticated requests get a minimal locked stub (name only, no coordinates/member data) so the
-login form can render without leaking sensitive fields.
+login form can render without leaking sensitive fields. The WebSocket connection now uses a
+short-lived single-use ticket (`POST /api/setup/ws-ticket` → 30s opaque token) instead of the
+raw admin password in the query string — the password no longer appears in the WS URL.
 
 ## Spec
 

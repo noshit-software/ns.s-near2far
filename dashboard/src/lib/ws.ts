@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 
-import { getAdminPassword } from "./api"
+import { apiPost } from "./api"
 
 export function useEventStream() {
   const [lastEvent, setLastEvent] = useState<unknown>(null)
@@ -11,9 +11,17 @@ export function useEventStream() {
     let cancelled = false
     let hasConnectedBefore = false
 
-    function connect() {
-      const token = getAdminPassword() ?? ""
-      const url = `${location.origin.replace(/^http/, "ws")}/ws/events?token=${encodeURIComponent(token)}`
+    async function connect() {
+      let ticket = ""
+      try {
+        const { ticket: t } = await apiPost<{ ticket: string }>("/setup/ws-ticket", {})
+        ticket = t
+      } catch {
+        // Not authenticated or no household yet — connect without a ticket; the server
+        // allows unauthenticated connections when no household exists.
+      }
+      if (cancelled) return
+      const url = `${location.origin.replace(/^http/, "ws")}/ws/events?ticket=${encodeURIComponent(ticket)}`
       socket = new WebSocket(url)
       socket.onmessage = (event) => setLastEvent(JSON.parse(event.data))
       socket.onopen = () => {

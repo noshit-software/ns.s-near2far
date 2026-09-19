@@ -2,27 +2,27 @@ import asyncio
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from app.auth import verify_password
 from app.events import subscribe
+from app.ws_tickets import consume_ticket
 
 router = APIRouter()
 
 
 async def _authorized(websocket: WebSocket) -> bool:
-    """WebSockets can't carry the Authorization header the REST API uses, so the admin
-    password travels as a query param instead — the dashboard already treats that password as
-    the credential (stored client-side, sent as Bearer everywhere else), so this isn't a new
-    trust boundary, just a different transport for the same one."""
+    """WebSockets can't carry the Authorization header the REST API uses. The dashboard
+    calls POST /api/setup/ws-ticket (a normal REST endpoint with Bearer auth) to get a
+    short-lived single-use token, then passes that token as ?ticket= here. The raw admin
+    password never touches the WebSocket URL or query string."""
     async with websocket.app.state.db_pool.acquire() as conn:
         household = await conn.fetchrow(
-            "SELECT admin_password_hash FROM substrate.households LIMIT 1"
+            "SELECT id FROM substrate.households LIMIT 1"
         )
 
     if household is None:
         return True  # no household yet — nothing sensitive to protect
 
-    token = websocket.query_params.get("token", "")
-    return bool(token) and verify_password(token, household["admin_password_hash"])
+    ticket = websocket.query_params.get("ticket", "")
+    return bool(ticket) and consume_ticket(ticket)
 
 
 @router.websocket("/ws/events")
