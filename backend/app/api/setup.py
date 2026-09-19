@@ -462,6 +462,29 @@ async def verify_admin_password(body: VerifyPassword, request: Request) -> dict:
     return {"success": True, "data": {"ok": ok}}
 
 
+class ChangePassword(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@router.post("/api/setup/household/password", dependencies=[Depends(require_admin_auth)])
+async def change_password(body: ChangePassword, request: Request) -> dict:
+    async with request.app.state.db_pool.acquire() as conn:
+        household = await conn.fetchrow(
+            "SELECT admin_password_hash FROM substrate.households LIMIT 1"
+        )
+    if household is None:
+        raise HTTPException(status_code=404, detail="No household configured")
+    if not verify_password(body.current_password, household["admin_password_hash"]):
+        raise HTTPException(status_code=401, detail="Current password incorrect")
+    async with request.app.state.db_pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE substrate.households SET admin_password_hash = $1",
+            hash_password(body.new_password),
+        )
+    return {"success": True, "data": None}
+
+
 @router.post("/api/setup/members", dependencies=[Depends(require_admin_auth)])
 async def create_member(body: CreateMember, request: Request) -> dict:
     async with request.app.state.db_pool.acquire() as conn:

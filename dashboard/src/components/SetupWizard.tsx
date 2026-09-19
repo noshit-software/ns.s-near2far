@@ -63,6 +63,10 @@ export function SetupWizard() {
 
   const [loginPassword, setLoginPassword] = useState("")
 
+  const [currentPassword, setCurrentPassword] = useState("")
+  const [newPassword, setNewPassword] = useState("")
+  const [passwordChangeMsg, setPasswordChangeMsg] = useState<string | null>(null)
+
   const [memberName, setMemberName] = useState("")
   const [showDeviceHint, setShowDeviceHint] = useState(false)
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null)
@@ -196,6 +200,19 @@ export function SetupWizard() {
       setHousehold(full)
     } catch (e) {
       setError((e as Error).message)
+    }
+  }
+
+  async function changePassword() {
+    setPasswordChangeMsg(null)
+    try {
+      await apiPost("/setup/household/password", { current_password: currentPassword, new_password: newPassword })
+      setAdminPassword(newPassword)
+      setCurrentPassword("")
+      setNewPassword("")
+      setPasswordChangeMsg("Password updated.")
+    } catch (e) {
+      setPasswordChangeMsg((e as Error).message)
     }
   }
 
@@ -566,6 +583,26 @@ export function SetupWizard() {
                 </div>
               )
             })}
+
+            <h3>Security</h3>
+            <div className="settings-group">
+              <label>
+                Current password
+                <PasswordInput value={currentPassword} onChange={setCurrentPassword} />
+              </label>
+              <label>
+                New password
+                <PasswordInput value={newPassword} onChange={setNewPassword} />
+              </label>
+              <button
+                type="button"
+                onClick={changePassword}
+                disabled={!currentPassword || !newPassword}
+              >
+                Change password
+              </button>
+              {passwordChangeMsg && <p className={passwordChangeMsg === "Password updated." ? "success" : "error"}>{passwordChangeMsg}</p>}
+            </div>
 
             {error && <p className="error">{error}</p>}
           </div>

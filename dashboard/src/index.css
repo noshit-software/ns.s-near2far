@@ -11,6 +11,7 @@
   --accent: #d97110;
   --accent-hover: #e8873a;
   --danger: #ff6b6b;
+  --success: #22c55e;
   /* "Planet blue" from the logo's moons — used for Add actions specifically, so Add/Edit/Remove
      read as three distinct, consistent colors everywhere in Settings rather than each screen
      inventing its own button look. */
@@ -1962,6 +1963,12 @@ h3 {
 
 .error {
   color: var(--danger);
+  font-size: 0.85rem;
+  margin: 0.5rem 0 0;
+}
+
+.success {
+  color: var(--success, #22c55e);
   font-size: 0.85rem;
   margin: 0.5rem 0 0;
 }
