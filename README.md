@@ -791,19 +791,14 @@ specifically because nginx's default log format records the full request line (q
 included), which would otherwise write the admin password and `TRACCAR_FORWARD_TOKEN` into
 container logs in plaintext on every request.
 
-**Known gaps, not yet addressed** (security audit, 2026-09-18): there's no password-rotation
-endpoint, so a suspected-compromised password can only be changed via direct DB access; and the
-dashboard stores it in `localStorage` (not `sessionStorage`), so any future XSS on the dashboard
-origin would yield a durable, silently-persisted credential leak. Both are deliberately left as
-open design questions rather than a quick patch, since a real fix (rotation flow, WS ticket scheme)
-is a genuine tradeoff discussion, not a mechanical change.
-
 **Fixed** (2026-09-18): `POST /api/setup/verify` now rate-limits failed attempts (10 per 5
 minutes per IP → 429). `GET /api/setup/household` now requires auth when a household exists —
 unauthenticated requests get a minimal locked stub (name only, no coordinates/member data) so the
 login form can render without leaking sensitive fields. The WebSocket connection now uses a
 short-lived single-use ticket (`POST /api/setup/ws-ticket` → 30s opaque token) instead of the
 raw admin password in the query string — the password no longer appears in the WS URL.
+`POST /api/setup/household/password` adds password rotation — verify current, set new — with a
+Change password button in Settings.
 
 ## Spec
 
