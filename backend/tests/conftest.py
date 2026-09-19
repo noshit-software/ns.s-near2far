@@ -35,3 +35,20 @@ class FakeConn:
 
     async def execute(self, query, *args):
         self.calls.append(("execute", (query, *args)))
+
+
+class FakePool:
+    """Pool stand-in whose acquire() yields the provided FakeConn as an async context manager.
+    Needed by tests that exercise functions taking a db_pool, not a bare connection."""
+
+    def __init__(self, conn: FakeConn):
+        self._conn = conn
+
+    def acquire(self):
+        return self
+
+    async def __aenter__(self) -> FakeConn:
+        return self._conn
+
+    async def __aexit__(self, *args) -> None:
+        pass
