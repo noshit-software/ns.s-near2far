@@ -15,7 +15,7 @@ from app.staleness_alerts import run_staleness_watcher
 configure_logging()
 
 
-@asynccontextmanager
+@asynccontextmanager  # @pattern:fastapi-router
 async def lifespan(app: FastAPI):
     import asyncio
     app.state.db_pool = await create_pool()

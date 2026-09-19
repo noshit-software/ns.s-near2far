@@ -71,8 +71,8 @@ async def _check(db_pool) -> None:
 
 async def run_staleness_watcher(db_pool) -> None:
     while True:
-        await asyncio.sleep(CHECK_INTERVAL)
         try:
             await _check(db_pool)
         except Exception:
             log.exception("staleness_check_error")
+        await asyncio.sleep(CHECK_INTERVAL)

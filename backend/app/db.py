@@ -8,7 +8,7 @@ async def _init_conn(conn: asyncpg.Connection) -> None:
     await conn.execute('SET search_path = ag_catalog, "$user", public')
 
 
-async def create_pool() -> asyncpg.Pool:
+async def create_pool() -> asyncpg.Pool:  # @pattern:db-singleton
     return await asyncpg.create_pool(
         host=settings.postgres_host,
         port=settings.postgres_port,

@@ -1,3 +1,4 @@
+# @pattern:docker-compose-stack
 services:
   backend:
     build: ./backend

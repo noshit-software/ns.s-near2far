@@ -1,16 +1,16 @@
 import json
-import logging
 import re
 import time
 from datetime import datetime, timedelta, timezone
 
 import httpx
+import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.config import settings
 from app.middleware.auth import require_admin_auth
 
-log = logging.getLogger(__name__)
+log = structlog.get_logger(__name__)
 
 router = APIRouter()
 
@@ -106,7 +106,6 @@ async def get_ice(
         created_raw = a.get("created", "")
         if created_raw:
             try:
-                from datetime import datetime, timezone
                 dt = datetime.strptime(created_raw, "%b %d, %Y (%H:%M:%S)")
                 created_iso = dt.replace(tzinfo=timezone.utc).isoformat()
             except ValueError:

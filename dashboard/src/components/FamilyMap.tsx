@@ -4,7 +4,7 @@ import L from "leaflet"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { GeoJSON, MapContainer, Marker, Popup, Tooltip, TileLayer, useMap, useMapEvents } from "react-leaflet"
 
-import { apiGet } from "../lib/api"
+import { apiGet, getAdminPassword } from "../lib/api"
 import { generatedAvatarDataUri, resolveMemberColor } from "../lib/avatar"
 
 type Household = {
@@ -335,7 +335,7 @@ function IceLayer({
   async function refresh() {
     if (positions.length === 0) return
     onLoading(true)
-    const auth = `Bearer ${localStorage.getItem("near2far_admin_password") ?? ""}`
+    const auth = `Bearer ${getAdminPassword() ?? ""}`
     const seen = new Map<string, GeoJSON.Feature>()
 
     await Promise.all(
