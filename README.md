@@ -122,11 +122,9 @@ Part of noshit.software. AGPL-3.0. Domain: near2far.family
   The **Settings** tab has household/member
   management (home
   geofence via a Leaflet map you click to place a pin, member list — tapping a member opens a full
-  **Edit member** modal: rename, avatar, a map-color picker, Device ID, and remove). No address
-  search — Nominatim's free geocoder wasn't reliable enough at
-  house-level precision to be worth the confusion. No trust tiers — every member sees every other
-  member's exact location; that's the whole point for a family-safety use case. Place alerts
-  (geofence-based) are still a placeholder.
+  **Edit member** modal: rename, avatar, a map-color picker, Device ID, and remove). No trust
+  tiers — every member sees every other member's exact location; that's the whole point for a
+  family-safety use case.
 - **Geofence arrival audio** — the dashboard plays a chime when a member enters a saved place. Home arrivals get a 4-note ascending arpeggio (C–E–G–C); other places get a softer 2-note chime. Plays via Web Audio API in the browser tab; no files needed. Different tones per place-type are wired — individual per-place tone selection can be added later in Settings.
 - **OwnTracks staleness alerts** — background watcher fires a push notification when any member's last location is more than 30 minutes old; clears automatically on recovery. A stale indicator (amber dot on avatar, warning line in detail panel) also appears on the map.
 - **Address search in LocationPicker** — the map picker used for setting Home and adding named places now has an address search box (Nominatim/OSM geocoding, no key required). Type an address, pick from the dropdown, and the map flies to it. Click to refine the pin after landing.
@@ -181,10 +179,12 @@ Wipe it entirely: `docker compose -p nss-near2far-demo -f docker-compose.demo.ym
 
 Backend unit tests (`backend/tests/`) cover the security-critical logic: password hashing,
 `require_admin_auth`, OwnTracks' Basic-auth handling, the null-island rejection and
-explicit-timestamp behavior in `_record_position`, the trip-detection state machine, and phone/
-contact-name validation (`_normalize_phone`/`_validate_contact_name` in `setup.py`). They run
-against fake asyncpg-shaped connection objects (`tests/conftest.py`'s `FakeConn`), not a real
-Postgres — fast, no Docker needed, safe to run in CI.
+explicit-timestamp behavior in `_record_position`, the trip-detection state machine, phone/
+contact-name validation (`_normalize_phone`/`_validate_contact_name` in `setup.py`), and the
+staleness-alert state machine (the `_check` loop and `on_fresh_position` recovery). They run
+against fake asyncpg-shaped connection objects (`tests/conftest.py`'s `FakeConn` for bare
+connections, `FakePool` for pool-taking callers), not a real Postgres — fast, no Docker needed,
+safe to run in CI.
 
 ```bash
 cd backend
@@ -791,15 +791,17 @@ specifically because nginx's default log format records the full request line (q
 included), which would otherwise write the admin password and `TRACCAR_FORWARD_TOKEN` into
 container logs in plaintext on every request.
 
-**Known gaps, not yet addressed** (security audit, 2026-08-24): the admin password has no
+**Known gaps, not yet addressed** (security audit, 2026-09-18): the admin password has no
 rate-limiting/lockout on repeated failed attempts, so it's brute-forceable at network-RTT speed
 (PBKDF2 iteration cost is the only friction) by anything that can reach the API; there's no
 password-rotation endpoint, so a suspected-compromised password can only be changed via direct
-DB access; and the dashboard stores it in `localStorage` (not `sessionStorage`), so any future
-XSS on the dashboard origin would yield a durable, silently-persisted credential leak. All three
-are deliberately left as open design questions rather than a quick patch, since a real fix (rate
-limiter, rotation flow, WS ticket scheme instead of a raw password in the URL) is a genuine
-tradeoff discussion, not a mechanical change.
+DB access; the dashboard stores it in `localStorage` (not `sessionStorage`), so any future
+XSS on the dashboard origin would yield a durable, silently-persisted credential leak; and
+`GET /api/setup/household` returns the full household record (home coordinates, member names,
+phone numbers) without requiring auth — convenient during first-run setup, but it means any
+client that can reach the API can read all member data. All four are deliberately left as open
+design questions rather than a quick patch, since a real fix (rate limiter, rotation flow, WS
+ticket scheme, setup-mode flag) is a genuine tradeoff discussion, not a mechanical change.
 
 ## Spec
 
