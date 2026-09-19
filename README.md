@@ -791,17 +791,17 @@ specifically because nginx's default log format records the full request line (q
 included), which would otherwise write the admin password and `TRACCAR_FORWARD_TOKEN` into
 container logs in plaintext on every request.
 
-**Known gaps, not yet addressed** (security audit, 2026-09-18): the admin password has no
-rate-limiting/lockout on repeated failed attempts, so it's brute-forceable at network-RTT speed
-(PBKDF2 iteration cost is the only friction) by anything that can reach the API; there's no
-password-rotation endpoint, so a suspected-compromised password can only be changed via direct
-DB access; the dashboard stores it in `localStorage` (not `sessionStorage`), so any future
-XSS on the dashboard origin would yield a durable, silently-persisted credential leak; and
-`GET /api/setup/household` returns the full household record (home coordinates, member names,
-phone numbers) without requiring auth — convenient during first-run setup, but it means any
-client that can reach the API can read all member data. All four are deliberately left as open
-design questions rather than a quick patch, since a real fix (rate limiter, rotation flow, WS
-ticket scheme, setup-mode flag) is a genuine tradeoff discussion, not a mechanical change.
+**Known gaps, not yet addressed** (security audit, 2026-09-18): there's no password-rotation
+endpoint, so a suspected-compromised password can only be changed via direct DB access; and the
+dashboard stores it in `localStorage` (not `sessionStorage`), so any future XSS on the dashboard
+origin would yield a durable, silently-persisted credential leak. Both are deliberately left as
+open design questions rather than a quick patch, since a real fix (rotation flow, WS ticket scheme)
+is a genuine tradeoff discussion, not a mechanical change.
+
+**Fixed** (2026-09-18): `POST /api/setup/verify` now rate-limits failed attempts (10 per 5
+minutes per IP → 429). `GET /api/setup/household` now requires auth when a household exists —
+unauthenticated requests get a minimal locked stub (name only, no coordinates/member data) so the
+login form can render without leaking sensitive fields.
 
 ## Spec
 
