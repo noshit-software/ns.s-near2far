@@ -12,3 +12,6 @@ pg_data/
 .DS_Store
 backend/uploads/
 *.tsbuildinfo
+*.dump
+*.tar.gz
+avatars-tmp/
