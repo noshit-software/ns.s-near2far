@@ -18,6 +18,7 @@ log = structlog.get_logger(__name__)
 
 STALE_THRESHOLD = timedelta(minutes=30)
 CHECK_INTERVAL = 5 * 60  # seconds
+POSITION_RETENTION = timedelta(days=7)
 
 _alerted: set[str] = set()  # member_ids we've already pushed for this stale period
 
@@ -25,6 +26,17 @@ _alerted: set[str] = set()  # member_ids we've already pushed for this stale per
 def on_fresh_position(member_id: str) -> None:
     """Call this whenever a live position arrives so the alert rearms after recovery."""
     _alerted.discard(member_id)
+
+
+async def _prune(db_pool) -> None:
+    cutoff = datetime.now(timezone.utc) - POSITION_RETENTION
+    async with db_pool.acquire() as conn:
+        deleted = await conn.fetchval(
+            "WITH d AS (DELETE FROM runtime.positions WHERE recorded_at < $1 RETURNING id) SELECT count(*) FROM d",
+            cutoff,
+        )
+    if deleted:
+        log.info("positions_pruned", count=deleted, retention_days=POSITION_RETENTION.days)
 
 
 async def _check(db_pool) -> None:
@@ -73,6 +85,7 @@ async def run_staleness_watcher(db_pool) -> None:
     while True:
         try:
             await _check(db_pool)
+            await _prune(db_pool)
         except Exception:
             log.exception("staleness_check_error")
         await asyncio.sleep(CHECK_INTERVAL)
