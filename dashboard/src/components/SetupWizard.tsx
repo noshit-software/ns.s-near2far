@@ -408,6 +408,7 @@ export function SetupWizard() {
                             ? `/uploads/avatars/${m.avatar_filename}`
                             : generatedAvatarDataUri(m.avatar_seed)
                         }
+                        onError={(e) => { (e.target as HTMLImageElement).src = generatedAvatarDataUri(m.avatar_seed) }}
                         alt=""
                       />
                       <span>{m.display_name}</span>

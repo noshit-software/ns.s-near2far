@@ -506,7 +506,9 @@ needs to scroll for the fixed candidate count. 6 fresh random options plus a **S
 **Upload photo** to use a real picture instead — an uploaded photo always takes priority over the
 generated one. Photos are stored server-side under `backend/uploads/avatars/` (a docker volume
 locally and on the VPS via the `backend_uploads` Docker volume) and served at
-`/uploads/avatars/<filename>`, proxied through nginx/vite same as `/api`.
+`/uploads/avatars/<filename>`, proxied through nginx/vite same as `/api`. If a
+photo URL returns an error (e.g. the volume was recreated), all avatar `<img>` elements
+fall back to the generated avatar automatically via `onError`.
 
 The backend caps uploads at 5MB, but **nginx's own default body-size limit is 1MB** and rejects
 anything bigger before the backend ever sees it, with an HTML error page instead of JSON (surfaces

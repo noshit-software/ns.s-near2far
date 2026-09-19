@@ -71,13 +71,12 @@ function memberIcon(p: Position, zoom: number): L.DivIcon {
   }
 
   const borderWidth = Math.max(2, Math.round(size * (5 / BASE_SIZE)))
-  const imageUrl = p.avatar_filename
-    ? `/uploads/avatars/${p.avatar_filename}`
-    : generatedAvatarDataUri(p.avatar_seed)
+  const generatedUri = generatedAvatarDataUri(p.avatar_seed)
+  const imageUrl = p.avatar_filename ? `/uploads/avatars/${p.avatar_filename}` : generatedUri
 
   return L.divIcon({
     className: "member-pin-wrapper",
-    html: `<div class="member-pin-photo" style="background-image:url('${imageUrl}');border-color:${color};border-width:${borderWidth}px"></div>`,
+    html: `<div class="member-pin-photo" style="border-color:${color};border-width:${borderWidth}px"><img class="member-pin-img" src="${imageUrl}" onerror="this.onerror=null;this.src='${generatedUri}'" alt=""></div>`,
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
     popupAnchor: [0, -size / 2],
@@ -652,6 +651,7 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
                         ? `/uploads/avatars/${p.avatar_filename}`
                         : generatedAvatarDataUri(p.avatar_seed)
                     }
+                    onError={(e) => { (e.target as HTMLImageElement).src = generatedAvatarDataUri(p.avatar_seed) }}
                     alt=""
                   />
                 </button>
@@ -670,6 +670,7 @@ export function FamilyMap({ household, lastEvent }: { household: Household; last
                   ? `/uploads/avatars/${activeMember.avatar_filename}`
                   : generatedAvatarDataUri(activeMember.avatar_seed)
               }
+              onError={(e) => { (e.target as HTMLImageElement).src = generatedAvatarDataUri(activeMember.avatar_seed) }}
               alt=""
             />
             <div className="member-detail-info">

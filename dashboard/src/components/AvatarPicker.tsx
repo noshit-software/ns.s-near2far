@@ -87,7 +87,11 @@ export function AvatarPicker({
   return (
     <div className="avatar-picker">
       <button type="button" className="avatar-picker-current" onClick={toggle}>
-        <img src={currentSrc} alt="" />
+        <img
+          src={currentSrc}
+          onError={(e) => { (e.target as HTMLImageElement).src = generatedAvatarDataUri(member.avatar_seed) }}
+          alt=""
+        />
       </button>
 
       {open && (

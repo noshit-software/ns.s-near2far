@@ -5,8 +5,8 @@
 import { createAvatar } from "@dicebear/core"
 import { funEmoji } from "@dicebear/collection"
 
-export function generatedAvatarDataUri(seed: string): string {
-  return createAvatar(funEmoji, { seed }).toDataUri()
+export function generatedAvatarDataUri(seed: string | null | undefined): string {
+  return createAvatar(funEmoji, { seed: seed ?? "" }).toDataUri()
 }
 
 export function randomSeed(): string {
