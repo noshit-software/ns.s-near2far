@@ -288,8 +288,8 @@ This is the root cause that actually explains the whole Overland/OwnTracks saga,
 GPS-forwarding app pointed at `near2far.family` directly, not just those two specifically.
 
 **The symptom:** the phone app is correctly configured, has a real GPS fix, "sends" with no visible
-error — but nothing ever arrives server-side. `pm2 logs near2far` never shows the request at all
-(not even a rejected/401 one). Meanwhile a plain browser (Safari) hitting the same domain, or an
+error — but nothing ever arrives server-side. `docker compose logs backend` never shows the request
+at all (not even a rejected/401 one). Meanwhile a plain browser (Safari) hitting the same domain, or an
 iOS **Shortcuts** "Get Contents of URL" action making the identical POST, both work fine.
 
 **The cause:** this domain's Cloudflare SSL/TLS mode is **Flexible** (browser↔Cloudflare is HTTPS,
@@ -345,7 +345,7 @@ a genuine location. `_record_position` in `positions.py` rejects it outright (lo
 know about:
 
 - If every point a misconfigured device sends is `(0, 0)`, the map will just never update for that
-  member and look identical to "nothing is arriving at all" — check `pm2 logs` for
+  member and look identical to "nothing is arriving at all" — check `docker compose logs backend` for
   `position_rejected_null_island` to tell the two apart from a device that isn't connecting at all.
 - Positions are ordered by each point's own reported timestamp (`recorded_at`), not by when the
   server received it — this matters because apps that queue points offline and flush them in a
@@ -392,8 +392,7 @@ From then on, Traccar forwards every position update to the backend (`TRACCAR_FO
 removed in favor of the snap-to-member map controls; every position comes from a real GPS source.)
 
 `TRACCAR_FORWARD_URL` differs by deployment:
-- Local all-in-one docker-compose dev: `http://backend:8000/api/traccar/forward`
-- VPS (backend runs via pm2, not in this compose file): `http://host.docker.internal:5101/api/traccar/forward`
+- Docker Compose (all environments): `http://backend:8000/api/traccar/forward`
 
 This endpoint originally had no auth of its own at all, relying entirely on `ufw` never exposing
 it publicly — a single misconfigured firewall rule away from accepting fake position data from
@@ -432,8 +431,7 @@ backend restart mid-trip just costs one missed alert, not persisted history.
 2. Generate a VAPID keypair (from `backend/`): `uv run --with pywebpush python -c "..."` (or any
    VAPID keygen tool) — you need the raw base64url public/private key bytes, not PEM. Paste them into
    `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` in `.env`.
-3. Restart the backend so it picks up the keys (`pm2 restart near2far` on the VPS, `docker compose up
-   -d backend` locally).
+3. Restart the backend so it picks up the keys: `docker compose up -d backend`.
 4. In the dashboard, go to Settings and click **Enable trip alerts** (at the top, once a household
    exists) and accept the browser's notification permission prompt. This POSTs the browser's push subscription to
    `/api/push/subscribe`, authenticated with the admin password like every other settings write.
@@ -507,7 +505,7 @@ as the `backdrop-filter`/`position:fixed` containing-block trap below, different
 needs to scroll for the fixed candidate count. 6 fresh random options plus a **Shuffle** button, or
 **Upload photo** to use a real picture instead — an uploaded photo always takes priority over the
 generated one. Photos are stored server-side under `backend/uploads/avatars/` (a docker volume
-locally; just a directory on the VPS since the backend runs bare via pm2) and served at
+locally and on the VPS via the `backend_uploads` Docker volume) and served at
 `/uploads/avatars/<filename>`, proxied through nginx/vite same as `/api`.
 
 The backend caps uploads at 5MB, but **nginx's own default body-size limit is 1MB** and rejects
@@ -525,16 +523,18 @@ a neighborhood.
 
 ### VPS deploy sequence
 
-The dashboard runs in Docker; the backend runs bare via pm2. Run all three steps every time
-regardless of which files changed:
+The entire stack runs in Docker Compose. One command covers everything:
 
 ```bash
 git pull
-docker compose build --no-cache dashboard && docker compose up -d --no-deps dashboard
-pm2 restart near2far
+docker compose up --build -d
 ```
 
-`--no-cache` is required — without it Docker reuses a cached `npm run build` layer and the bundle hash never changes, so the new code is silently never served. `--no-deps` prevents compose from trying to recreate the backend/db containers (which aren't needed and can fail in production).
+`--build` rebuilds images from source on every deploy. For the dashboard specifically, `--no-cache` is sometimes needed if Docker reuses a stale `npm run build` layer despite source changes:
+
+```bash
+docker compose build --no-cache dashboard && docker compose up -d
+```
 
 `traccar` is profile-gated and off by default — only run
 `docker compose --profile traccar up -d --build traccar` if you're actually using Traccar.
@@ -601,38 +601,15 @@ there, like a modal. Put the blur on a `::before`/`::after` pseudo-element inste
 ### VPS deploy gotchas (learned the hard way)
 
 - **There is exactly one `.env` file — the repo root one.** `backend/app/config.py` resolves it
-  by an absolute path derived from the config module's own location, specifically so this can
-  never happen again: a second `backend/.env` used to exist (pm2 runs the bare backend with
-  `cwd=backend/`, and pydantic-settings' `env_file` used to be the relative string `".env"`,
-  which silently resolved against that cwd instead of the repo root). That let the two files
-  drift for weeks — anything added to the root `.env` (like the VAPID push keys) was invisible
-  to the actual running process, with no error, just a value that looked "set" but wasn't. If
-  you ever find a `backend/.env`, delete it — it shouldn't exist. The one value that's genuinely
-  different between the bare VPS process and the local Docker stack (`POSTGRES_HOST`: `127.0.0.1`
-  vs the Docker service name `db`) is handled as an explicit `environment:` override on the
-  `backend` service in `docker-compose.yml`, not a second file.
-- **`git pull` alone does nothing for the running backend.** `pm2` doesn't hot-reload — after
-  pulling backend changes, you must `pm2 restart near2far` or the old code keeps running silently
-  (symptom: a route that clearly exists in the code 404s with FastAPI's generic `{"detail":"Not
-  Found"}`, meaning the route was never actually registered in the running process).
+  by an absolute path derived from the config module's own location. If you ever find a
+  `backend/.env`, delete it — it shouldn't exist. The one value that differs between environments
+  (`POSTGRES_HOST`: `127.0.0.1` locally vs the Docker service name `db` in compose) is handled as
+  an explicit `environment:` override on the `backend` service in `docker-compose.yml`.
 - **The dashboard is its own Docker container, not a bare `npm run build`.** `dashboard/Dockerfile`
-  is a multi-stage build — `npm install && npm run build` happens *inside* the image build, and the
-  result is baked into an nginx:alpine image; there's no host-side `dashboard/dist/` involved in
-  production at all. Running `npm run build` on the VPS host builds nothing anyone serves.
-  `pm2 restart near2far` only restarts the bare-host **backend** process — it has no effect on this
-  container whatsoever. The actual deploy step is
-  `docker compose build --no-cache --pull dashboard && docker compose up -d --no-deps dashboard`.
-  `--no-cache --pull` matters: a cached `RUN npm run build` layer can silently reuse the *old*
-  compiled output even after `git pull`'d source changes, with the build step reporting a
-  suspiciously-fast "success" and the live bundle hash never changing. `--no-deps` matters even
-  more: the dashboard service's `depends_on: [backend]` means a bare `up -d --build dashboard`
-  tries to recreate the docker-compose `backend` service too — which is a separate, essentially
-  vestigial container in production (real traffic is served by the bare pm2 process via the VPS's
-  own system-level nginx, not through anything in this repo's docker-compose stack) that isn't
-  normally running and can't rebuild/sync `uv` dependencies without outbound network access, which
-  this host's container network doesn't reliably have. Letting compose touch it needlessly is how a
-  routine dashboard deploy took the whole site down once already (see the nginx resolver note
-  below).
+  is a multi-stage build — `npm install && npm run build` happens *inside* the image build, baked
+  into an nginx:alpine image. Running `npm run build` on the VPS host builds nothing that gets
+  served. A cached `RUN npm run build` layer can silently reuse old compiled output despite source
+  changes — use `--no-cache` when the bundle hash isn't updating after a deploy.
 - **The dashboard's nginx must not eagerly resolve `backend` at startup.** A static
   `proxy_pass http://backend:8000;` in `dashboard/nginx.conf` gets resolved once, when nginx's
   config loads — if the docker-compose `backend` container isn't up and healthy at that exact
@@ -641,13 +618,12 @@ there, like a modal. Put the blur on a `::before`/`::after` pseudo-element inste
   just the unused `/api` proxy path. Every `/api`-ish `location` block instead does
   `set $backend_upstream backend:8000; proxy_pass http://$backend_upstream;` with a
   `resolver 127.0.0.11 valid=10s;` (Docker's embedded DNS) at the server level — this defers
-  resolution to request time, so a missing/unhealthy `backend` container just 502s those
-  (in-production-unused) routes instead of taking the dashboard down.
-- **`ufw` needs an explicit rule for every port containers need to reach on the host**, not just
-  public-facing ones. The backend (port 5101, host-run via pm2) needs to be reachable from Docker's
-  bridge networks for the traccar container's `TRACCAR_FORWARD_URL` to work —
-  `sudo ufw allow from 172.16.0.0/12 to any port 5101 proto tcp` (covers Docker's typical bridge
-  subnets without opening the port publicly).
+  resolution to request time so a temporarily-unavailable backend just 502s those routes instead
+  of taking the dashboard container down entirely on startup.
+- **`ufw` needs an explicit allow for Docker's bridge subnets** if you're using Traccar and the
+  backend is on a different network segment. Both services are on the `app-net` Docker network, so
+  this is usually handled automatically — but if you see Traccar unable to forward to the backend,
+  check that Docker's bridge (typically `172.16.0.0/12`) isn't being blocked.
 - **`db/init/*.sql` only runs once**, when a Postgres volume is first created. Schema changes added
   after that need a manual `ALTER TABLE`/`docker compose down -v` — a plain `git pull` doesn't apply
   them to an already-running database. `avatar_filename`/`avatar_seed`/`color` on
@@ -729,17 +705,12 @@ there, like a modal. Put the blur on a `::before`/`::after` pseudo-element inste
     expires_at TIMESTAMPTZ NOT NULL DEFAULT now() + INTERVAL '2 hours'
   );
   ```
-- **Member photo uploads need `backend/uploads/` to persist and be writable.** Locally that's the
-  `backend_uploads` docker volume; on the VPS (bare pm2, no container) it's just a directory next to
-  the app code — make sure it survives deploys (it's not in git) and that the pm2 process can write
-  to it.
-- **The backend's Docker container runs as a non-root user (`appuser`, uid 1000) as of the
-  security audit.** This only affects local `docker compose` dev — the VPS runs the backend bare
-  via pm2, under whatever OS user pm2 itself runs as, entirely untouched by this. If you ever have
-  an *existing local* `backend_uploads` volume from before this change, its files are still
-  root-owned and need `docker compose down -v` (wipes and lets a fresh volume inherit the image's
-  ownership) or a manual `docker compose exec -u root backend chown -R appuser:appuser
-  /app/uploads`.
+- **Member photo uploads need `backend/uploads/` to persist and be writable.** This is the
+  `backend_uploads` named Docker volume — it persists across deploys automatically. The backend
+  container runs as a non-root user (`appuser`, uid 1000). If you ever have an *existing*
+  `backend_uploads` volume from before the non-root change, its files may be root-owned — fix with
+  `docker compose exec -u root backend chown -R appuser:appuser /app/uploads` or wipe with
+  `docker compose down -v` (destroys all volumes including the DB).
 - **A browser's "This page isn't working" screen isn't necessarily a connectivity failure** — check
   for a specific HTTP status code in the error page (e.g. "HTTP ERROR 400") before assuming DNS/
   firewall/network issues; that generic wrapper renders for any 4xx/5xx response with an empty body.
