@@ -1,5 +1,7 @@
 import json
 import re
+import time
+from collections import defaultdict
 from pathlib import Path
 
 import asyncpg
@@ -14,6 +16,25 @@ from app.middleware.auth import require_admin_auth
 from app.traccar_admin import ensure_traccar_device
 
 router = APIRouter()
+
+# Simple in-process rate limiter for POST /api/setup/verify.
+# Tracks failed-attempt timestamps per client IP; resets automatically as entries age out.
+_VERIFY_WINDOW = 300  # seconds
+_VERIFY_MAX_FAILURES = 10
+_verify_failures: dict[str, list[float]] = defaultdict(list)
+
+
+def _check_verify_rate_limit(ip: str) -> None:
+    now = time.monotonic()
+    cutoff = now - _VERIFY_WINDOW
+    _verify_failures[ip] = [t for t in _verify_failures[ip] if t > cutoff]
+    if len(_verify_failures[ip]) >= _VERIFY_MAX_FAILURES:
+        raise HTTPException(status_code=429, detail="Too many attempts — try again later")
+
+
+def _record_verify_failure(ip: str) -> None:
+    _verify_failures[ip].append(time.monotonic())
+
 
 HOUSEHOLD_COLUMNS = "id, name, home_geofence, emergency_number, emergency_label"
 
@@ -145,10 +166,30 @@ class VerifyPassword(BaseModel):
 async def get_household(request: Request) -> dict:
     async with request.app.state.db_pool.acquire() as conn:
         household = await conn.fetchrow(
-            f"SELECT {HOUSEHOLD_COLUMNS} FROM substrate.households ORDER BY created_at LIMIT 1"
+            f"SELECT {HOUSEHOLD_COLUMNS}, admin_password_hash FROM substrate.households ORDER BY created_at LIMIT 1"
         )
         if household is None:
             return {"success": True, "data": None}
+
+        # Household exists — require auth. Return a minimal locked response (no sensitive data)
+        # rather than 401 so the frontend can distinguish "locked" from a real error and show
+        # the login form with the household name without exposing coordinates or member data.
+        header_key = request.headers.get("authorization", "").removeprefix("Bearer ").strip()
+        if not header_key or not verify_password(header_key, household["admin_password_hash"]):
+            return {
+                "success": True,
+                "data": {
+                    "id": str(household["id"]),
+                    "name": household["name"],
+                    "locked": True,
+                    "home_geofence": {"lat": 0, "lng": 0, "radius_m": 0},
+                    "emergency_number": "",
+                    "emergency_label": "",
+                    "members": [],
+                    "emergency_contacts": [],
+                    "places": [],
+                },
+            }
 
         members = await conn.fetch(
             "SELECT id, display_name, device_id, avatar_filename, avatar_seed, color FROM substrate.members "
@@ -404,6 +445,9 @@ async def delete_emergency_contact(contact_id: int, request: Request) -> dict:
 
 @router.post("/api/setup/verify")
 async def verify_admin_password(body: VerifyPassword, request: Request) -> dict:
+    ip = request.client.host if request.client else "unknown"
+    _check_verify_rate_limit(ip)
+
     async with request.app.state.db_pool.acquire() as conn:
         household = await conn.fetchrow(
             "SELECT admin_password_hash FROM substrate.households LIMIT 1"
@@ -413,6 +457,8 @@ async def verify_admin_password(body: VerifyPassword, request: Request) -> dict:
         raise HTTPException(status_code=404, detail="No household configured")
 
     ok = verify_password(body.password, household["admin_password_hash"])
+    if not ok:
+        _record_verify_failure(ip)
     return {"success": True, "data": {"ok": ok}}
 
 

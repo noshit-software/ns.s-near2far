@@ -34,6 +34,7 @@ export type EmergencyContact = {
 type Household = {
   id: string
   name: string
+  locked?: boolean
   home_geofence: { lat: number; lng: number; radius_m: number }
   emergency_number: string
   emergency_label: string
@@ -189,6 +190,10 @@ export function SetupWizard() {
       if (!ok) throw new Error("Incorrect password")
       setAdminPassword(loginPassword)
       setUnlocked(true)
+      // Re-fetch full household now that we have a valid credential in localStorage.
+      // The initial fetch returned a locked stub (no sensitive data) since we had no password.
+      const full = await apiGet<Household>("/setup/household")
+      setHousehold(full)
     } catch (e) {
       setError((e as Error).message)
     }
