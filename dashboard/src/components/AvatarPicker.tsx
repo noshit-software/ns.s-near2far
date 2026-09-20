@@ -25,6 +25,7 @@ export function AvatarPicker({
   const [candidates, setCandidates] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [cropUrl, setCropUrl] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
 
   const currentSrc = member.avatar_filename
     ? `/uploads/avatars/${member.avatar_filename}`
@@ -73,6 +74,7 @@ export function AvatarPicker({
 
   async function confirmCrop(blob: Blob) {
     setError(null)
+    setSaving(true)
     try {
       const file = new File([blob], "avatar.jpg", { type: "image/jpeg" })
       const updated = await apiUpload<Member>(`/setup/members/${member.id}/avatar`, file)
@@ -81,6 +83,8 @@ export function AvatarPicker({
       setOpen(false)
     } catch (err) {
       setError((err as Error).message)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -112,7 +116,7 @@ export function AvatarPicker({
             </div>
 
             {cropUrl ? (
-              <AvatarCropper imageUrl={cropUrl} onCancel={cancelCrop} onConfirm={confirmCrop} />
+              <AvatarCropper imageUrl={cropUrl} onCancel={cancelCrop} onConfirm={confirmCrop} loading={saving} />
             ) : (
               <>
                 <div className="avatar-picker-grid">

@@ -23,10 +23,12 @@ export function AvatarCropper({
   imageUrl,
   onCancel,
   onConfirm,
+  loading = false,
 }: {
   imageUrl: string
   onCancel: () => void
   onConfirm: (blob: Blob) => void
+  loading?: boolean
 }) {
   const imgRef = useRef<HTMLImageElement>(null)
   const [natural, setNatural] = useState({ w: 0, h: 0 })
@@ -140,11 +142,11 @@ export function AvatarCropper({
         className="avatar-cropper-zoom"
       />
       <div className="avatar-cropper-actions">
-        <button type="button" onClick={onCancel}>
+        <button type="button" onClick={onCancel} disabled={loading}>
           Cancel
         </button>
-        <button type="button" onClick={confirm}>
-          Save
+        <button type="button" onClick={confirm} disabled={loading}>
+          {loading ? "Saving…" : "Save"}
         </button>
       </div>
       {error && <p className="error">{error}</p>}
