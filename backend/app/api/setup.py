@@ -585,11 +585,10 @@ async def delete_member(member_id: str, request: Request) -> dict:
 
 @router.post("/api/setup/members/{member_id}/avatar-seed", dependencies=[Depends(require_admin_auth)])
 async def set_member_avatar_seed(member_id: str, body: SetMemberAvatarSeed, request: Request) -> dict:
-    """Picks a new generated placeholder avatar (see dashboard's @dicebear picker). Ignored
-    once a member has a real uploaded photo — avatar_filename always wins on the map."""
+    """Picks a generated emoji avatar. Clears any uploaded photo so the emoji takes effect."""
     async with request.app.state.db_pool.acquire() as conn:
         row = await conn.fetchrow(
-            "UPDATE substrate.members SET avatar_seed = $1 WHERE id = $2 "
+            "UPDATE substrate.members SET avatar_seed = $1, avatar_filename = NULL WHERE id = $2 "
             "RETURNING id, display_name, device_id, avatar_filename, avatar_seed, color",
             body.avatar_seed,
             member_id,
