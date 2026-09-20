@@ -3,7 +3,7 @@ import { useState } from "react"
 import { apiPost, apiUpload } from "../lib/api"
 import { generatedAvatarDataUri, randomSeed } from "../lib/avatar"
 import { AvatarCropper } from "./AvatarCropper"
-import { CloseIcon } from "./icons"
+import { CloseIcon, PencilIcon } from "./icons"
 
 type Member = {
   id: string
@@ -90,12 +90,15 @@ export function AvatarPicker({
 
   return (
     <div className="avatar-picker">
-      <button type="button" className="avatar-picker-current" onClick={toggle}>
+      <button type="button" className="avatar-picker-current" onClick={toggle} aria-label="Change avatar">
         <img
           src={currentSrc}
           onError={(e) => { (e.target as HTMLImageElement).src = generatedAvatarDataUri(member.avatar_seed) }}
           alt=""
         />
+        <span className="avatar-picker-edit-overlay" aria-hidden="true">
+          <PencilIcon />
+        </span>
       </button>
 
       {open && (

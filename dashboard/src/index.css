@@ -1661,6 +1661,7 @@ h3 {
    which otherwise clobbers these buttons' padding/border-radius with its 8px/rect defaults. */
 
 .avatar-picker .avatar-picker-current {
+  position: relative;
   padding: 0;
   border: 3px solid var(--border);
   border-radius: 50%;
@@ -1670,6 +1671,11 @@ h3 {
   width: 132px;
   height: 132px;
   flex-shrink: 0;
+  transition: border-color 0.15s;
+}
+
+.avatar-picker .avatar-picker-current:hover {
+  border-color: var(--accent, #f59e0b);
 }
 
 .avatar-picker-current img {
@@ -1677,6 +1683,27 @@ h3 {
   height: 100%;
   object-fit: cover;
   display: block;
+  transition: opacity 0.15s;
+}
+
+.avatar-picker .avatar-picker-current:hover img {
+  opacity: 0.55;
+}
+
+.avatar-picker-edit-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+
+.avatar-picker .avatar-picker-current:hover .avatar-picker-edit-overlay {
+  opacity: 1;
 }
 
 /* Fixed to the viewport, not absolutely positioned off .avatar-picker-current — that dropdown
